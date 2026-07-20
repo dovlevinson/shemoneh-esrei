@@ -1,0 +1,1303 @@
+<meta charset="utf-8">
+<title>Shemoneh Esrei Master ‚Äî Reading Trainer</title>
+<style>
+/* ============ tokens ============ */
+:root{
+  --bg:#f6f3ea; --panel:#fffdf7; --panel2:#efe9da; --line:#ddd5c2;
+  --ink:#25304e; --ink2:#66708c; --accent:#2456a6; --accent-ink:#ffffff;
+  --gold:#a8781c; --gold-bg:#f7ecd2;
+  --ok:#187a4b; --ok-bg:#e2f2e7; --warn:#a35d00; --warn-bg:#faedd4; --bad:#b3383e; --bad-bg:#f9e2e3;
+  --cur:#2456a6; --cur-bg:#e3ecfa;
+  --shadow:0 2px 10px rgba(37,48,78,.08);
+  --r:14px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#131828; --panel:#1c2336; --panel2:#242d45; --line:#333d5c;
+    --ink:#e9e7dd; --ink2:#9aa3bd; --accent:#7aa7e8; --accent-ink:#10203c;
+    --gold:#d9b45c; --gold-bg:#3a3220;
+    --ok:#5ecb93; --ok-bg:#153525; --warn:#eab35e; --warn-bg:#3a2d13; --bad:#f08a8f; --bad-bg:#3d1d20;
+    --cur:#7aa7e8; --cur-bg:#22335c;
+    --shadow:0 2px 12px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="light"]{
+  --bg:#f6f3ea; --panel:#fffdf7; --panel2:#efe9da; --line:#ddd5c2;
+  --ink:#25304e; --ink2:#66708c; --accent:#2456a6; --accent-ink:#ffffff;
+  --gold:#a8781c; --gold-bg:#f7ecd2;
+  --ok:#187a4b; --ok-bg:#e2f2e7; --warn:#a35d00; --warn-bg:#faedd4; --bad:#b3383e; --bad-bg:#f9e2e3;
+  --cur:#2456a6; --cur-bg:#e3ecfa;
+  --shadow:0 2px 10px rgba(37,48,78,.08);
+}
+:root[data-theme="dark"]{
+  --bg:#131828; --panel:#1c2336; --panel2:#242d45; --line:#333d5c;
+  --ink:#e9e7dd; --ink2:#9aa3bd; --accent:#7aa7e8; --accent-ink:#10203c;
+  --gold:#d9b45c; --gold-bg:#3a3220;
+  --ok:#5ecb93; --ok-bg:#153525; --warn:#eab35e; --warn-bg:#3a2d13; --bad:#f08a8f; --bad-bg:#3d1d20;
+  --cur:#7aa7e8; --cur-bg:#22335c;
+  --shadow:0 2px 12px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,"Segoe UI",Roboto,Arial,sans-serif}
+#app{max-width:860px;margin:0 auto;padding:12px 14px 80px}
+.heb{font-family:"Frank Ruhl Libre","Frank Ruehl CLM","Times New Roman","Noto Serif Hebrew","SBL Hebrew",David,serif}
+button{font:inherit;cursor:pointer;border:0;border-radius:10px;padding:9px 16px;background:var(--panel2);color:var(--ink)}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);color:var(--accent-ink);font-weight:600}
+button.ghost{background:transparent;border:1px solid var(--line)}
+button:disabled{opacity:.45;cursor:not-allowed}
+input[type=text],input[type=number],textarea,select{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+textarea{width:100%}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:16px 18px;margin:12px 0}
+.muted{color:var(--ink2);font-size:.9em}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.spread{justify-content:space-between}
+h1,h2,h3{text-wrap:balance;margin:.3em 0}
+h1{font-size:1.5rem}
+h2{font-size:1.2rem}
+.tag{display:inline-block;padding:2px 10px;border-radius:99px;font-size:.78rem;background:var(--panel2);color:var(--ink2)}
+/* header */
+header.top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 2px;border-bottom:2px solid var(--line);margin-bottom:10px}
+header.top .brand{display:flex;align-items:center;gap:10px}
+header.top .logo{width:38px;height:38px;border-radius:10px;background:var(--accent);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;font-size:20px}
+nav.tabs{display:flex;gap:6px;flex-wrap:wrap}
+nav.tabs button{padding:7px 13px;border-radius:99px;font-size:.9rem}
+nav.tabs button.on{background:var(--accent);color:var(--accent-ink);font-weight:600}
+/* ladder */
+.ladder{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.rung{position:relative;border:1.5px solid var(--line);border-radius:var(--r);padding:12px;background:var(--panel);text-align:center;cursor:pointer;transition:transform .12s}
+.rung:hover{transform:translateY(-2px)}
+.rung.locked{opacity:.55;cursor:not-allowed;background:var(--panel2)}
+.rung.mastered{border-color:var(--gold);background:var(--gold-bg)}
+.rung .num{position:absolute;top:6px;left:9px;font-size:.72rem;color:var(--ink2)}
+.rung .star{font-size:1.15rem}
+.rung .nm{font-weight:700;font-size:1.05rem;margin:4px 0 2px}
+.rung .sub{font-size:.75rem;color:var(--ink2)}
+.rung .sc{font-size:.8rem;color:var(--ink2)}
+/* reading view */
+.tefilla{font-size:var(--tsize,2rem);line-height:2.1;text-align:right;direction:rtl}
+.phrase{padding:8px 12px;border-radius:12px;margin:4px 0}
+.phrase.active{background:var(--cur-bg);box-shadow:inset -3px 0 0 var(--cur)}
+.phrase .trans{font-size:.95rem;color:var(--ink2);direction:ltr;text-align:left;line-height:1.4;margin-top:2px;font-family:system-ui,sans-serif}
+.w{padding:1px 4px;border-radius:7px;transition:background .15s}
+.w.cur{background:var(--cur-bg);box-shadow:0 2px 0 var(--cur)}
+@keyframes pulse{50%{opacity:.55}}
+.w.cur.listening{animation:pulse 1.4s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.w.cur.listening{animation:none}}
+.w.ok{background:var(--ok-bg);color:var(--ok)}
+.w.warn{background:var(--warn-bg);color:var(--warn)}
+.w.bad{background:var(--bad-bg);color:var(--bad);text-decoration:underline wavy var(--bad) 1.5px}
+.w.trouble{box-shadow:0 2px 0 var(--warn)}
+/* mic bar */
+.micbar{position:sticky;bottom:0;background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:10px 14px;display:flex;gap:12px;align-items:center;margin-top:14px}
+.micbtn{width:58px;height:58px;border-radius:50%;font-size:24px;background:var(--accent);color:var(--accent-ink);flex:none}
+.micbtn.live{background:var(--bad)}
+@keyframes ring{0%{box-shadow:0 0 0 0 rgba(179,56,62,.45)}100%{box-shadow:0 0 0 16px rgba(179,56,62,0)}}
+.micbtn.live{animation:ring 1.2s infinite}
+@media (prefers-reduced-motion:reduce){.micbtn.live{animation:none}}
+.interim{flex:1;min-height:1.4em;color:var(--ink2);font-size:.95rem;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.interim .hebtxt{direction:rtl;unicode-bidi:isolate}
+.livestats{font-variant-numeric:tabular-nums;font-weight:700}
+/* score */
+.scorewrap{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.bigscore{font-size:3rem;font-weight:800;font-variant-numeric:tabular-nums}
+.pass{color:var(--ok)} .fail{color:var(--warn)}
+.statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin:10px 0}
+.stat{background:var(--panel2);border-radius:10px;padding:8px 10px;text-align:center}
+.stat b{display:block;font-size:1.25rem;font-variant-numeric:tabular-nums}
+.stat span{font-size:.78rem;color:var(--ink2)}
+/* mistakes */
+.mistake{display:flex;gap:12px;align-items:center;padding:9px 12px;border-radius:10px;background:var(--panel2);margin:6px 0;flex-wrap:wrap}
+.mistake .exp{font-size:1.5rem;direction:rtl;unicode-bidi:isolate}
+.mistake .heard .hebtxt{direction:rtl;unicode-bidi:isolate;font-weight:700}
+.dl{color:var(--bad);font-weight:800}
+.mistake .why{font-size:.82rem;color:var(--ink2);flex-basis:100%}
+/* table */
+.tblwrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{border-bottom:1px solid var(--line);padding:7px 9px;text-align:left;font-variant-numeric:tabular-nums}
+th{color:var(--ink2);font-weight:600;font-size:.8rem}
+/* misc */
+.toggles label{display:flex;gap:8px;align-items:center;padding:4px 0}
+.center{text-align:center}
+dialog{border:1px solid var(--line);border-radius:16px;background:var(--panel);color:var(--ink);max-width:520px;width:92%}
+dialog::backdrop{background:rgba(10,14,25,.45)}
+.confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+.confetti i{position:absolute;top:-12px;width:9px;height:14px;opacity:.9;animation:fall 2.6s linear forwards}
+@keyframes fall{to{transform:translateY(105vh) rotate(540deg);opacity:0}}
+@media (prefers-reduced-motion:reduce){.confetti{display:none}}
+.notice{border-left:4px solid var(--warn);background:var(--warn-bg);padding:10px 14px;border-radius:10px;margin:10px 0;font-size:.92rem}
+.micreport{white-space:pre-wrap;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.82rem;background:var(--panel2);border-radius:10px;padding:12px;margin-top:10px}
+footer.src{margin-top:26px;font-size:.75rem;color:var(--ink2);text-align:center}
+</style>
+
+<div id="app"></div>
+
+<script>
+"use strict";
+/* ================= DATA (Nusach Ashkenaz, Sefaria CC-BY Metsudah; phrases/translations: school tefillah curriculum) ================= */
+const DATA = {"brachot":[{"en":"Patriarchs","he":"◊ê÷∏◊ë◊ï÷π◊™","segs":[{"t":"◊ê÷≤◊ì÷π◊†÷∏◊ô ◊©◊Ç÷∞◊§÷∏◊™÷∑◊ô ◊™÷º÷¥◊§÷∞◊™÷º÷∏◊ó ◊ï÷º◊§÷¥◊ô ◊ô÷∑◊í÷º÷¥◊ô◊ì ◊™÷º÷∞◊î÷¥◊ú÷º÷∏◊™÷∂÷Ω◊ö÷∏:","c":"always","ph":[{"t":"◊ê÷≤◊ì÷π◊†÷∏◊ô ◊©◊Ç÷∞◊§÷∏◊™÷∑◊ô ◊™÷º÷¥◊§÷∞◊™÷º÷∏◊ó","en":"Hashem open my lips,"},{"t":"◊ï÷º◊§÷¥◊ô ◊ô÷∑◊í÷º÷¥◊ô◊ì ◊™÷º÷∞◊î÷¥◊ú÷º÷∏◊™÷∂÷Ω◊ö÷∏:","en":"And my mouth will say your praise."}]},{"t":"◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î ◊ê÷±◊ú÷π◊î÷µ÷Ω◊ô◊†◊ï÷º ◊ï÷µ◊ê◊ú÷π◊î÷µ◊ô ◊ê÷≤◊ë◊ï÷π◊™÷µ÷Ω◊ô◊†◊ï÷º ◊ê÷±◊ú÷π◊î÷µ◊ô ◊ê÷∑◊ë÷∞◊®÷∏◊î÷∏◊ù ◊ê÷±◊ú÷π◊î÷µ◊ô ◊ô÷¥◊¶÷∞◊ó÷∏◊ß ◊ï÷µ◊ê◊ú÷π◊î÷µ◊ô ◊ô÷∑◊¢÷≤◊ß÷π◊ë ◊î÷∏◊ê÷µ◊ú ◊î÷∑◊í÷º÷∏◊ì◊ï÷π◊ú ◊î÷∑◊í÷º÷¥◊ë÷º◊ï÷π◊® ◊ï÷∞◊î÷∑◊†÷º◊ï÷π◊®÷∏◊ê ◊ê÷µ◊ú ◊¢÷∂◊ú÷∞◊ô◊ï÷π◊ü ◊í÷º◊ï÷π◊û÷µ◊ú ◊ó÷≤◊°÷∏◊ì÷¥◊ô◊ù ◊ò◊ï÷π◊ë÷¥◊ô◊ù ◊ï÷∞◊ß◊ï÷π◊†÷µ◊î ◊î÷∑◊õ÷º÷π◊ú ◊ï÷∞◊ñ◊ï÷π◊õ÷µ◊® ◊ó÷∑◊°÷∞◊ì÷µ◊ô ◊ê÷∏◊ë◊ï÷π◊™ ◊ï÷º◊û÷µ◊ë÷¥◊ô◊ê ◊í◊ï÷π◊ê÷µ◊ú ◊ú÷¥◊ë÷∞◊†÷µ◊ô ◊ë÷∞◊†÷µ◊ô◊î÷∂◊ù ◊ú÷∞◊û÷∑÷Ω◊¢÷∑◊ü ◊©◊Å÷∞◊û◊ï÷π ◊ë÷º÷∞◊ê÷∑◊î÷≤◊ë÷∏◊î:","c":"always","ph":[{"t":"◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î","en":"Blessed are you Hashem,"},{"t":"◊ê÷±◊ú÷π◊î÷µ÷Ω◊ô◊†◊ï÷º","en":"Our God,"},{"t":"◊ï÷µ◊ê◊ú÷π◊î÷µ◊ô ◊ê÷≤◊ë◊ï÷π◊™÷µ÷Ω◊ô◊†◊ï÷º","en":"And the God of our fathers,"},{"t":"◊ê÷±◊ú÷π◊î÷µ◊ô ◊ê÷∑◊ë÷∞◊®÷∏◊î÷∏◊ù ◊ê÷±◊ú÷π◊î÷µ◊ô ◊ô÷¥◊¶÷∞◊ó÷∏◊ß ◊ï÷µ◊ê◊ú÷π◊î÷µ◊ô ◊ô÷∑◊¢÷≤◊ß÷π◊ë","en":"The God of Avraham, the God of Yitzchak, and the God of Yakov."},{"t":"◊î÷∏◊ê÷µ◊ú ◊î÷∑◊í÷º÷∏◊ì◊ï÷π◊ú ◊î÷∑◊í÷º÷¥◊ë÷º◊ï÷π◊® ◊ï÷∞◊î÷∑◊†÷º◊ï÷π◊®÷∏◊ê ◊ê÷µ◊ú ◊¢÷∂◊ú÷∞◊ô◊ï÷π◊ü","en":"The God who is: great, strong, awesome, and the most high."},{"t":"◊í÷º◊ï÷π◊û÷µ◊ú ◊ó÷≤◊°÷∏◊ì÷¥◊ô◊ù ◊ò◊ï÷π◊ë÷¥◊ô◊ù","en":"Who gives good chesed (kind deeds),"},{"t":"◊ï÷∞◊ß◊ï÷π◊†÷µ◊î ◊î÷∑◊õ÷º÷π◊ú","en":"And He creates everything"},{"t":"◊ï÷∞◊ñ◊ï÷π◊õ÷µ◊® ◊ó÷∑◊°÷∞◊ì÷µ◊ô ◊ê÷∏◊ë◊ï÷π◊™","en":"And He remembers the kindnesses of the fathers (Avraham, Yitzchak, and Yakov)"},{"t":"◊ï÷º◊û÷µ◊ë÷¥◊ô◊ê ◊í◊ï÷π◊ê÷µ◊ú ◊ú÷¥◊ë÷∞◊†÷µ◊ô ◊ë÷∞◊†÷µ◊ô◊î÷∂◊ù","en":"And He brings a redeemer (Mashiach) to their grandchildren"},{"t":"◊ú÷∞◊û÷∑÷Ω◊¢÷∑◊ü ◊©◊Å÷∞◊û◊ï÷π","en":"For the sake of His name"},{"t":"◊ë÷º÷∞◊ê÷∑◊î÷≤◊ë÷∏◊î:","en":"With love."}]},{"t":"◊ñ÷∏◊õ÷∞◊®÷µ÷Ω◊†◊ï÷º ◊ú÷∞◊ó÷∑◊ô÷º÷¥◊ô◊ù ◊û÷∂÷Ω◊ú÷∂◊ö÷∞ ◊ó÷∏◊§÷µ◊• ◊ë÷º÷∑◊ó÷∑◊ô÷º÷¥◊ô◊ù ◊ï÷∞◊õ÷∏◊™÷∞◊ë÷µ÷Ω◊†◊ï÷º ◊ë÷º÷∞◊°÷µ÷Ω◊§÷∂◊® ◊î÷∑◊ó÷∑◊ô÷º÷¥◊ô◊ù ◊ú÷∞◊û÷∑◊¢÷∑◊†÷∞◊ö÷∏ ◊ê÷±◊ú÷π◊î÷¥◊ô◊ù ◊ó÷∑◊ô÷º÷¥◊ô◊ù:","c":"ayt","ph":[{"t":"◊ñ÷∏◊õ÷∞◊®÷µ÷Ω◊†◊ï÷º ◊ú÷∞◊ó÷∑◊ô÷º÷¥◊ô◊ù","en":null},{"t":"◊û÷∂÷Ω◊ú÷∂◊ö÷∞","en":"King, helper, savior, and shield"},{"t":"◊ó÷∏◊§÷µ◊• ◊ë÷º÷∑◊ó÷∑◊ô÷º÷¥◊ô◊ù ◊ï÷∞◊õ÷∏◊™÷∞◊ë÷µ÷Ω◊†◊ï÷º ◊ë÷º÷∞◊°÷µ÷Ω◊§÷∂◊® ◊î÷∑◊ó÷∑◊ô÷º÷¥◊ô◊ù ◊ú÷∞◊û÷∑◊¢÷∑◊†÷∞◊ö÷∏ ◊ê÷±◊ú÷π◊î÷¥◊ô◊ù ◊ó÷∑◊ô÷º÷¥◊ô◊ù:","en":null}]},{"t":"◊û÷∂÷Ω◊ú÷∂◊ö÷∞ ◊¢◊ï÷π◊ñ÷µ◊® ◊ï÷º◊û◊ï÷π◊©◊Å÷¥÷Ω◊ô◊¢÷∑ ◊ï÷º◊û÷∏◊í÷µ◊ü: ◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î ◊û÷∏◊í÷µ◊ü ◊ê÷∑◊ë÷∞◊®÷∏◊î÷∏◊ù:","c":"always","ph":[{"t":"◊û÷∂÷Ω◊ú÷∂◊ö÷∞","en":null},{"t":"◊¢◊ï÷π◊ñ÷µ◊® ◊ï÷º◊û◊ï÷π◊©◊Å÷¥÷Ω◊ô◊¢÷∑ ◊ï÷º◊û÷∏◊í÷µ◊ü:","en":"King, helper, savior, and shield"},{"t":"◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î","en":"Blessed are You Hashem"},{"t":"◊û÷∏◊í÷µ◊ü ◊ê÷∑◊ë÷∞◊®÷∏◊î÷∏◊ù:","en":"Shield of Avraham"}]}]},{"en":"Divine Might","he":"◊í÷∞÷º◊ë◊ï÷º◊®◊ï÷π◊™","segs":[{"t":"◊ê÷∑◊™÷º÷∏◊î ◊í÷¥◊ë÷º◊ï÷π◊® ◊ú÷∞◊¢◊ï÷π◊ú÷∏◊ù ◊ê÷≤◊ì÷π◊†÷∏◊ô ◊û÷∞◊ó÷∑◊ô÷º÷µ◊î ◊û÷µ◊™÷¥◊ô◊ù ◊ê÷∑◊™÷º÷∏◊î ◊®÷∑◊ë ◊ú÷∞◊î◊ï÷π◊©◊Å÷¥÷Ω◊ô◊¢÷∑:","c":"always","ph":[{"t":"◊ê÷∑◊™÷º÷∏◊î ◊í÷¥◊ë÷º◊ï÷π◊® ◊ú÷∞◊¢◊ï÷π◊ú÷∏◊ù ◊ê÷≤◊ì÷π◊†÷∏◊ô","en":"You are strong forever Hashem,"},{"t":"◊û÷∞◊ó÷∑◊ô÷º÷µ◊î ◊û÷µ◊™÷¥◊ô◊ù ◊ê÷∑◊™÷º÷∏◊î","en":"You revive dead people,"},{"t":"◊®÷∑◊ë ◊ú÷∞◊î◊ï÷π◊©◊Å÷¥÷Ω◊ô◊¢÷∑:","en":"(You) save a lot,"}]},{"t":"◊û÷∑◊©÷º◊Å÷¥◊ô◊ë ◊î÷∏◊®÷Ω◊ï÷º◊ó÷∑ ◊ï÷º◊û◊ï÷π◊®÷¥◊ô◊ì ◊î÷∑◊í÷º÷∂÷Ω◊©◊Å÷∂◊ù:","c":"winter","ph":[{"t":"◊û÷∑◊©÷º◊Å÷¥◊ô◊ë ◊î÷∏◊®÷Ω◊ï÷º◊ó÷∑ ◊ï÷º◊û◊ï÷π◊®÷¥◊ô◊ì ◊î÷∑◊í÷º÷∂÷Ω◊©◊Å÷∂◊ù:","en":"(You) make the wind blow and (You) make the rain fall."}]},{"t":"◊û÷∞◊õ÷∑◊ú÷∞◊õ÷º÷µ◊ú ◊ó÷∑◊ô÷º÷¥◊ô◊ù ◊ë÷º÷∞◊ó÷∂÷Ω◊°÷∂◊ì ◊û÷∞◊ó÷∑◊ô÷º÷µ◊î ◊û÷µ◊™÷¥◊ô◊ù ◊ë÷º÷∞◊®÷∑◊ó÷≤◊û÷¥◊ô◊ù ◊®÷∑◊ë÷º÷¥◊ô◊ù ◊°◊ï÷π◊û÷µ◊ö÷∞ ◊†◊ï÷π◊§÷∞÷í◊ú÷¥◊ô◊ù ◊ï÷∞◊®◊ï÷π◊§÷µ◊ê ◊ó◊ï÷π◊ú÷¥◊ô◊ù ◊ï÷º◊û÷∑◊™÷º÷¥◊ô◊® ◊ê÷≤◊°◊ï÷º◊®÷¥◊ô◊ù ◊ï÷º◊û÷∞◊ß÷∑◊ô÷º÷µ◊ù ◊ê÷±◊û◊ï÷º◊†÷∏◊™◊ï÷π ◊ú÷¥◊ô◊©◊Å÷µ◊†÷µ◊ô ◊¢÷∏◊§÷∏◊®, ◊û÷¥◊ô ◊õ÷∏◊û÷Ω◊ï÷π◊ö÷∏ ◊ë÷º÷∑÷Ω◊¢÷∑◊ú ◊í÷º÷∞◊ë◊ï÷º◊®◊ï÷π◊™ ◊ï÷º◊û÷¥◊ô ◊ì÷º÷Ω◊ï÷π◊û÷∂◊î ◊ú÷º÷∏◊ö÷∞ ◊û÷∂÷Ω◊ú÷∂◊ö÷∞ ◊û÷µ◊û÷¥◊ô◊™ ◊ï÷º◊û÷∞◊ó÷∑◊ô÷º÷µ◊î ◊ï÷º◊û÷∑◊¶÷∞◊û÷¥÷Ω◊ô◊ó÷∑ ◊ô÷∞◊©◊Å◊ï÷º◊¢÷∏◊î:","c":"always","ph":[{"t":"◊û÷∞◊õ÷∑◊ú÷∞◊õ÷º÷µ◊ú ◊ó÷∑◊ô÷º÷¥◊ô◊ù ◊ë÷º÷∞◊ó÷∂÷Ω◊°÷∂◊ì","en":"(You) provide for the living with kindness,"},{"t":"◊û÷∞◊ó÷∑◊ô÷º÷µ◊î ◊û÷µ◊™÷¥◊ô◊ù ◊ë÷º÷∞◊®÷∑◊ó÷≤◊û÷¥◊ô◊ù ◊®÷∑◊ë÷º÷¥◊ô◊ù","en":"(You) revive dead people with a lot of mercy,"},{"t":"◊°◊ï÷π◊û÷µ◊ö÷∞ ◊†◊ï÷π◊§÷∞÷í◊ú÷¥◊ô◊ù","en":"(You) support people who are falling,"},{"t":"◊ï÷∞◊®◊ï÷π◊§÷µ◊ê ◊ó◊ï÷π◊ú÷¥◊ô◊ù","en":"And (You) heal sick people,"},{"t":"◊ï÷º◊û÷∑◊™÷º÷¥◊ô◊® ◊ê÷≤◊°◊ï÷º◊®÷¥◊ô◊ù","en":"And He (Hashem) releases captives,"},{"t":"◊ï÷º◊û÷∞◊ß÷∑◊ô÷º÷µ◊ù ◊ê÷±◊û◊ï÷º◊†÷∏◊™◊ï÷π ◊ú÷¥◊ô◊©◊Å÷µ◊†÷µ◊ô ◊¢÷∏◊§÷∏◊®,","en":"And He keeps His faith to those (dead people) who sleep in dirt (to bring them back to life during the days of Mashiach)."},{"t":"◊û÷¥◊ô ◊õ÷∏◊û÷Ω◊ï÷π◊ö÷∏ ◊ë÷º÷∑÷Ω◊¢÷∑◊ú ◊í÷º÷∞◊ë◊ï÷º◊®◊ï÷π◊™","en":"Who is like You, owner of strengths,"},{"t":"◊ï÷º◊û÷¥◊ô ◊ì÷º÷Ω◊ï÷π◊û÷∂◊î ◊ú÷º÷∏◊ö÷∞","en":"And who is similar to You,"},{"t":"◊û÷∂÷Ω◊ú÷∂◊ö÷∞","en":"King"},{"t":"◊û÷µ◊û÷¥◊ô◊™ ◊ï÷º◊û÷∞◊ó÷∑◊ô÷º÷µ◊î","en":"Who causes death and gives life"},{"t":"◊ï÷º◊û÷∑◊¶÷∞◊û÷¥÷Ω◊ô◊ó÷∑ ◊ô÷∞◊©◊Å◊ï÷º◊¢÷∏◊î:","en":"And causes the redemption (Mashiach) to grow (to begin)."}]},{"t":"◊û÷¥◊ô ◊õ÷∏◊û÷Ω◊ï÷π◊ö÷∏ ◊ê÷∑◊ë ◊î÷∏◊®÷∑◊ó÷≤◊û÷¥◊ô◊ù ◊ñ◊ï÷π◊õ÷µ◊® ◊ô÷∞◊¶◊ï÷º◊®÷∏◊ô◊ï ◊ú÷∞◊ó÷∑◊ô÷º÷¥◊ô◊ù ◊ë÷º÷∞◊®÷∑◊ó÷≤◊û÷¥◊ô◊ù:","c":"ayt"},{"t":"◊ï÷∞◊†÷∂◊ê÷±◊û÷∏◊ü ◊ê÷∑◊™÷º÷∏◊î ◊ú÷∞◊î÷∑◊ó÷≤◊ô◊ï÷π◊™ ◊û÷µ◊™÷¥◊ô◊ù: ◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î ◊û÷∞◊ó÷∑◊ô÷º÷µ◊î ◊î÷∑◊û÷º÷µ◊™÷¥◊ô◊ù:","c":"always","ph":[{"t":"◊ï÷∞◊†÷∂◊ê÷±◊û÷∏◊ü ◊ê÷∑◊™÷º÷∏◊î ◊ú÷∞◊î÷∑◊ó÷≤◊ô◊ï÷π◊™ ◊û÷µ◊™÷¥◊ô◊ù:","en":"And You are trustworthy to revive dead people."},{"t":"◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î","en":"Blessed are You Hashem"},{"t":"◊û÷∞◊ó÷∑◊ô÷º÷µ◊î ◊î÷∑◊û÷º÷µ◊™÷¥◊ô◊ù:","en":"Who revives dead people."}]}]},{"en":"Holiness of God","he":"◊ß÷∞◊ì◊ï÷º◊©÷∑÷º◊Å◊™ ◊î÷∑◊©÷µ÷º◊Å◊ù","segs":[{"t":"◊ê÷∑◊™÷º÷∏◊î ◊ß÷∏◊ì◊ï÷π◊©◊Å ◊ï÷∞◊©◊Å÷¥◊û÷∞◊ö÷∏ ◊ß÷∏◊ì◊ï÷π◊©◊Å ◊ï÷º◊ß÷∞◊ì◊ï÷π◊©◊Å÷¥◊ô◊ù ◊ë÷º÷∞◊õ÷∏◊ú÷æ◊ô◊ï÷π◊ù ◊ô÷∞◊î÷∑◊ú÷∞÷í◊ú÷Ω◊ï÷º◊ö÷∏ ◊°÷º÷∂÷Ω◊ú÷∏◊î.","c":"always","ph":[{"t":"◊ê÷∑◊™÷º÷∏◊î ◊ß÷∏◊ì◊ï÷π◊©◊Å","en":"You are holy,"},{"t":"◊ï÷∞◊©◊Å÷¥◊û÷∞◊ö÷∏ ◊ß÷∏◊ì◊ï÷π◊©◊Å","en":"And Your name is holy,"},{"t":"◊ï÷º◊ß÷∞◊ì◊ï÷π◊©◊Å÷¥◊ô◊ù","en":"And holy ones (the Jewish people)"},{"t":"◊ë÷º÷∞◊õ÷∏◊ú÷æ◊ô◊ï÷π◊ù ◊ô÷∞◊î÷∑◊ú÷∞÷í◊ú÷Ω◊ï÷º◊ö÷∏ ◊°÷º÷∂÷Ω◊ú÷∏◊î.","en":"Every day will praise you forever."}]},{"t":"◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î ◊î÷∏◊ê÷µ◊ú ◊î÷∑◊ß÷º÷∏◊ì◊ï÷π◊©◊Å:","c":"notayt","ph":[{"t":"◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î","en":"Blessed are You Hashem"},{"t":"◊î÷∏◊ê÷µ◊ú ◊î÷∑◊ß÷º÷∏◊ì◊ï÷π◊©◊Å:","en":"The holy God."}]},{"t":"◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î ◊î÷∑◊û÷º÷∂÷Ω◊ú÷∂◊ö÷∞ ◊î÷∑◊ß÷º÷∏◊ì◊ï÷π◊©◊Å:","c":"ayt"}]},{"en":"Knowledge","he":"◊ì÷∑÷º◊¢÷∑◊™ (◊ê÷∑◊™÷∏÷º◊î ◊ó◊ï÷π◊†÷µ◊ü)","segs":[{"t":"◊ê÷∑◊™÷º÷∏◊î ◊ó◊ï÷π◊†÷µ◊ü ◊ú÷∞◊ê÷∏◊ì÷∏◊ù ◊ì÷º÷∑÷Ω◊¢÷∑◊™ ◊ï÷º◊û÷∞◊ú÷∑◊û÷º÷µ◊ì ◊ú÷∂◊ê÷±◊†◊ï÷π◊©◊Å ◊ë÷º÷¥◊ô◊†÷∏◊î: ◊ó÷∏◊†÷º÷µ÷Ω◊†◊ï÷º ◊û÷µ◊ê÷¥◊™÷º÷∞÷í◊ö÷∏ ◊ì÷º÷µ◊¢÷∏◊î ◊ë÷º÷¥◊ô◊†÷∏◊î ◊ï÷∞◊î÷∑◊©◊Ç÷∞◊õ÷º÷µ◊ú: ◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î ◊ó◊ï÷π◊†÷µ◊ü ◊î÷∑◊ì÷º÷∏÷Ω◊¢÷∑◊™:","c":"always","ph":[{"t":"◊ê÷∑◊™÷º÷∏◊î ◊ó◊ï÷π◊†÷µ◊ü ◊ú÷∞◊ê÷∏◊ì÷∏◊ù ◊ì÷º÷∑÷Ω◊¢÷∑◊™","en":"You give man wisdom"},{"t":"◊ï÷º◊û÷∞◊ú÷∑◊û÷º÷µ◊ì ◊ú÷∂◊ê÷±◊†◊ï÷π◊©◊Å ◊ë÷º÷¥◊ô◊†÷∏◊î:","en":"And teach humans understanding,"},{"t":"◊ó÷∏◊†÷º÷µ÷Ω◊†◊ï÷º ◊û÷µ◊ê÷¥◊™÷º÷∞÷í◊ö÷∏","en":"Give us from you a gift of"},{"t":"◊ì÷º÷µ◊¢÷∏◊î ◊ë÷º÷¥◊ô◊†÷∏◊î ◊ï÷∞◊î÷∑◊©◊Ç÷∞◊õ÷º÷µ◊ú:","en":"Wisdom, understanding, and insight."},{"t":"◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î","en":"Blessed are You Hashem"},{"t":"◊ó◊ï÷π◊†÷µ◊ü ◊î÷∑◊ì÷º÷∏÷Ω◊¢÷∑◊™:","en":"Who gives wisdom"}]}]},{"en":"Repentance","he":"◊™÷∞÷º◊©◊Å◊ï÷º◊ë÷∏◊î (◊î÷≤◊©÷¥◊Å◊ô◊ë÷µ◊†◊ï÷º)","segs":[{"t":"◊î÷≤◊©◊Å÷¥◊ô◊ë÷µ÷Ω◊†◊ï÷º ◊ê÷∏◊ë÷¥÷Ω◊ô◊†◊ï÷º ◊ú÷∞◊™◊ï÷π◊®÷∏◊™÷∂÷Ω◊ö÷∏ ◊ï÷∞◊ß÷∏◊®÷∞÷í◊ë÷µ÷Ω◊†◊ï÷º ◊û÷∑◊ú÷∞◊õ÷º÷µ÷Ω◊†◊ï÷º ◊ú÷∑◊¢÷≤◊ë◊ï÷π◊ì÷∏◊™÷∂÷Ω◊ö÷∏ ◊ï÷∞◊î÷∑◊ó÷≤◊ñ÷¥◊ô◊®÷µ÷Ω◊†◊ï÷º ◊ë÷º÷¥◊™÷∞◊©◊Å◊ï÷º◊ë÷∏◊î ◊©◊Å÷∞◊ú÷µ◊û÷∏◊î ◊ú÷∞◊§÷∏◊†÷∂÷Ω◊ô◊ö÷∏: ◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î ◊î÷∏◊®◊ï÷π◊¶÷∂◊î ◊ë÷º÷¥◊™÷∞◊©◊Å◊ï÷º◊ë÷∏◊î:","c":"always","ph":[{"t":"◊î÷≤◊©◊Å÷¥◊ô◊ë÷µ÷Ω◊†◊ï÷º ◊ê÷∏◊ë÷¥÷Ω◊ô◊†◊ï÷º ◊ú÷∞◊™◊ï÷π◊®÷∏◊™÷∂÷Ω◊ö÷∏","en":"Return us our Father to Your Torah,"},{"t":"◊ï÷∞◊ß÷∏◊®÷∞÷í◊ë÷µ÷Ω◊†◊ï÷º ◊û÷∑◊ú÷∞◊õ÷º÷µ÷Ω◊†◊ï÷º ◊ú÷∑◊¢÷≤◊ë◊ï÷π◊ì÷∏◊™÷∂÷Ω◊ö÷∏","en":"And bring us close, our King, to Your service,"},{"t":"◊ï÷∞◊î÷∑◊ó÷≤◊ñ÷¥◊ô◊®÷µ÷Ω◊†◊ï÷º ◊ë÷º÷¥◊™÷∞◊©◊Å◊ï÷º◊ë÷∏◊î ◊©◊Å÷∞◊ú÷µ◊û÷∏◊î ◊ú÷∞◊§÷∏◊†÷∂÷Ω◊ô◊ö÷∏:","en":"And return us with complete teshuva before You."},{"t":"◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î","en":"Blessed are You Hashem"},{"t":"◊î÷∏◊®◊ï÷π◊¶÷∂◊î ◊ë÷º÷¥◊™÷∞◊©◊Å◊ï÷º◊ë÷∏◊î:","en":"Who desires teshuva."}]}]},{"en":"Forgiveness","he":"◊°÷∞◊ú÷¥◊ô◊ó÷∏◊î (◊°÷∞◊ú÷∑◊ó ◊ú÷∏◊†◊ï÷º)","segs":[{"t":"◊°÷∞◊ú÷∑◊ó ◊ú÷∏÷Ω◊†◊ï÷º ◊ê÷∏◊ë÷¥÷Ω◊ô◊†◊ï÷º ◊õ÷º÷¥◊ô ◊ó÷∏◊ò÷∏÷Ω◊ê◊†◊ï÷º ◊û÷∞◊ó÷∑◊ú ◊ú÷∏÷Ω◊†◊ï÷º ◊û÷∑◊ú÷∞◊õ÷º÷µ÷Ω◊†◊ï÷º ◊õ÷º÷¥◊ô ◊§÷∏◊©◊Å÷∏÷Ω◊¢÷∞◊†◊ï÷º ◊õ÷º÷¥◊ô ◊û◊ï÷π◊ó÷µ◊ú ◊ï÷∞◊°◊ï÷π◊ú÷µ÷Ω◊ó÷∑ ◊ê÷∏÷Ω◊™÷º÷∏◊î: ◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î ◊ó÷∑◊†÷º◊ï÷º◊ü ◊î÷∑◊û÷º÷∑◊®÷∞◊ë÷º÷∂◊î ◊ú÷¥◊°÷∞◊ú÷Ω◊ï÷π◊ó÷∑:","c":"always","ph":[{"t":"◊°÷∞◊ú÷∑◊ó ◊ú÷∏÷Ω◊†◊ï÷º ◊ê÷∏◊ë÷¥÷Ω◊ô◊†◊ï÷º","en":"Forgive us our Father"},{"t":"◊õ÷º÷¥◊ô ◊ó÷∏◊ò÷∏÷Ω◊ê◊†◊ï÷º","en":"Because we have sinned (by accident)."},{"t":"◊û÷∞◊ó÷∑◊ú ◊ú÷∏÷Ω◊†◊ï÷º ◊û÷∑◊ú÷∞◊õ÷º÷µ÷Ω◊†◊ï÷º","en":"Excuse us our King"},{"t":"◊õ÷º÷¥◊ô ◊§÷∏◊©◊Å÷∏÷Ω◊¢÷∞◊†◊ï÷º","en":"Because we have sinned (on purpose)."},{"t":"◊õ÷º÷¥◊ô ◊û◊ï÷π◊ó÷µ◊ú ◊ï÷∞◊°◊ï÷π◊ú÷µ÷Ω◊ó÷∑ ◊ê÷∏÷Ω◊™÷º÷∏◊î:","en":"Because You are the one who excuses and forgives."},{"t":"◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î","en":"Blessed are You Hashem"},{"t":"◊ó÷∑◊†÷º◊ï÷º◊ü","en":"The kind one"},{"t":"◊î÷∑◊û÷º÷∑◊®÷∞◊ë÷º÷∂◊î ◊ú÷¥◊°÷∞◊ú÷Ω◊ï÷π◊ó÷∑:","en":"Who forgives us a lot."}]}]},{"en":"Redemption","he":"◊í÷∞÷º◊ê◊ï÷º◊ú÷∏÷º◊î (◊®÷∞◊ê÷µ◊î ◊ë÷∞◊¢÷∏◊†÷∞◊ô÷µ◊†◊ï÷º)","segs":[{"t":"◊®÷∞◊ê÷µ◊î ◊ë÷∞◊¢÷∏◊†÷∞◊ô÷µ÷Ω◊†◊ï÷º ◊ï÷∞◊®÷¥◊ô◊ë÷∏◊î ◊®÷¥◊ô◊ë÷µ÷Ω◊†◊ï÷º ◊ï÷º◊í÷∞◊ê÷∏◊ú÷µ÷Ω◊†◊ï÷º ◊û÷∞◊î÷µ◊®÷∏◊î ◊ú÷∞◊û÷∑÷Ω◊¢÷∑◊ü ◊©◊Å÷∞◊û÷∂÷Ω◊ö÷∏ ◊õ÷º÷¥◊ô ◊í÷º◊ï÷π◊ê÷µ◊ú ◊ó÷∏◊ñ÷∏◊ß ◊ê÷∏÷Ω◊™÷º÷∏◊î: ◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î ◊í÷º◊ï÷π◊ê÷µ◊ú ◊ô÷¥◊©◊Ç÷∞◊®÷∏◊ê÷µ◊ú:","c":"always","ph":[{"t":"◊®÷∞◊ê÷µ◊î ◊ë÷∞◊¢÷∏◊†÷∞◊ô÷µ÷Ω◊†◊ï÷º","en":"See our pain,"},{"t":"◊ï÷∞◊®÷¥◊ô◊ë÷∏◊î ◊®÷¥◊ô◊ë÷µ÷Ω◊†◊ï÷º","en":"And fight our fights,"},{"t":"◊ï÷º◊í÷∞◊ê÷∏◊ú÷µ÷Ω◊†◊ï÷º ◊û÷∞◊î÷µ◊®÷∏◊î ◊ú÷∞◊û÷∑÷Ω◊¢÷∑◊ü ◊©◊Å÷∞◊û÷∂÷Ω◊ö÷∏","en":"And redeem us quickly for the sake of Your name (Hashem‚Äôs name)."},{"t":"◊õ÷º÷¥◊ô ◊í÷º◊ï÷π◊ê÷µ◊ú ◊ó÷∏◊ñ÷∏◊ß ◊ê÷∏÷Ω◊™÷º÷∏◊î:","en":"Because You are a strong redeemer."},{"t":"◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î","en":"Blessed are You Hashem"},{"t":"◊í÷º◊ï÷π◊ê÷µ◊ú ◊ô÷¥◊©◊Ç÷∞◊®÷∏◊ê÷µ◊ú:","en":"The redeemer of the Jewish people."}]}]},{"en":"Healing","he":"◊®÷∞◊§◊ï÷º◊ê÷∏◊î (◊®÷∞◊§÷∏◊ê÷µ◊†◊ï÷º)","segs":[{"t":"◊®÷∞◊§÷∏◊ê÷µ÷Ω◊†◊ï÷º ◊ô÷∞◊î÷π◊ï÷∏◊î ◊ï÷∞◊†÷µ◊®÷∏◊§÷µ◊ê ◊î◊ï÷π◊©◊Å÷¥◊ô◊¢÷µ÷Ω◊†◊ï÷º ◊ï÷∞◊†÷¥◊ï÷º÷∏◊©◊Å÷µ÷Ω◊¢÷∏◊î ◊õ÷º÷¥◊ô ◊™÷∞◊î÷¥◊ú÷º÷∏◊™÷µ÷Ω◊†◊ï÷º ◊ê÷∏÷Ω◊™÷º÷∏◊î ◊ï÷∞◊î÷∑◊¢÷≤◊ú÷µ◊î ◊®÷∞◊§◊ï÷º◊ê÷∏◊î ◊©◊Å÷∞◊ú÷µ◊û÷∏◊î ◊ú÷∞◊õ÷∏◊ú ◊û÷∑◊õ÷º◊ï÷π◊™÷µ÷Ω◊ô◊†◊ï÷º","c":"always","ph":[{"t":"◊®÷∞◊§÷∏◊ê÷µ÷Ω◊†◊ï÷º ◊ô÷∞◊î÷π◊ï÷∏◊î ◊ï÷∞◊†÷µ◊®÷∏◊§÷µ◊ê","en":"Heal us Hashem and we will be healed,"},{"t":"◊î◊ï÷π◊©◊Å÷¥◊ô◊¢÷µ÷Ω◊†◊ï÷º ◊ï÷∞◊†÷¥◊ï÷º÷∏◊©◊Å÷µ÷Ω◊¢÷∏◊î","en":"Save us and we will be saved,"},{"t":"◊õ÷º÷¥◊ô ◊™÷∞◊î÷¥◊ú÷º÷∏◊™÷µ÷Ω◊†◊ï÷º ◊ê÷∏÷Ω◊™÷º÷∏◊î","en":"Because You are the one who we praise."},{"t":"◊ï÷∞◊î÷∑◊¢÷≤◊ú÷µ◊î ◊®÷∞◊§◊ï÷º◊ê÷∏◊î ◊©◊Å÷∞◊ú÷µ◊û÷∏◊î ◊ú÷∞◊õ÷∏◊ú ◊û÷∑◊õ÷º◊ï÷π◊™÷µ÷Ω◊ô◊†◊ï÷º","en":"And bring a full healing to all of our sicknesses."}]},{"t":"◊õ÷º÷¥◊ô ◊ê÷µ◊ú ◊û÷∂÷Ω◊ú÷∂◊ö÷∞ ◊®◊ï÷π◊§÷µ◊ê ◊†÷∂◊ê÷±◊û÷∏◊ü ◊ï÷∞◊®÷∑◊ó÷≤◊û÷∏◊ü ◊ê÷∏÷Ω◊™÷º÷∏◊î: ◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î ◊®◊ï÷π◊§÷µ◊ê ◊ó◊ï÷π◊ú÷µ◊ô ◊¢÷∑◊û÷º◊ï÷π ◊ô÷¥◊©◊Ç÷∞◊®÷∏◊ê÷µ◊ú:","c":"always","ph":[{"t":"◊õ÷º÷¥◊ô ◊ê÷µ◊ú ◊û÷∂÷Ω◊ú÷∂◊ö÷∞ ◊®◊ï÷π◊§÷µ◊ê ◊†÷∂◊ê÷±◊û÷∏◊ü ◊ï÷∞◊®÷∑◊ó÷≤◊û÷∏◊ü ◊ê÷∏÷Ω◊™÷º÷∏◊î:","en":"Because You are a God who is King who is a trustworthy and merciful healer."},{"t":"◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î","en":"Blessed are You Hashem"},{"t":"◊®◊ï÷π◊§÷µ◊ê ◊ó◊ï÷π◊ú÷µ◊ô ◊¢÷∑◊û÷º◊ï÷π ◊ô÷¥◊©◊Ç÷∞◊®÷∏◊ê÷µ◊ú:","en":"Who heals the sick of His nation, the Jewish people."}]}]},{"en":"Prosperity","he":"◊ë÷¥÷º◊®÷∞◊õ÷∑÷º◊™ ◊î÷∑◊©÷∏÷º◊Å◊†÷¥◊ô◊ù (◊ë÷∏÷º◊®÷µ◊ö÷∞ ◊¢÷∏◊ú÷µ◊ô◊†◊ï÷º)","segs":[{"t":"◊ë÷º÷∏◊®÷µ◊ö÷∞ ◊¢÷∏◊ú÷µ÷Ω◊ô◊†◊ï÷º ◊ô÷∞◊î÷π◊ï÷∏◊î ◊ê÷±◊ú÷π◊î÷µ÷Ω◊ô◊†◊ï÷º ◊ê÷∂◊™÷æ◊î÷∑◊©÷º◊Å÷∏◊†÷∏◊î ◊î÷∑◊ñ÷º÷π◊ê◊™ ◊ï÷∞◊ê÷∂◊™÷æ◊õ÷º÷∏◊ú÷æ◊û÷¥◊ô◊†÷µ◊ô ◊™÷∞◊ë◊ï÷º◊ê÷∏◊™÷∏◊î÷º ◊ú÷∞◊ò◊ï÷π◊ë÷∏◊î, ◊ï÷∞◊™÷µ◊ü","c":"always","ph":[{"t":"◊ë÷º÷∏◊®÷µ◊ö÷∞ ◊¢÷∏◊ú÷µ÷Ω◊ô◊†◊ï÷º ◊ô÷∞◊î÷π◊ï÷∏◊î ◊ê÷±◊ú÷π◊î÷µ÷Ω◊ô◊†◊ï÷º","en":"Hashem our God, bless on us (for us)"},{"t":"◊ê÷∂◊™÷æ◊î÷∑◊©÷º◊Å÷∏◊†÷∏◊î ◊î÷∑◊ñ÷º÷π◊ê◊™","en":"This year."},{"t":"◊ï÷∞◊ê÷∂◊™÷æ◊õ÷º÷∏◊ú÷æ◊û÷¥◊ô◊†÷µ◊ô ◊™÷∞◊ë◊ï÷º◊ê÷∏◊™÷∏◊î÷º ◊ú÷∞◊ò◊ï÷π◊ë÷∏◊î,","en":"And all its types of grain for good."},{"t":"◊ï÷∞◊™÷µ◊ü","en":"And give dew and rain as a blessing (for good),"}]},{"t":"◊ë÷º÷∞◊®÷∏◊õ÷∏◊î","c":"notwinter"},{"t":"◊ò÷∑◊ú ◊ï÷º◊û÷∏◊ò÷∏◊® ◊ú÷¥◊ë÷∞◊®÷∏◊õ÷∏◊î","c":"winter","ph":[{"t":"◊ò÷∑◊ú ◊ï÷º◊û÷∏◊ò÷∏◊® ◊ú÷¥◊ë÷∞◊®÷∏◊õ÷∏◊î","en":"And give dew and rain as a blessing (for good),"}]},{"t":"◊¢÷∑◊ú ◊§÷º÷∞◊†÷µ◊ô ◊î÷∏◊ê÷≤◊ì÷∏◊û÷∏◊î ◊ï÷∞◊©◊Ç÷∑◊ë÷º÷∞÷í◊¢÷µ÷Ω◊†◊ï÷º ◊û÷¥◊ò÷º◊ï÷º◊ë÷∂÷Ω◊ö÷∏ ◊ï÷º◊ë÷∏◊®÷µ◊ö÷∞ ◊©◊Å÷∞◊†÷∏◊™÷µ÷Ω◊†◊ï÷º ◊õ÷º÷∑◊©÷º◊Å÷∏◊†÷¥◊ô◊ù ◊î÷∑◊ò÷º◊ï÷π◊ë◊ï÷π◊™: ◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î ◊û÷∞◊ë÷∏◊®÷µ◊ö÷∞ ◊î÷∑◊©÷º◊Å÷∏◊†÷¥◊ô◊ù:","c":"always","ph":[{"t":"◊¢÷∑◊ú ◊§÷º÷∞◊†÷µ◊ô ◊î÷∏◊ê÷≤◊ì÷∏◊û÷∏◊î","en":"On the face of the ground."},{"t":"◊ï÷∞◊©◊Ç÷∑◊ë÷º÷∞÷í◊¢÷µ÷Ω◊†◊ï÷º ◊û÷¥◊ò÷º◊ï÷º◊ë÷∂÷Ω◊ö÷∏","en":"And fill us up from your goodness."},{"t":"◊ï÷º◊ë÷∏◊®÷µ◊ö÷∞ ◊©◊Å÷∞◊†÷∏◊™÷µ÷Ω◊†◊ï÷º ◊õ÷º÷∑◊©÷º◊Å÷∏◊†÷¥◊ô◊ù ◊î÷∑◊ò÷º◊ï÷π◊ë◊ï÷π◊™:","en":"And bless our years, like the good years."},{"t":"◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î","en":"Blessed are You Hashem"},{"t":"◊û÷∞◊ë÷∏◊®÷µ◊ö÷∞ ◊î÷∑◊©÷º◊Å÷∏◊†÷¥◊ô◊ù:","en":"The one who blesses the years."}]}]},{"en":"Gathering the Exiles","he":"◊ß÷¥◊ë÷º◊ï÷º◊• ◊í÷∏÷º◊ú÷ª◊ô÷º◊ï÷π◊™ (◊™÷∞÷º◊ß÷∑◊¢ ◊ë÷∞÷º◊©◊Å◊ï÷π◊§÷∏◊®)","segs":[{"t":"◊™÷º÷∞◊ß÷∑◊¢ ◊ë÷º÷∞◊©◊Å◊ï÷π◊§÷∏◊® ◊í÷º÷∏◊ì◊ï÷π◊ú ◊ú÷∞◊ó÷µ◊®◊ï÷º◊™÷µ÷Ω◊†◊ï÷º ◊ï÷∞◊©◊Ç÷∏◊ê ◊†÷µ◊° ◊ú÷∞◊ß÷∑◊ë÷º÷µ◊• ◊í÷º÷∏◊ú÷ª◊ô÷º◊ï÷π◊™÷µ÷Ω◊ô◊†◊ï÷º ◊ï÷∞◊ß÷∑◊ë÷º÷∞÷í◊¶÷µ÷Ω◊†◊ï÷º ◊ô÷∑÷Ω◊ó÷∑◊ì ◊û÷µ◊ê÷∑◊®÷∞◊ë÷º÷∑◊¢ ◊õ÷º÷∑◊†÷∞◊§◊ï÷π◊™ ◊î÷∏◊ê÷∏÷Ω◊®÷∂◊•: ◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î ◊û÷∞◊ß÷∑◊ë÷º÷µ◊• ◊†÷¥◊ì÷∞◊ó÷µ◊ô ◊¢÷∑◊û÷º◊ï÷π ◊ô÷¥◊©◊Ç÷∞◊®÷∏◊ê÷µ◊ú:","c":"always","ph":[{"t":"◊™÷º÷∞◊ß÷∑◊¢ ◊ë÷º÷∞◊©◊Å◊ï÷π◊§÷∏◊® ◊í÷º÷∏◊ì◊ï÷π◊ú ◊ú÷∞◊ó÷µ◊®◊ï÷º◊™÷µ÷Ω◊†◊ï÷º","en":"Blow a big/great shofar for our saving (when Mashiach comes)"},{"t":"◊ï÷∞◊©◊Ç÷∏◊ê ◊†÷µ◊°","en":"And raise a banner"},{"t":"◊ú÷∞◊ß÷∑◊ë÷º÷µ◊• ◊í÷º÷∏◊ú÷ª◊ô÷º◊ï÷π◊™÷µ÷Ω◊ô◊†◊ï÷º","en":"To gather our exiles (to Israel when Mashiach comes)."},{"t":"◊ï÷∞◊ß÷∑◊ë÷º÷∞÷í◊¶÷µ÷Ω◊†◊ï÷º ◊ô÷∑÷Ω◊ó÷∑◊ì","en":"And gather us together"},{"t":"◊û÷µ◊ê÷∑◊®÷∞◊ë÷º÷∑◊¢ ◊õ÷º÷∑◊†÷∞◊§◊ï÷π◊™ ◊î÷∏◊ê÷∏÷Ω◊®÷∂◊•:","en":"From the four corners of the land (of the world, to Israel)."},{"t":"◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î","en":"Blessed are You Hashem"},{"t":"◊û÷∞◊ß÷∑◊ë÷º÷µ◊• ◊†÷¥◊ì÷∞◊ó÷µ◊ô ◊¢÷∑◊û÷º◊ï÷π ◊ô÷¥◊©◊Ç÷∞◊®÷∏◊ê÷µ◊ú:","en":"The one who gathers the scattered of His nation, the Jewish people."}]}]},{"en":"Justice","he":"◊ì÷¥÷º◊ô◊ü (◊î÷∏◊©÷¥◊Å◊ô◊ë÷∏◊î ◊©◊Å◊ï÷π◊§÷∞◊ò÷µ◊ô◊†◊ï÷º)","segs":[{"t":"◊î÷∏◊©◊Å÷¥÷Ω◊ô◊ë÷∏◊î ◊©◊Å◊ï÷π◊§÷∞÷í◊ò÷µ÷Ω◊ô◊†◊ï÷º ◊õ÷º÷∞◊ë÷∏◊®÷¥◊ê◊©◊Å◊ï÷π◊†÷∏◊î ◊ï÷∞◊ô◊ï÷π◊¢÷≤◊¶÷µ÷Ω◊ô◊†◊ï÷º ◊õ÷º÷∞◊ë÷∑◊™÷º÷∞÷í◊ó÷¥◊ú÷º÷∏◊î ◊ï÷∞◊î÷∏◊°÷µ◊® ◊û÷¥◊û÷º÷∂÷Ω◊†÷º◊ï÷º ◊ô÷∏◊í◊ï÷π◊ü ◊ï÷∑◊ê÷≤◊†÷∏◊ó÷∏◊î ◊ï÷º◊û÷∞◊ú◊ï÷π◊ö÷∞ ◊¢÷∏◊ú÷µ÷Ω◊ô◊†◊ï÷º ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î ◊ú÷∞◊ë÷∑◊ì÷º÷∞÷í◊ö÷∏ ◊ë÷º÷∞◊ó÷∂÷Ω◊°÷∂◊ì ◊ï÷º◊ë÷∞◊®÷∑◊ó÷≤◊û÷¥◊ô◊ù ◊ï÷∞◊¶÷∑◊ì÷º÷∞÷í◊ß÷µ÷Ω◊†◊ï÷º ◊ë÷º÷∑◊û÷¥◊©◊Å÷∞◊§÷º÷∏◊ò:","c":"always","ph":[{"t":"◊î÷∏◊©◊Å÷¥÷Ω◊ô◊ë÷∏◊î ◊©◊Å◊ï÷π◊§÷∞÷í◊ò÷µ÷Ω◊ô◊†◊ï÷º ◊õ÷º÷∞◊ë÷∏◊®÷¥◊ê◊©◊Å◊ï÷π◊†÷∏◊î","en":"Bring back/return our judges as they were originally (before we were exiled outside of Israel)"},{"t":"◊ï÷∞◊ô◊ï÷π◊¢÷≤◊¶÷µ÷Ω◊ô◊†◊ï÷º ◊õ÷º÷∞◊ë÷∑◊™÷º÷∞÷í◊ó÷¥◊ú÷º÷∏◊î","en":"And our advisers like they were at first (before we were exiled outside of Israel)."},{"t":"◊ï÷∞◊î÷∏◊°÷µ◊® ◊û÷¥◊û÷º÷∂÷Ω◊†÷º◊ï÷º ◊ô÷∏◊í◊ï÷π◊ü ◊ï÷∑◊ê÷≤◊†÷∏◊ó÷∏◊î","en":"And remove from us sadness and sighing."},{"t":"◊ï÷º◊û÷∞◊ú◊ï÷π◊ö÷∞ ◊¢÷∏◊ú÷µ÷Ω◊ô◊†◊ï÷º ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î ◊ú÷∞◊ë÷∑◊ì÷º÷∞÷í◊ö÷∏ ◊ë÷º÷∞◊ó÷∂÷Ω◊°÷∂◊ì ◊ï÷º◊ë÷∞◊®÷∑◊ó÷≤◊û÷¥◊ô◊ù","en":"And you alone, Hashem, will rule over us with kindness and mercy"},{"t":"◊ï÷∞◊¶÷∑◊ì÷º÷∞÷í◊ß÷µ÷Ω◊†◊ï÷º ◊ë÷º÷∑◊û÷¥◊©◊Å÷∞◊§÷º÷∏◊ò:","en":"And judge us fairly."}]},{"t":"◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î ◊û÷∂÷Ω◊ú÷∂◊ö÷∞ ◊ê÷π◊î÷µ◊ë ◊¶÷∞◊ì÷∏◊ß÷∏◊î ◊ï÷º◊û÷¥◊©◊Å÷∞◊§÷º÷∏◊ò:","c":"notayt","ph":[{"t":"◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î","en":"Blessed are You Hashem"},{"t":"◊û÷∂÷Ω◊ú÷∂◊ö÷∞ ◊ê÷π◊î÷µ◊ë ◊¶÷∞◊ì÷∏◊ß÷∏◊î ◊ï÷º◊û÷¥◊©◊Å÷∞◊§÷º÷∏◊ò:","en":"King (Hashem) who loves righteousness and judgement"}]},{"t":"◊ë÷∏÷º◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷∏÷º◊î ◊ô÷∞◊î÷π◊ï÷∏◊î ◊î÷∑◊û÷∂÷º÷Ω◊ú÷∂◊ö÷∞ ◊î÷∑◊û÷¥÷º◊©÷∞◊Å◊§÷∏÷º◊ò:","c":"ayt"}]},{"en":"Against Enemies","he":"◊ë÷¥÷º◊®÷∞◊õ÷∑÷º◊™ ◊î÷∑◊û÷¥÷º◊ô◊†÷¥◊ô◊ù (◊ï÷∞◊ú÷∑◊û÷∑÷º◊ú÷∞◊©÷¥◊Å◊ô◊†÷¥◊ô◊ù)","segs":[{"t":"◊ï÷∞◊ú÷∑◊û÷º÷∑◊ú÷∞◊©◊Å÷¥◊ô◊†÷¥◊ô◊ù ◊ê÷∑◊ú ◊™÷º÷∞◊î÷¥◊ô ◊™÷¥◊ß÷∞◊ï÷∏◊î ◊ï÷∞◊õ÷∏◊ú ◊î÷∏◊®÷¥◊©◊Å÷∞◊¢÷∏◊î ◊õ÷º÷∞◊®÷∂÷Ω◊í÷∑◊¢ ◊™÷º÷π◊ê◊ë÷µ◊ì ◊ï÷∞◊õ÷∏◊ú ◊ê÷π◊ô÷∞◊ë÷∂÷Ω◊ô◊ö÷∏ ◊û÷∞◊î÷µ◊®÷∏◊î ◊ô÷¥◊õ÷º÷∏◊®÷µ÷Ω◊™◊ï÷º ◊ï÷∞◊î÷∑◊ñ÷º÷µ◊ì÷¥◊ô◊ù ◊û÷∞◊î÷µ◊®÷∏◊î ◊™÷∞◊¢÷∑◊ß÷º÷µ◊® ◊ï÷º◊™÷∞◊©◊Å÷∑◊ë÷º÷µ◊® ◊ï÷º◊™÷∞◊û÷∑◊í÷º÷µ◊® ◊ï÷∞◊™÷∑◊õ÷∞◊†÷¥÷Ω◊ô◊¢÷∑ ◊ë÷º÷¥◊û÷∞◊î÷µ◊®÷∏◊î ◊ë÷∞◊ô÷∏◊û÷µ÷Ω◊ô◊†◊ï÷º: ◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î ◊©◊Å◊ï÷π◊ë÷µ◊® ◊ê÷π◊ô÷∞÷í◊ë÷¥◊ô◊ù ◊ï÷º◊û÷∑◊õ÷∞◊†÷¥÷Ω◊ô◊¢÷∑ ◊ñ÷µ◊ì÷¥◊ô◊ù:","c":"always","ph":[{"t":"◊ï÷∞◊ú÷∑◊û÷º÷∑◊ú÷∞◊©◊Å÷¥◊ô◊†÷¥◊ô◊ù ◊ê÷∑◊ú ◊™÷º÷∞◊î÷¥◊ô ◊™÷¥◊ß÷∞◊ï÷∏◊î","en":"And to people who speak badly (about the Jewish people) there should be no hope"},{"t":"◊ï÷∞◊õ÷∏◊ú ◊î÷∏◊®÷¥◊©◊Å÷∞◊¢÷∏◊î ◊õ÷º÷∞◊®÷∂÷Ω◊í÷∑◊¢ ◊™÷º÷π◊ê◊ë÷µ◊ì","en":"And all wickedness should be destroyed in one moment."},{"t":"◊ï÷∞◊õ÷∏◊ú ◊ê÷π◊ô÷∞◊ë÷∂÷Ω◊ô◊ö÷∏ ◊û÷∞◊î÷µ◊®÷∏◊î ◊ô÷¥◊õ÷º÷∏◊®÷µ÷Ω◊™◊ï÷º","en":"And all of your enemies destroy quickly."},{"t":"◊ï÷∞◊î÷∑◊ñ÷º÷µ◊ì÷¥◊ô◊ù ◊û÷∞◊î÷µ◊®÷∏◊î","en":"And the enemies of the Jews should quickly"},{"t":"◊™÷∞◊¢÷∑◊ß÷º÷µ◊® ◊ï÷º◊™÷∞◊©◊Å÷∑◊ë÷º÷µ◊® ◊ï÷º◊™÷∞◊û÷∑◊í÷º÷µ◊® ◊ï÷∞◊™÷∑◊õ÷∞◊†÷¥÷Ω◊ô◊¢÷∑","en":"Will be uprooted, broken, crumbled, and humbled"},{"t":"◊ë÷º÷¥◊û÷∞◊î÷µ◊®÷∏◊î ◊ë÷∞◊ô÷∏◊û÷µ÷Ω◊ô◊†◊ï÷º:","en":"Quickly in our days"},{"t":"◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î","en":"Blessed are You Hashem"},{"t":"◊©◊Å◊ï÷π◊ë÷µ◊® ◊ê÷π◊ô÷∞÷í◊ë÷¥◊ô◊ù ◊ï÷º◊û÷∑◊õ÷∞◊†÷¥÷Ω◊ô◊¢÷∑ ◊ñ÷µ◊ì÷¥◊ô◊ù:","en":"Who breaks enemies and humbles enemies of the Jews"}]}]},{"en":"The Righteous","he":"◊¶÷∑◊ì÷¥÷º◊ô◊ß÷¥◊ô◊ù (◊¢÷∑◊ú ◊î÷∑◊¶÷∑÷º◊ì÷¥÷º◊ô◊ß÷¥◊ô◊ù)","segs":[{"t":"◊¢÷∑◊ú÷æ◊î÷∑◊¶÷º÷∑◊ì÷º÷¥◊ô◊ß÷¥◊ô◊ù ◊ï÷∞◊¢÷∑◊ú÷æ◊î÷∑◊ó÷≤◊°÷¥◊ô◊ì÷¥◊ô◊ù ◊ï÷∞◊¢÷∑◊ú÷æ◊ñ÷¥◊ß÷∞◊†÷µ◊ô ◊¢÷∑◊û÷º÷∞÷í◊ö÷∏ ◊ë÷º÷µ◊ô◊™ ◊ô÷¥◊©◊Ç÷∞◊®÷∏◊ê÷µ◊ú ◊ï÷∞◊¢÷∑◊ú ◊§÷º÷∞◊ú÷µ◊ô◊ò÷∑◊™ ◊°◊ï÷π◊§÷∞÷í◊®÷µ◊ô◊î÷∂◊ù ◊ï÷∞◊¢÷∑◊ú ◊í÷º÷µ◊®÷µ◊ô ◊î÷∑◊¶÷º÷∂÷Ω◊ì÷∂◊ß ◊ï÷∞◊¢÷∏◊ú÷µ÷Ω◊ô◊†◊ï÷º ◊ô÷∂◊î÷±◊û◊ï÷º ◊®÷∑◊ó÷≤◊û÷∂÷Ω◊ô◊ö÷∏ ◊ô÷∞◊î÷π◊ï÷∏◊î ◊ê÷±◊ú÷π◊î÷µ÷Ω◊ô◊†◊ï÷º ◊ï÷∞◊™÷µ◊ü ◊©◊Ç÷∏◊õ÷∏◊® ◊ò◊ï÷π◊ë ◊ú÷∞◊õ÷∏◊ú ◊î÷∑◊ë÷º◊ï÷π◊ò÷∞÷í◊ó÷¥◊ô◊ù ◊ë÷º÷∞◊©◊Å÷¥◊û÷∞◊ö÷∏ ◊ë÷º÷∂◊ê÷±◊û÷∂◊™ ◊ï÷∞◊©◊Ç÷¥◊ô◊ù ◊ó÷∂◊ú÷∞◊ß÷µ÷Ω◊†◊ï÷º ◊¢÷¥◊û÷º÷∏◊î÷∂◊ù ◊ú÷∞◊¢◊ï÷π◊ú÷∏◊ù ◊ï÷∞◊ú÷π◊ê ◊†÷µ◊ë◊ï÷π◊©◊Å ◊õ÷º÷¥◊ô ◊ë÷∞◊ö÷∏ ◊ë÷º÷∏◊ò÷∏÷Ω◊ó÷∞◊†◊ï÷º: ◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î ◊û÷¥◊©◊Å÷∞◊¢÷∏◊ü ◊ï÷º◊û÷¥◊ë÷∞◊ò÷∏◊ó ◊ú÷∑◊¶÷º÷∑◊ì÷º÷¥◊ô◊ß÷¥◊ô◊ù:","c":"always","ph":[{"t":"◊¢÷∑◊ú÷æ◊î÷∑◊¶÷º÷∑◊ì÷º÷¥◊ô◊ß÷¥◊ô◊ù ◊ï÷∞◊¢÷∑◊ú÷æ◊î÷∑◊ó÷≤◊°÷¥◊ô◊ì÷¥◊ô◊ù","en":"On the saintly and righteous people"},{"t":"◊ï÷∞◊¢÷∑◊ú÷æ◊ñ÷¥◊ß÷∞◊†÷µ◊ô ◊¢÷∑◊û÷º÷∞÷í◊ö÷∏ ◊ë÷º÷µ◊ô◊™ ◊ô÷¥◊©◊Ç÷∞◊®÷∏◊ê÷µ◊ú","en":"And on the elders of the Jewish people"},{"t":"◊ï÷∞◊¢÷∑◊ú ◊§÷º÷∞◊ú÷µ◊ô◊ò÷∑◊™ ◊°◊ï÷π◊§÷∞÷í◊®÷µ◊ô◊î÷∂◊ù","en":"And on the remainder of their Torah scholars"},{"t":"◊ï÷∞◊¢÷∑◊ú ◊í÷º÷µ◊®÷µ◊ô ◊î÷∑◊¶÷º÷∂÷Ω◊ì÷∂◊ß","en":"And on the righteous converts"},{"t":"◊ï÷∞◊¢÷∏◊ú÷µ÷Ω◊ô◊†◊ï÷º","en":"And on us"},{"t":"◊ô÷∂◊î÷±◊û◊ï÷º ◊®÷∑◊ó÷≤◊û÷∂÷Ω◊ô◊ö÷∏ ◊ô÷∞◊î÷π◊ï÷∏◊î ◊ê÷±◊ú÷π◊î÷µ÷Ω◊ô◊†◊ï÷º","en":"Give your mercy Hashem our God"},{"t":"◊ï÷∞◊™÷µ◊ü ◊©◊Ç÷∏◊õ÷∏◊® ◊ò◊ï÷π◊ë ◊ú÷∞◊õ÷∏◊ú ◊î÷∑◊ë÷º◊ï÷π◊ò÷∞÷í◊ó÷¥◊ô◊ù ◊ë÷º÷∞◊©◊Å÷¥◊û÷∞◊ö÷∏ ◊ë÷º÷∂◊ê÷±◊û÷∂◊™","en":"And give good reward for all of those who truthfully rely on Your name"},{"t":"◊ï÷∞◊©◊Ç÷¥◊ô◊ù ◊ó÷∂◊ú÷∞◊ß÷µ÷Ω◊†◊ï÷º ◊¢÷¥◊û÷º÷∏◊î÷∂◊ù ◊ú÷∞◊¢◊ï÷π◊ú÷∏◊ù","en":"And put our portion with them forever (we should be with them in Olam haBa)"},{"t":"◊ï÷∞◊ú÷π◊ê ◊†÷µ◊ë◊ï÷π◊©◊Å ◊õ÷º÷¥◊ô ◊ë÷∞◊ö÷∏ ◊ë÷º÷∏◊ò÷∏÷Ω◊ó÷∞◊†◊ï÷º:","en":"And we should never be embarrassed because we have relied on You."},{"t":"◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î","en":"Blessed are You Hashem"},{"t":"◊û÷¥◊©◊Å÷∞◊¢÷∏◊ü ◊ï÷º◊û÷¥◊ë÷∞◊ò÷∏◊ó ◊ú÷∑◊¶÷º÷∑◊ì÷º÷¥◊ô◊ß÷¥◊ô◊ù:","en":"The one who supports, and is trusted by, the righteous."}]}]},{"en":"Rebuilding Jerusalem","he":"◊ë÷¥÷º◊†÷∞◊ô÷∑◊ü ◊ô÷∞◊®◊ï÷º◊©÷∏◊Å◊ú÷∑◊ô÷¥◊ù (◊ï÷∞◊ú÷¥◊ô◊®◊ï÷º◊©÷∏◊Å◊ú÷∑◊ô÷¥◊ù)","segs":[{"t":"◊ï÷∞◊ú÷¥◊ô◊®◊ï÷º◊©◊Å÷∏◊ú÷∑÷Ω◊ô÷¥◊ù ◊¢÷¥◊ô◊®÷∞÷í◊ö÷∏ ◊ë÷º÷∞◊®÷∑◊ó÷≤◊û÷¥◊ô◊ù ◊™÷º÷∏◊©◊Å◊ï÷º◊ë ◊ï÷∞◊™÷¥◊©◊Å÷∞◊õ÷º◊ï÷π◊ü ◊ë÷º÷∞◊™◊ï÷π◊õ÷∏◊î÷º ◊õ÷º÷∑◊ê÷≤◊©◊Å÷∂◊® ◊ì÷º÷¥◊ë÷º÷∑÷Ω◊®÷∞◊™÷º÷∏ ◊ï÷º◊ë÷∞◊†÷µ◊î ◊ê◊ï÷π◊™÷∏◊î÷º ◊ë÷º÷∞◊ß÷∏◊®◊ï÷π◊ë ◊ë÷º÷∞◊ô÷∏◊û÷µ÷Ω◊ô◊†◊ï÷º ◊ë÷º÷¥◊†÷∞◊ô÷∑◊ü ◊¢◊ï÷π◊ú÷∏◊ù ◊ï÷∞◊õ÷¥◊°÷º÷µ◊ê ◊ì÷∏◊ï÷¥◊ì ◊û÷∞◊î÷µ◊®÷∏◊î ◊ú÷∞◊™◊ï÷π◊õ÷∏◊î÷º ◊™÷º÷∏◊õ÷¥◊ô◊ü: ◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î ◊ë÷º◊ï÷π◊†÷µ◊î ◊ô÷∞◊®◊ï÷º◊©◊Å÷∏◊ú÷∏÷Ω◊ô÷¥◊ù:","c":"always","ph":[{"t":"◊ï÷∞◊ú÷¥◊ô◊®◊ï÷º◊©◊Å÷∏◊ú÷∑÷Ω◊ô÷¥◊ù ◊¢÷¥◊ô◊®÷∞÷í◊ö÷∏ ◊ë÷º÷∞◊®÷∑◊ó÷≤◊û÷¥◊ô◊ù ◊™÷º÷∏◊©◊Å◊ï÷º◊ë","en":"Return to Yerushalayim (and build the Beit haMikdash) with mercy"},{"t":"◊ï÷∞◊™÷¥◊©◊Å÷∞◊õ÷º◊ï÷π◊ü ◊ë÷º÷∞◊™◊ï÷π◊õ÷∏◊î÷º ◊õ÷º÷∑◊ê÷≤◊©◊Å÷∂◊® ◊ì÷º÷¥◊ë÷º÷∑÷Ω◊®÷∞◊™÷º÷∏","en":"And live there (in the Beit haMikdash) as You said (in Tanach)"},{"t":"◊ï÷º◊ë÷∞◊†÷µ◊î ◊ê◊ï÷π◊™÷∏◊î÷º ◊ë÷º÷∞◊ß÷∏◊®◊ï÷π◊ë ◊ë÷º÷∞◊ô÷∏◊û÷µ÷Ω◊ô◊†◊ï÷º ◊ë÷º÷¥◊†÷∞◊ô÷∑◊ü ◊¢◊ï÷π◊ú÷∏◊ù","en":"And build it (Yerushalayim and the Beit haMikdash) quickly in our day, as a building which lasts forever"},{"t":"◊ï÷∞◊õ÷¥◊°÷º÷µ◊ê ◊ì÷∏◊ï÷¥◊ì ◊û÷∞◊î÷µ◊®÷∏◊î ◊ú÷∞◊™◊ï÷π◊õ÷∏◊î÷º ◊™÷º÷∏◊õ÷¥◊ô◊ü:","en":"And establish the chair of (Mashiach, a descendant of King) David, quickly."},{"t":"◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î","en":"Blessed are You Hashem"},{"t":"◊ë÷º◊ï÷π◊†÷µ◊î ◊ô÷∞◊®◊ï÷º◊©◊Å÷∏◊ú÷∏÷Ω◊ô÷¥◊ù:","en":"The one who builds Yerushalayim"}]}]},{"en":"Kingdom of David","he":"◊û÷∑◊ú÷∞◊õ◊ï÷º◊™ ◊ë÷µ÷º◊ô◊™ ◊ì÷∏÷º◊ï÷¥◊ì (◊ê÷∂◊™ ◊¶÷∂◊û÷∑◊ó)","segs":[{"t":"◊ê÷∂◊™÷æ◊¶÷∂÷Ω◊û÷∑◊ó ◊ì÷º÷∏◊ï÷¥◊ì ◊¢÷∑◊ë÷∞◊ì÷º÷∞÷í◊ö÷∏ ◊û÷∞◊î÷µ◊®÷∏◊î ◊™÷∑◊¶÷∞◊û÷¥÷Ω◊ô◊ó÷∑ ◊ï÷∞◊ß÷∑◊®÷∞◊†◊ï÷π ◊™÷º÷∏◊®◊ï÷º◊ù ◊ë÷º÷¥◊ô◊©◊Å◊ï÷º◊¢÷∏◊™÷∂÷Ω◊ö÷∏ ◊õ÷º÷¥◊ô ◊ú÷¥◊ô◊©◊Å◊ï÷º◊¢÷∏◊™÷∞÷í◊ö÷∏ ◊ß÷¥◊ï÷º÷¥÷Ω◊ô◊†◊ï÷º ◊õ÷º÷∏◊ú ◊î÷∑◊ô÷º◊ï÷π◊ù: ◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î ◊û÷∑◊¶÷∞◊û÷¥÷Ω◊ô◊ó÷∑ ◊ß÷∂÷Ω◊®÷∂◊ü ◊ô÷∞◊©◊Å◊ï÷º◊¢÷∏◊î:","c":"always","ph":[{"t":"◊ê÷∂◊™÷æ◊¶÷∂÷Ω◊û÷∑◊ó ◊ì÷º÷∏◊ï÷¥◊ì ◊¢÷∑◊ë÷∞◊ì÷º÷∞÷í◊ö÷∏ ◊û÷∞◊î÷µ◊®÷∏◊î ◊™÷∑◊¶÷∞◊û÷¥÷Ω◊ô◊ó÷∑","en":"You (Hashem) should cause the sprouting of (King) David, Your servant, to quickly begin to grow (Mashiach should come soon)"},{"t":"◊ï÷∞◊ß÷∑◊®÷∞◊†◊ï÷π ◊™÷º÷∏◊®◊ï÷º◊ù ◊ë÷º÷¥◊ô◊©◊Å◊ï÷º◊¢÷∏◊™÷∂÷Ω◊ö÷∏","en":"And raise up his (King David‚Äôs) power through your saving (by bringing Mashiach)"},{"t":"◊õ÷º÷¥◊ô ◊ú÷¥◊ô◊©◊Å◊ï÷º◊¢÷∏◊™÷∞÷í◊ö÷∏ ◊ß÷¥◊ï÷º÷¥÷Ω◊ô◊†◊ï÷º ◊õ÷º÷∏◊ú ◊î÷∑◊ô÷º◊ï÷π◊ù:","en":"Because we constantly hope for your redemption"},{"t":"◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î","en":"Blessed are You Hashem"},{"t":"◊û÷∑◊¶÷∞◊û÷¥÷Ω◊ô◊ó÷∑ ◊ß÷∂÷Ω◊®÷∂◊ü ◊ô÷∞◊©◊Å◊ï÷º◊¢÷∏◊î:","en":"Who causes the power of redemption to sprout (He causes Mashiach to come)"}]}]},{"en":"Response to Prayer","he":"◊©◊Å◊ï÷π◊û÷µ◊¢÷∑ ◊™÷∞÷º◊§÷¥◊ú÷∏÷º◊î (◊©÷∞◊Å◊û÷∑◊¢ ◊ß◊ï÷π◊ú÷µ◊†◊ï÷º)","segs":[{"t":"◊©◊Å÷∞◊û÷∑◊¢ ◊ß◊ï÷π◊ú÷µ÷Ω◊†◊ï÷º ◊ô÷∞◊î÷π◊ï÷∏◊î ◊ê÷±◊ú÷π◊î÷µ÷Ω◊ô◊†◊ï÷º ◊ó◊ï÷º◊° ◊ï÷∞◊®÷∑◊ó÷µ◊ù ◊¢÷∏◊ú÷µ÷Ω◊ô◊†◊ï÷º ◊ï÷∞◊ß÷∑◊ë÷º÷µ◊ú ◊ë÷º÷∞◊®÷∑◊ó÷≤◊û÷¥◊ô◊ù ◊ï÷º◊ë÷∞◊®÷∏◊¶◊ï÷π◊ü ◊ê÷∂◊™÷æ◊™÷º÷∞◊§÷¥◊ú÷º÷∏◊™÷µ÷Ω◊†◊ï÷º ◊õ÷º÷¥◊ô ◊ê÷µ◊ú ◊©◊Å◊ï÷π◊û÷µ÷Ω◊¢÷∑ ◊™÷º÷∞◊§÷¥◊ú÷º◊ï÷π◊™ ◊ï÷∞◊™÷∑◊ó÷≤◊†◊ï÷º◊†÷¥◊ô◊ù ◊ê÷∏÷Ω◊™÷º÷∏◊î ◊ï÷º◊û÷¥◊ú÷º÷∞÷í◊§÷∏◊†÷∂÷Ω◊ô◊ö÷∏ ◊û÷∑◊ú÷∞◊õ÷º÷µ÷Ω◊†◊ï÷º ◊®÷µ◊ô◊ß÷∏◊ù ◊ê÷∑◊ú÷æ◊™÷º÷∞◊©◊Å÷¥◊ô◊ë÷µ÷Ω◊†◊ï÷º ◊õ÷º÷¥◊ô ◊ê÷∑◊™÷º÷∏◊î ◊©◊Å◊ï÷π◊û÷µ÷Ω◊¢÷∑ ◊™÷º÷∞◊§÷¥◊ú÷º÷∑◊™ ◊¢÷∑◊û÷º÷∞÷í◊ö÷∏ ◊ô÷¥◊©◊Ç÷∞◊®÷∏◊ê÷µ◊ú ◊ë÷º÷∞◊®÷∑◊ó÷≤◊û÷¥◊ô◊ù: ◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î ◊©◊Å◊ï÷π◊û÷µ÷Ω◊¢÷∑ ◊™÷º÷∞◊§÷¥◊ú÷º÷∏◊î:","c":"always","ph":[{"t":"◊©◊Å÷∞◊û÷∑◊¢ ◊ß◊ï÷π◊ú÷µ÷Ω◊†◊ï÷º ◊ô÷∞◊î÷π◊ï÷∏◊î ◊ê÷±◊ú÷π◊î÷µ÷Ω◊ô◊†◊ï÷º","en":"Hear our voice Hashem our God"},{"t":"◊ó◊ï÷º◊° ◊ï÷∞◊®÷∑◊ó÷µ◊ù ◊¢÷∏◊ú÷µ÷Ω◊ô◊†◊ï÷º","en":"Spare us and have mercy on us"},{"t":"◊ï÷∞◊ß÷∑◊ë÷º÷µ◊ú ◊ë÷º÷∞◊®÷∑◊ó÷≤◊û÷¥◊ô◊ù ◊ï÷º◊ë÷∞◊®÷∏◊¶◊ï÷π◊ü ◊ê÷∂◊™÷æ◊™÷º÷∞◊§÷¥◊ú÷º÷∏◊™÷µ÷Ω◊†◊ï÷º","en":"And with mercy and desire, accept our prayers"},{"t":"◊õ÷º÷¥◊ô ◊ê÷µ◊ú ◊©◊Å◊ï÷π◊û÷µ÷Ω◊¢÷∑ ◊™÷º÷∞◊§÷¥◊ú÷º◊ï÷π◊™ ◊ï÷∞◊™÷∑◊ó÷≤◊†◊ï÷º◊†÷¥◊ô◊ù ◊ê÷∏÷Ω◊™÷º÷∏◊î","en":"Because you are God who listens to our prayers and requests"},{"t":"◊ï÷º◊û÷¥◊ú÷º÷∞÷í◊§÷∏◊†÷∂÷Ω◊ô◊ö÷∏ ◊û÷∑◊ú÷∞◊õ÷º÷µ÷Ω◊†◊ï÷º ◊®÷µ◊ô◊ß÷∏◊ù ◊ê÷∑◊ú÷æ◊™÷º÷∞◊©◊Å÷¥◊ô◊ë÷µ÷Ω◊†◊ï÷º","en":"And from before You, our king, do not turn us away empty-handed,"},{"t":"◊õ÷º÷¥◊ô ◊ê÷∑◊™÷º÷∏◊î ◊©◊Å◊ï÷π◊û÷µ÷Ω◊¢÷∑ ◊™÷º÷∞◊§÷¥◊ú÷º÷∑◊™ ◊¢÷∑◊û÷º÷∞÷í◊ö÷∏ ◊ô÷¥◊©◊Ç÷∞◊®÷∏◊ê÷µ◊ú ◊ë÷º÷∞◊®÷∑◊ó÷≤◊û÷¥◊ô◊ù:","en":"Because you listen to the prayers of the Jewish nation with mercy."},{"t":"◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î","en":"Blessed are You Hashem"},{"t":"◊©◊Å◊ï÷π◊û÷µ÷Ω◊¢÷∑ ◊™÷º÷∞◊§÷¥◊ú÷º÷∏◊î:","en":"Who listens to prayers."}]}]},{"en":"Temple Service","he":"◊¢÷≤◊ë◊ï÷π◊ì÷∏◊î (◊®÷∞◊¶÷µ◊î)","segs":[{"t":"◊®÷∞◊¶÷µ◊î ◊ô÷∞◊î÷π◊ï÷∏◊î ◊ê÷±◊ú÷π◊î÷µ÷Ω◊ô◊†◊ï÷º ◊ë÷º÷∞◊¢÷∑◊û÷º÷∞÷í◊ö÷∏ ◊ô÷¥◊©◊Ç÷∞◊®÷∏◊ê÷µ◊ú ◊ï÷º◊ë÷¥◊™÷∞◊§÷¥◊ú÷º÷∏◊™÷∏◊ù ◊ï÷∞◊î÷∏◊©◊Å÷µ◊ë ◊ê÷∂◊™ ◊î÷∏◊¢÷≤◊ë◊ï÷π◊ì÷∏◊î ◊ú÷¥◊ì÷∞◊ë÷¥◊ô◊® ◊ë÷º÷µ◊ô◊™÷∂÷Ω◊ö÷∏ ◊ï÷∞◊ê÷¥◊©÷º◊Å÷µ◊ô ◊ô÷¥◊©◊Ç÷∞◊®÷∏◊ê÷µ◊ú ◊ï÷º◊™÷∞◊§÷¥◊ú÷º÷∏◊™÷∏◊ù ◊ë÷º÷∞◊ê÷∑◊î÷≤◊ë÷∏◊î ◊™÷∞◊ß÷∑◊ë÷º÷µ◊ú ◊ë÷º÷∞◊®÷∏◊¶◊ï÷π◊ü ◊ï÷º◊™÷∞◊î÷¥◊ô ◊ú÷∞◊®÷∏◊¶◊ï÷π◊ü ◊™÷º÷∏◊û÷¥◊ô◊ì ◊¢÷≤◊ë◊ï÷π◊ì÷∑◊™ ◊ô÷¥◊©◊Ç÷∞◊®÷∏◊ê÷µ◊ú ◊¢÷∑◊û÷º÷∂÷Ω◊ö÷∏:","c":"always","ph":[{"t":"◊®÷∞◊¶÷µ◊î ◊ô÷∞◊î÷π◊ï÷∏◊î ◊ê÷±◊ú÷π◊î÷µ÷Ω◊ô◊†◊ï÷º ◊ë÷º÷∞◊¢÷∑◊û÷º÷∞÷í◊ö÷∏ ◊ô÷¥◊©◊Ç÷∞◊®÷∏◊ê÷µ◊ú ◊ï÷º◊ë÷¥◊™÷∞◊§÷¥◊ú÷º÷∏◊™÷∏◊ù","en":"Hashem our God, desire the prayers of, your nation, the Jewish people"},{"t":"◊ï÷∞◊î÷∏◊©◊Å÷µ◊ë ◊ê÷∂◊™ ◊î÷∏◊¢÷≤◊ë◊ï÷π◊ì÷∏◊î ◊ú÷¥◊ì÷∞◊ë÷¥◊ô◊® ◊ë÷º÷µ◊ô◊™÷∂÷Ω◊ö÷∏ ◊ï÷∞◊ê÷¥◊©÷º◊Å÷µ◊ô ◊ô÷¥◊©◊Ç÷∞◊®÷∏◊ê÷µ◊ú","en":"And return the service and the korbanot to the holy place of Your house (the Beit haMikdash)."},{"t":"◊ï÷º◊™÷∞◊§÷¥◊ú÷º÷∏◊™÷∏◊ù ◊ë÷º÷∞◊ê÷∑◊î÷≤◊ë÷∏◊î ◊™÷∞◊ß÷∑◊ë÷º÷µ◊ú ◊ë÷º÷∞◊®÷∏◊¶◊ï÷π◊ü","en":"And accept their prayers (in the Beit haMikdash) with love and with desire."},{"t":"◊ï÷º◊™÷∞◊î÷¥◊ô ◊ú÷∞◊®÷∏◊¶◊ï÷π◊ü ◊™÷º÷∏◊û÷¥◊ô◊ì ◊¢÷≤◊ë◊ï÷π◊ì÷∑◊™ ◊ô÷¥◊©◊Ç÷∞◊®÷∏◊ê÷µ◊ú ◊¢÷∑◊û÷º÷∂÷Ω◊ö÷∏:","en":"And the service of Your nation, the Jews, should always be a desire for You."}]},{"t":"◊ê÷±◊ú÷π◊î÷µ÷Ω◊ô◊†◊ï÷º ◊ï÷µ◊ê◊ú÷π◊î÷µ◊ô ◊ê÷≤◊ë◊ï÷π◊™÷µ÷Ω◊ô◊†◊ï÷º ◊ô÷∑◊¢÷≤◊ú÷∂◊î ◊ï÷∞◊ô÷∏◊ë÷π◊ê ◊ï÷∞◊ô÷∑◊í÷º÷¥÷Ω◊ô◊¢÷∑ ◊ï÷∞◊ô÷µ◊®÷∏◊ê÷∂◊î ◊ï÷∞◊ô÷µ◊®÷∏◊¶÷∂◊î ◊ï÷∞◊ô÷¥◊©÷º◊Å÷∏◊û÷∑◊¢ ◊ï÷∞◊ô÷¥◊§÷º÷∏◊ß÷µ◊ì ◊ï÷∞◊ô÷¥◊ñ÷º÷∏◊õ÷µ◊® ◊ñ÷¥◊õ÷∞◊®◊ï÷π◊†÷µ÷Ω◊†◊ï÷º ◊ï÷º◊§÷¥◊ß÷∞◊ì◊ï÷π◊†÷µ÷Ω◊†◊ï÷º ◊ï÷∞◊ñ÷¥◊õ÷∞◊®◊ï÷π◊ü ◊ê÷≤◊ë◊ï÷π◊™÷µ÷Ω◊ô◊†◊ï÷º. ◊ï÷∞◊ñ÷¥◊õ÷∞◊®◊ï÷π◊ü ◊û÷∏◊©◊Å÷¥÷Ω◊ô◊ó÷∑ ◊ë÷º÷∂◊ü ◊ì÷º÷∏◊ï÷¥◊ì ◊¢÷∑◊ë÷∞◊ì÷º÷∂÷Ω◊ö÷∏. ◊ï÷∞◊ñ÷¥◊õ÷∞◊®◊ï÷π◊ü ◊ô÷∞◊®◊ï÷º◊©◊Å÷∏◊ú÷∑÷Ω◊ô÷¥◊ù ◊¢÷¥◊ô◊® ◊ß÷∏◊ì÷∞◊©◊Å÷∂÷Ω◊ö÷∏. ◊ï÷∞◊ñ÷¥◊õ÷∞◊®◊ï÷π◊ü ◊õ÷º÷∏◊ú ◊¢÷∑◊û÷º÷∞÷í◊ö÷∏ ◊ë÷º÷µ◊ô◊™ ◊ô÷¥◊©◊Ç÷∞◊®÷∏◊ê÷µ◊ú ◊ú÷∞◊§÷∏◊†÷∂÷Ω◊ô◊ö÷∏. ◊ú÷¥◊§÷∞◊ú÷µ◊ô◊ò÷∏◊î ◊ú÷∞◊ò◊ï÷π◊ë÷∏◊î ◊ú÷∞◊ó÷µ◊ü ◊ï÷º◊ú÷∞◊ó÷∂÷Ω◊°÷∂◊ì ◊ï÷º◊ú÷∞◊®÷∑◊ó÷≤◊û÷¥◊ô◊ù ◊ú÷∞◊ó÷∑◊ô÷º÷¥◊ô◊ù ◊ï÷º◊ú÷∞◊©◊Å÷∏◊ú◊ï÷π◊ù. ◊ë÷º÷∞◊ô◊ï÷π◊ù ◊®÷π◊ê◊©◊Å ◊î÷∑◊ó÷Ω÷π◊ì÷∂◊©◊Å ◊î÷∑◊ñ÷º÷∂◊î: ◊ó÷∑◊í ◊î÷∑◊û÷º÷∑◊¶÷º◊ï÷π◊™ ◊î÷∑◊ñ÷º÷∂◊î: ◊ó÷∑◊í ◊î÷∑◊°÷º÷ª◊õ÷º◊ï÷π◊™ ◊î÷∑◊ñ÷º÷∂◊î: ◊ñ÷∏◊õ÷∞◊®÷µ÷Ω◊†◊ï÷º ◊ô÷∞◊î÷π◊ï÷∏◊î ◊ê÷±◊ú÷π◊î÷µ÷Ω◊ô◊†◊ï÷º ◊ë÷º◊ï÷π ◊ú÷∞◊ò◊ï÷π◊ë÷∏◊î. ◊ï÷º◊§÷∏◊ß÷∞◊ì÷µ÷Ω◊†◊ï÷º ◊ë◊ï÷π ◊ú÷¥◊ë÷∞◊®÷∏◊õ÷∏◊î. ◊ï÷∞◊î◊ï÷π◊©◊Å÷¥◊ô◊¢÷µ÷Ω◊†◊ï÷º ◊ë◊ï÷π ◊ú÷∞◊ó÷∑◊ô÷º÷¥◊ô◊ù. ◊ï÷º◊ë÷¥◊ì÷∞◊ë÷∑◊® ◊ô÷∞◊©◊Å◊ï÷º◊¢÷∏◊î ◊ï÷∞◊®÷∑◊ó÷≤◊û÷¥◊ô◊ù ◊ó◊ï÷º◊° ◊ï÷∞◊ó÷∏◊†÷º÷µ÷Ω◊†◊ï÷º ◊ï÷∞◊®÷∑◊ó÷µ◊ù ◊¢÷∏◊ú÷µ÷Ω◊ô◊†◊ï÷º ◊ï÷∞◊î◊ï÷π◊©◊Å÷¥◊ô◊¢÷µ÷Ω◊†◊ï÷º. ◊õ÷º÷¥◊ô ◊ê÷µ◊ú÷∂÷Ω◊ô◊ö÷∏ ◊¢÷µ◊ô◊†÷µ÷Ω◊ô◊†◊ï÷º ◊õ÷º÷¥◊ô ◊ê÷µ◊ú ◊û÷∂÷Ω◊ú÷∂◊ö÷∞ ◊ó÷∑◊†÷º◊ï÷º◊ü ◊ï÷∞◊®÷∑◊ó◊ï÷º◊ù ◊ê÷∏÷Ω◊™÷º÷∏◊î:","c":"rc","ph":[{"t":"◊ê÷±◊ú÷π◊î÷µ÷Ω◊ô◊†◊ï÷º ◊ï÷µ◊ê◊ú÷π◊î÷µ◊ô ◊ê÷≤◊ë◊ï÷π◊™÷µ÷Ω◊ô◊†◊ï÷º ◊ô÷∑◊¢÷≤◊ú÷∂◊î ◊ï÷∞◊ô÷∏◊ë÷π◊ê ◊ï÷∞◊ô÷∑◊í÷º÷¥÷Ω◊ô◊¢÷∑ ◊ï÷∞◊ô÷µ◊®÷∏◊ê÷∂◊î ◊ï÷∞◊ô÷µ◊®÷∏◊¶÷∂◊î ◊ï÷∞◊ô÷¥◊©÷º◊Å÷∏◊û÷∑◊¢ ◊ï÷∞◊ô÷¥◊§÷º÷∏◊ß÷µ◊ì ◊ï÷∞◊ô÷¥◊ñ÷º÷∏◊õ÷µ◊® ◊ñ÷¥◊õ÷∞◊®◊ï÷π◊†÷µ÷Ω◊†◊ï÷º ◊ï÷º◊§÷¥◊ß÷∞◊ì◊ï÷π◊†÷µ÷Ω◊†◊ï÷º ◊ï÷∞◊ñ÷¥◊õ÷∞◊®◊ï÷π◊ü ◊ê÷≤◊ë◊ï÷π◊™÷µ÷Ω◊ô◊†◊ï÷º. ◊ï÷∞◊ñ÷¥◊õ÷∞◊®◊ï÷π◊ü ◊û÷∏◊©◊Å÷¥÷Ω◊ô◊ó÷∑ ◊ë÷º÷∂◊ü ◊ì÷º÷∏◊ï÷¥◊ì ◊¢÷∑◊ë÷∞◊ì÷º÷∂÷Ω◊ö÷∏. ◊ï÷∞◊ñ÷¥◊õ÷∞◊®◊ï÷π◊ü ◊ô÷∞◊®◊ï÷º◊©◊Å÷∏◊ú÷∑÷Ω◊ô÷¥◊ù ◊¢÷¥◊ô◊® ◊ß÷∏◊ì÷∞◊©◊Å÷∂÷Ω◊ö÷∏. ◊ï÷∞◊ñ÷¥◊õ÷∞◊®◊ï÷π◊ü ◊õ÷º÷∏◊ú ◊¢÷∑◊û÷º÷∞÷í◊ö÷∏ ◊ë÷º÷µ◊ô◊™ ◊ô÷¥◊©◊Ç÷∞◊®÷∏◊ê÷µ◊ú ◊ú÷∞◊§÷∏◊†÷∂÷Ω◊ô◊ö÷∏. ◊ú÷¥◊§÷∞◊ú÷µ◊ô◊ò÷∏◊î ◊ú÷∞◊ò◊ï÷π◊ë÷∏◊î ◊ú÷∞◊ó÷µ◊ü ◊ï÷º◊ú÷∞◊ó÷∂÷Ω◊°÷∂◊ì ◊ï÷º◊ú÷∞◊®÷∑◊ó÷≤◊û÷¥◊ô◊ù ◊ú÷∞◊ó÷∑◊ô÷º÷¥◊ô◊ù ◊ï÷º◊ú÷∞◊©◊Å÷∏◊ú◊ï÷π◊ù. ◊ë÷º÷∞◊ô◊ï÷π◊ù ◊®÷π◊ê◊©◊Å ◊î÷∑◊ó÷Ω÷π◊ì÷∂◊©◊Å ◊î÷∑◊ñ÷º÷∂◊î: ◊ó÷∑◊í ◊î÷∑◊û÷º÷∑◊¶÷º◊ï÷π◊™ ◊î÷∑◊ñ÷º÷∂◊î: ◊ó÷∑◊í ◊î÷∑◊°÷º÷ª◊õ÷º◊ï÷π◊™ ◊î÷∑◊ñ÷º÷∂◊î: ◊ñ÷∏◊õ÷∞◊®÷µ÷Ω◊†◊ï÷º ◊ô÷∞◊î÷π◊ï÷∏◊î ◊ê÷±◊ú÷π◊î÷µ÷Ω◊ô◊†◊ï÷º ◊ë÷º◊ï÷π ◊ú÷∞◊ò◊ï÷π◊ë÷∏◊î. ◊ï÷º◊§÷∏◊ß÷∞◊ì÷µ÷Ω◊†◊ï÷º ◊ë◊ï÷π ◊ú÷¥◊ë÷∞◊®÷∏◊õ÷∏◊î. ◊ï÷∞◊î◊ï÷π◊©◊Å÷¥◊ô◊¢÷µ÷Ω◊†◊ï÷º ◊ë◊ï÷π ◊ú÷∞◊ó÷∑◊ô÷º÷¥◊ô◊ù. ◊ï÷º◊ë÷¥◊ì÷∞◊ë÷∑◊® ◊ô÷∞◊©◊Å◊ï÷º◊¢÷∏◊î ◊ï÷∞◊®÷∑◊ó÷≤◊û÷¥◊ô◊ù ◊ó◊ï÷º◊° ◊ï÷∞◊ó÷∏◊†÷º÷µ÷Ω◊†◊ï÷º ◊ï÷∞◊®÷∑◊ó÷µ◊ù ◊¢÷∏◊ú÷µ÷Ω◊ô◊†◊ï÷º ◊ï÷∞◊î◊ï÷π◊©◊Å÷¥◊ô◊¢÷µ÷Ω◊†◊ï÷º. ◊õ÷º÷¥◊ô ◊ê÷µ◊ú÷∂÷Ω◊ô◊ö÷∏","en":null},{"t":"◊¢÷µ◊ô◊†÷µ÷Ω◊ô◊†◊ï÷º","en":"And our eyes should see when You return to Yerushalayim (when the Beit haMikdash is rebuilt) with mercy."},{"t":"◊õ÷º÷¥◊ô ◊ê÷µ◊ú ◊û÷∂÷Ω◊ú÷∂◊ö÷∞ ◊ó÷∑◊†÷º◊ï÷º◊ü ◊ï÷∞◊®÷∑◊ó◊ï÷º◊ù ◊ê÷∏÷Ω◊™÷º÷∏◊î:","en":null}]},{"t":"◊ï÷∞◊™÷∂◊ó÷±◊ñ÷∂÷Ω◊ô◊†÷∏◊î ◊¢÷µ◊ô◊†÷µ÷Ω◊ô◊†◊ï÷º ◊ë÷º÷∞◊©◊Å◊ï÷º◊ë÷∞÷í◊ö÷∏ ◊ú÷∞◊¶÷¥◊ô÷º◊ï÷π◊ü ◊ë÷º÷∞◊®÷∑◊ó÷≤◊û÷¥◊ô◊ù: ◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î ◊î÷∑◊û÷º÷∑◊ó÷≤◊ñ÷¥◊ô◊® ◊©◊Å÷∞◊õ÷¥◊ô◊†÷∏◊™◊ï÷π ◊ú÷∞◊¶÷¥◊ô÷º◊ï÷π◊ü:","c":"always","ph":[{"t":"◊ï÷∞◊™÷∂◊ó÷±◊ñ÷∂÷Ω◊ô◊†÷∏◊î ◊¢÷µ◊ô◊†÷µ÷Ω◊ô◊†◊ï÷º","en":null},{"t":"◊ë÷º÷∞◊©◊Å◊ï÷º◊ë÷∞÷í◊ö÷∏ ◊ú÷∞◊¶÷¥◊ô÷º◊ï÷π◊ü ◊ë÷º÷∞◊®÷∑◊ó÷≤◊û÷¥◊ô◊ù:","en":"And our eyes should see when You return to Yerushalayim (when the Beit haMikdash is rebuilt) with mercy."},{"t":"◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î","en":"Blessed are You Hashem,"},{"t":"◊î÷∑◊û÷º÷∑◊ó÷≤◊ñ÷¥◊ô◊® ◊©◊Å÷∞◊õ÷¥◊ô◊†÷∏◊™◊ï÷π ◊ú÷∞◊¶÷¥◊ô÷º◊ï÷π◊ü:","en":"The One who returns His Godly presence to Yerushalayim."}]}]},{"en":"Thanksgiving","he":"◊î◊ï÷π◊ì÷∏◊ê÷∏◊î (◊û◊ï÷π◊ì÷¥◊ô◊ù)","segs":[{"t":"◊û◊ï÷π◊ì÷¥◊ô◊ù ◊ê÷≤◊†÷∑÷Ω◊ó÷∞◊†◊ï÷º ◊ú÷∏◊ö÷∞ ◊©◊Å÷∏◊ê÷∑◊™÷º÷∏◊î ◊î◊ï÷º◊ê ◊ô÷∞◊î÷π◊ï÷∏◊î ◊ê÷±◊ú÷π◊î÷µ÷Ω◊ô◊†◊ï÷º ◊ï÷µ◊ê◊ú÷π◊î÷µ◊ô ◊ê÷≤◊ë◊ï÷π◊™÷µ÷Ω◊ô◊†◊ï÷º ◊ú÷∞◊¢◊ï÷π◊ú÷∏◊ù ◊ï÷∏◊¢÷∂◊ì ◊¶◊ï÷º◊® ◊ó÷∑◊ô÷º÷µ÷Ω◊ô◊†◊ï÷º ◊û÷∏◊í÷µ◊ü ◊ô÷¥◊©◊Å÷∞◊¢÷µ÷Ω◊†◊ï÷º ◊ê÷∑◊™÷º÷∏◊î ◊î◊ï÷º◊ê ◊ú÷∞◊ì◊ï÷π◊® ◊ï÷∏◊ì◊ï÷π◊® ◊†÷Ω◊ï÷π◊ì÷∂◊î ◊ú÷º÷∞◊ö÷∏ ◊ï÷º◊†÷∞◊°÷∑◊§÷º÷µ◊® ◊™÷º÷∞◊î÷¥◊ú÷º÷∏◊™÷∂÷Ω◊ö÷∏ ◊¢÷∑◊ú÷æ◊ó÷∑◊ô÷º÷µ÷Ω◊ô◊†◊ï÷º ◊î÷∑◊û÷º÷∞÷í◊°◊ï÷º◊®÷¥◊ô◊ù ◊ë÷º÷∞◊ô÷∏◊ì÷∂÷Ω◊ö÷∏ ◊ï÷∞◊¢÷∑◊ú ◊†÷¥◊©◊Å÷∞◊û◊ï÷π◊™÷µ÷Ω◊ô◊†◊ï÷º ◊î÷∑◊§÷º÷∞÷í◊ß◊ï÷º◊ì◊ï÷π◊™ ◊ú÷∏◊ö÷∞ ◊ï÷∞◊¢÷∑◊ú ◊†÷¥◊°÷º÷∂÷Ω◊ô◊ö÷∏ ◊©◊Å÷∂◊ë÷º÷∞◊õ÷∏◊ú ◊ô◊ï÷π◊ù ◊¢÷¥◊û÷º÷∏÷Ω◊†◊ï÷º ◊ï÷∞◊¢÷∑◊ú ◊†÷¥◊§÷∞◊ú÷∞÷í◊ê◊ï÷π◊™÷∂÷Ω◊ô◊ö÷∏ ◊ï÷∞◊ò◊ï÷π◊ë◊ï÷π◊™÷∂÷Ω◊ô◊ö÷∏ ◊©◊Å÷∂◊ë÷º÷∞÷í◊õ÷∏◊ú ◊¢÷µ◊™ ◊¢÷∂÷Ω◊®÷∂◊ë ◊ï÷∏◊ë÷Ω÷π◊ß÷∂◊® ◊ï÷∞◊¶÷∏◊î÷≥◊®÷∏÷Ω◊ô÷¥◊ù ◊î÷∑◊ò÷º◊ï÷π◊ë ◊õ÷º÷¥◊ô ◊ú÷π◊ê ◊õ÷∏◊ú◊ï÷º ◊®÷∑◊ó÷≤◊û÷∂÷Ω◊ô◊ö÷∏ ◊ï÷∞◊î÷∑◊û÷∞÷í◊®÷∑◊ó÷µ◊ù ◊õ÷º÷¥◊ô ◊ú÷π◊ê ◊™÷∑÷Ω◊û÷º◊ï÷º ◊ó÷≤◊°÷∏◊ì÷∂÷Ω◊ô◊ö÷∏ ◊û÷µ◊¢◊ï÷π◊ú÷∏◊ù ◊ß÷¥◊ï÷º÷¥÷Ω◊ô◊†◊ï÷º ◊ú÷∏◊ö÷∞:","c":"always","ph":[{"t":"◊û◊ï÷π◊ì÷¥◊ô◊ù ◊ê÷≤◊†÷∑÷Ω◊ó÷∞◊†◊ï÷º ◊ú÷∏◊ö÷∞","en":"We thank You"},{"t":"◊©◊Å÷∏◊ê÷∑◊™÷º÷∏◊î ◊î◊ï÷º◊ê ◊ô÷∞◊î÷π◊ï÷∏◊î ◊ê÷±◊ú÷π◊î÷µ÷Ω◊ô◊†◊ï÷º ◊ï÷µ◊ê◊ú÷π◊î÷µ◊ô ◊ê÷≤◊ë◊ï÷π◊™÷µ÷Ω◊ô◊†◊ï÷º ◊ú÷∞◊¢◊ï÷π◊ú÷∏◊ù ◊ï÷∏◊¢÷∂◊ì","en":"For You are our God, and the God of our forefathers (the avot), forever."},{"t":"◊¶◊ï÷º◊® ◊ó÷∑◊ô÷º÷µ÷Ω◊ô◊†◊ï÷º","en":"Rock of our life,"},{"t":"◊û÷∏◊í÷µ◊ü ◊ô÷¥◊©◊Å÷∞◊¢÷µ÷Ω◊†◊ï÷º","en":"Shield of our saving,"},{"t":"◊ê÷∑◊™÷º÷∏◊î ◊î◊ï÷º◊ê","en":"You exist for all time (from generation to generation)."},{"t":"◊ú÷∞◊ì◊ï÷π◊® ◊ï÷∏◊ì◊ï÷π◊®","en":null},{"t":"◊†÷Ω◊ï÷π◊ì÷∂◊î ◊ú÷º÷∞◊ö÷∏ ◊ï÷º◊†÷∞◊°÷∑◊§÷º÷µ◊® ◊™÷º÷∞◊î÷¥◊ú÷º÷∏◊™÷∂÷Ω◊ö÷∏","en":"We thank You, and we say Your praises,"},{"t":"◊¢÷∑◊ú÷æ◊ó÷∑◊ô÷º÷µ÷Ω◊ô◊†◊ï÷º ◊î÷∑◊û÷º÷∞÷í◊°◊ï÷º◊®÷¥◊ô◊ù ◊ë÷º÷∞◊ô÷∏◊ì÷∂÷Ω◊ö÷∏","en":"For our life which are placed in Your hands,"},{"t":"◊ï÷∞◊¢÷∑◊ú ◊†÷¥◊©◊Å÷∞◊û◊ï÷π◊™÷µ÷Ω◊ô◊†◊ï÷º ◊î÷∑◊§÷º÷∞÷í◊ß◊ï÷º◊ì◊ï÷π◊™ ◊ú÷∏◊ö÷∞","en":"And for our souls which is entrusted to You,"},{"t":"◊ï÷∞◊¢÷∑◊ú ◊†÷¥◊°÷º÷∂÷Ω◊ô◊ö÷∏ ◊©◊Å÷∂◊ë÷º÷∞◊õ÷∏◊ú ◊ô◊ï÷π◊ù ◊¢÷¥◊û÷º÷∏÷Ω◊†◊ï÷º","en":"And for Your miracles that are with us every day,"},{"t":"◊ï÷∞◊¢÷∑◊ú ◊†÷¥◊§÷∞◊ú÷∞÷í◊ê◊ï÷π◊™÷∂÷Ω◊ô◊ö÷∏ ◊ï÷∞◊ò◊ï÷π◊ë◊ï÷π◊™÷∂÷Ω◊ô◊ö÷∏","en":"And for Your miracles and goodness,"},{"t":"◊©◊Å÷∂◊ë÷º÷∞÷í◊õ÷∏◊ú ◊¢÷µ◊™","en":"that are present at all times"},{"t":"◊¢÷∂÷Ω◊®÷∂◊ë ◊ï÷∏◊ë÷Ω÷π◊ß÷∂◊® ◊ï÷∞◊¶÷∏◊î÷≥◊®÷∏÷Ω◊ô÷¥◊ù","en":"Evening, morning, and afternoon."},{"t":"◊î÷∑◊ò÷º◊ï÷π◊ë ◊õ÷º÷¥◊ô ◊ú÷π◊ê ◊õ÷∏◊ú◊ï÷º ◊®÷∑◊ó÷≤◊û÷∂÷Ω◊ô◊ö÷∏","en":"(You are) The good one, because Your mercy is not finished,"},{"t":"◊ï÷∞◊î÷∑◊û÷∞÷í◊®÷∑◊ó÷µ◊ù ◊õ÷º÷¥◊ô ◊ú÷π◊ê ◊™÷∑÷Ω◊û÷º◊ï÷º ◊ó÷≤◊°÷∏◊ì÷∂÷Ω◊ô◊ö÷∏","en":"And the merciful one, because Your kindnesses are not ended,"},{"t":"◊û÷µ◊¢◊ï÷π◊ú÷∏◊ù ◊ß÷¥◊ï÷º÷¥÷Ω◊ô◊†◊ï÷º ◊ú÷∏◊ö÷∞:","en":"We have hoped in You forever."}]},{"t":"◊¢÷∑◊ú ◊î÷∑◊†÷º÷¥◊°÷º÷¥◊ô◊ù ◊ï÷∞◊¢÷∑◊ú ◊î÷∑◊§÷º÷ª◊®÷∞◊ß÷∏◊ü ◊ï÷∞◊¢÷∑◊ú ◊î÷∑◊í÷º÷∞÷í◊ë◊ï÷º◊®◊ï÷π◊™ ◊ï÷∞◊¢÷∑◊ú ◊î÷∑◊™÷º÷∞÷í◊©◊Å◊ï÷º◊¢◊ï÷π◊™ ◊ï÷∞◊¢÷∑◊ú ◊î÷∑◊û÷º÷¥◊ú÷∞◊ó÷∏◊û◊ï÷π◊™ ◊©◊Å÷∂◊¢÷∏◊©◊Ç÷¥÷Ω◊ô◊™÷∏ ◊ú÷∑◊ê÷≤◊ë◊ï÷π◊™÷µ÷Ω◊ô◊†◊ï÷º ◊ë÷º÷∑◊ô÷º÷∏◊û÷¥◊ô◊ù ◊î÷∏◊î÷µ◊ù ◊ë÷∑÷º◊ñ÷º÷∞÷í◊û÷∑◊ü ◊î÷∑◊ñ÷º÷∂◊î:","c":"nissim","ph":[{"t":"◊¢÷∑◊ú","en":"And for all of these (we thank You for)"},{"t":"◊î÷∑◊†÷º÷¥◊°÷º÷¥◊ô◊ù ◊ï÷∞◊¢÷∑◊ú ◊î÷∑◊§÷º÷ª◊®÷∞◊ß÷∏◊ü ◊ï÷∞◊¢÷∑◊ú ◊î÷∑◊í÷º÷∞÷í◊ë◊ï÷º◊®◊ï÷π◊™ ◊ï÷∞◊¢÷∑◊ú ◊î÷∑◊™÷º÷∞÷í◊©◊Å◊ï÷º◊¢◊ï÷π◊™ ◊ï÷∞◊¢÷∑◊ú ◊î÷∑◊û÷º÷¥◊ú÷∞◊ó÷∏◊û◊ï÷π◊™ ◊©◊Å÷∂◊¢÷∏◊©◊Ç÷¥÷Ω◊ô◊™÷∏ ◊ú÷∑◊ê÷≤◊ë◊ï÷π◊™÷µ÷Ω◊ô◊†◊ï÷º ◊ë÷º÷∑◊ô÷º÷∏◊û÷¥◊ô◊ù ◊î÷∏◊î÷µ◊ù ◊ë÷∑÷º◊ñ÷º÷∞÷í◊û÷∑◊ü ◊î÷∑◊ñ÷º÷∂◊î:","en":null}]},{"t":"◊ë÷º÷¥◊ô◊û÷µ◊ô ◊û÷∑◊™÷º÷¥◊™÷∞◊ô÷∏÷Ω◊î◊ï÷º ◊ë÷º÷∂◊ü ◊ô◊ï÷π◊ó÷∏◊†÷∏◊ü ◊õ÷º÷π◊î÷µ◊ü ◊í÷º÷∏◊ì◊ï÷π◊ú ◊ó÷∑◊©◊Å÷∞◊û◊ï÷π◊†÷∏◊ê÷¥◊ô ◊ï÷º◊ë÷∏◊†÷∏◊ô◊ï ◊õ÷º÷∞◊©◊Å÷∂◊¢÷∏◊û÷∞÷í◊ì÷∏◊î ◊û÷∑◊ú÷∞◊õ◊ï÷º◊™ ◊ô÷∏◊ï÷∏◊ü ◊î÷∏◊®÷∞÷í◊©◊Å÷∏◊¢÷∏◊î ◊¢÷∑◊ú÷æ◊¢÷∑◊û÷º÷∞÷í◊ö÷∏ ◊ô÷¥◊©◊Ç÷∞◊®÷∏◊ê÷µ◊ú ◊ú÷∞◊î÷∑◊©◊Å÷∞◊õ÷º÷¥◊ô◊ó÷∏◊ù ◊™÷º◊ï÷π◊®÷∏◊™÷∂÷Ω◊ö÷∏ ◊ï÷º◊ú÷∞◊î÷∑◊¢÷≤◊ë÷¥◊ô◊®÷∏◊ù ◊û÷µ◊ó÷ª◊ß÷º÷µ◊ô ◊®÷∞◊¶◊ï÷π◊†÷∂÷Ω◊ö÷∏, ◊ï÷∞◊ê÷∑◊™÷º÷∏◊î ◊ë÷º÷∞◊®÷∑◊ó÷≤◊û÷∂÷Ω◊ô◊ö÷∏ ◊î÷∏◊®÷∑◊ë÷º÷¥◊ô◊ù ◊¢÷∏◊û÷∑÷Ω◊ì÷∞◊™÷º÷∏ ◊ú÷∏◊î÷∂◊ù ◊ë÷º÷∞◊¢÷µ◊™ ◊¶÷∏◊®÷∏◊™÷∏◊ù ◊®÷∑÷Ω◊ë÷∞◊™÷º÷∏ ◊ê÷∂◊™÷æ◊®÷¥◊ô◊ë÷∏◊ù ◊ì÷º÷∑÷Ω◊†÷∞◊™÷º÷∏ ◊ê÷∂◊™÷æ◊ì÷º÷¥◊ô◊†÷∏◊ù ◊†÷∏◊ß÷∑÷Ω◊û÷∞◊™÷º÷∏ ◊ê÷∂◊™÷æ◊†÷¥◊ß÷∞◊û÷∏◊™÷∏◊ù ◊û÷∏◊°÷∑÷Ω◊®÷∞◊™÷º÷∏ ◊í÷¥◊ë÷º◊ï÷π◊®÷¥◊ô◊ù ◊ë÷º÷∞◊ô÷∑◊ì ◊ó÷∑◊ú÷º÷∏◊©◊Å÷¥◊ô◊ù ◊ï÷∞◊®÷∑◊ë÷º÷¥◊ô◊ù ◊ë÷º÷∞◊ô÷∑◊ì ◊û÷∞◊¢÷∑◊ò÷º÷¥◊ô◊ù ◊ï÷º◊ò÷∞◊û÷µ◊ê÷¥◊ô◊ù ◊ë÷º÷∞◊ô÷∑◊ì ◊ò÷∞◊î◊ï÷π◊®÷¥◊ô◊ù ◊ï÷º◊®÷∞◊©◊Å÷∏◊¢÷¥◊ô◊ù ◊ë÷º÷∞◊ô÷∑◊ì ◊¶÷∑◊ì÷º÷¥◊ô◊ß÷¥◊ô◊ù ◊ï÷∞◊ñ÷µ◊ì÷¥◊ô◊ù ◊ë÷º÷∞◊ô÷∑◊ì ◊¢◊ï÷π◊°÷∞÷í◊ß÷µ◊ô ◊™◊ï÷π◊®÷∏◊™÷∂÷Ω◊ö÷∏ ◊ï÷º◊ú÷∞◊ö÷∏ ◊¢÷∏◊©◊Ç÷¥÷Ω◊ô◊™÷∏ ◊©◊Å÷µ◊ù ◊í÷º÷∏◊ì◊ï÷π◊ú ◊ï÷∞◊ß÷∏◊ì◊ï÷π◊©◊Å ◊ë÷º÷∞◊¢◊ï÷π◊ú÷∏◊û÷∂÷Ω◊ö÷∏ ◊ï÷º◊ú÷∞◊¢÷∑◊û÷º÷∞÷í◊ö÷∏ ◊ô÷¥◊©◊Ç÷∞◊®÷∏◊ê÷µ◊ú ◊¢÷∏◊©◊Ç÷¥÷Ω◊ô◊™÷∏ ◊™÷º÷∞◊©◊Å◊ï÷º◊¢÷∏◊î ◊í÷∞◊ì◊ï÷π◊ú÷∏◊î ◊ï÷º◊§÷ª◊®÷∞◊ß÷∏◊ü ◊õ÷º÷∞◊î÷∑◊ô÷º◊ï÷π◊ù ◊î÷∑◊ñ÷º÷∂◊î ◊ï÷∞◊ê÷∑◊ó÷∑◊®÷æ◊õ÷º÷µ◊ü ◊ë÷º÷∏÷Ω◊ê◊ï÷º ◊ë÷∏◊†÷∂÷Ω◊ô◊ö÷∏ ◊ú÷¥◊ì÷∞◊ë÷¥◊ô◊® ◊ë÷º÷µ◊ô◊™÷∂÷Ω◊ö÷∏ ◊ï÷º◊§÷¥◊†÷º◊ï÷º ◊ê÷∂◊™÷æ◊î÷µ◊ô◊õ÷∏◊ú÷∂÷Ω◊ö÷∏ ◊ï÷∞◊ò÷¥◊î÷≤◊®◊ï÷º ◊ê÷∂◊™÷æ◊û÷¥◊ß÷∞◊ì÷º÷∏◊©◊Å÷∂÷Ω◊ö÷∏ ◊ï÷∞◊î÷¥◊ì÷∞◊ú÷¥÷Ω◊ô◊ß◊ï÷º ◊†÷µ◊®◊ï÷π◊™ ◊ë÷º÷∞◊ó÷∑◊¶÷∞◊®◊ï÷π◊™ ◊ß÷∏◊ì÷∞◊©◊Å÷∂÷Ω◊ö÷∏ ◊ï÷∞◊ß÷∏◊ë÷∞÷í◊¢◊ï÷º ◊©◊Å÷∞◊û◊ï÷π◊†÷∑◊™ ◊ô÷∞◊û÷µ◊ô ◊ó÷≤◊†÷ª◊õ÷º÷∏◊î ◊ê÷µ÷Ω◊ú÷º◊ï÷º ◊ú÷∞◊î◊ï÷π◊ì◊ï÷π◊™ ◊ï÷º◊ú÷∞◊î÷∑◊ú÷º÷µ◊ú ◊ú÷∞◊©◊Å÷¥◊û÷∞◊ö÷∏ ◊î÷∑◊í÷º÷∏◊ì◊ï÷π◊ú:","c":"chanukah"},{"t":"◊ë÷º÷¥◊ô◊û÷µ◊ô ◊û÷∏◊®÷∞◊ì÷º÷∞÷í◊õ÷∑◊ô ◊ï÷∞◊ê÷∂◊°÷∞◊™÷º÷µ◊® ◊ë÷º÷∞◊©◊Å◊ï÷º◊©◊Å÷∑◊ü ◊î÷∑◊ë÷º÷¥◊ô◊®÷∏◊î ◊õ÷º÷∞◊©◊Å÷∂◊¢÷∏◊û÷∑◊ì ◊¢÷≤◊ú÷µ◊ô◊î÷∂◊ù ◊î÷∏◊û÷∏◊ü ◊î÷∏◊®÷∏◊©◊Å÷∏◊¢ ◊ë÷º÷¥◊ß÷º÷µ◊©◊Å ◊ú÷∞◊î÷∑◊©◊Å÷∞◊û÷¥◊ô◊ì ◊ú÷∑◊î÷≤◊®◊ï÷π◊í ◊ï÷º◊ú÷∞◊ê÷∑◊ë÷º÷µ◊ì ◊ê÷∂◊™÷æ◊õ÷º÷∏◊ú÷æ◊î÷∑◊ô÷∞÷º÷í◊î◊ï÷º◊ì÷¥◊ô◊ù ◊û÷¥◊†÷º÷∑÷Ω◊¢÷∑◊® ◊ï÷∞◊¢÷∑◊ì÷æ◊ñ÷∏◊ß÷µ◊ü ◊ò÷∑◊£ ◊ï÷∞◊†÷∏◊©◊Å÷¥◊ô◊ù ◊ë÷º÷∞◊ô◊ï÷π◊ù ◊ê÷∂◊ó÷∏◊ì ◊ë÷º÷¥◊©◊Å÷∞◊ú◊ï÷π◊©◊Å÷∏◊î ◊¢÷∏◊©◊Ç÷∏◊® ◊ú÷∞◊ó÷Ω÷π◊ì÷∂◊©◊Å ◊©◊Å÷∞◊†÷µ◊ô◊ù÷æ◊¢÷∏◊©◊Ç÷∏◊® ◊î◊ï÷º◊ê÷æ◊ó÷Ω÷π◊ì÷∂◊©◊Å ◊ê÷≤◊ì÷∏◊® ◊ï÷º◊©◊Å÷∞◊ú÷∏◊ú÷∏◊ù ◊ú÷∏◊ë◊ï÷π◊ñ: ◊ï÷∞◊ê÷∑◊™÷º÷∏◊î ◊ë÷º÷∞◊®÷∑◊ó÷≤◊û÷∂÷Ω◊ô◊ö÷∏ ◊î÷∏◊®÷∑◊ë÷º÷¥◊ô◊ù ◊î÷µ◊§÷∑÷Ω◊®÷∞◊™÷º÷∏ ◊ê÷∂◊™÷æ◊¢÷≤◊¶÷∏◊™◊ï÷π ◊ï÷∞◊ß÷¥◊ú÷∞◊ß÷∑÷Ω◊ú÷∞◊™÷º÷∏ ◊ê÷∂◊™÷æ◊û÷∑◊ó÷≤◊©◊Å÷∑◊ë÷∞◊™÷º◊ï÷π ◊ï÷∑◊î÷≤◊©◊Å÷µ◊ë÷Ω◊ï÷π◊™÷∏ ◊ú÷º◊ï÷π ◊í÷º÷∞◊û◊ï÷º◊ú◊ï÷π ◊ë÷º÷∞◊®÷π◊ê◊©◊Å◊ï÷π ◊ï÷∞◊™÷∏◊ú◊ï÷º ◊ê◊ï÷π◊™◊ï÷π ◊ï÷∞◊ê÷∂◊™÷æ◊ë÷º÷∏◊†÷∏◊ô◊ï ◊¢÷∑◊ú÷æ◊î÷∏◊¢÷µ◊• (◊ï÷∞◊¢÷∏◊©÷¥◊Ç◊ô◊™÷∏ ◊¢÷¥◊û÷º÷∏◊î÷∂◊ù ◊†÷µ◊° ◊ï÷∏◊§÷∂◊ú÷∂◊ê ◊ï÷∞◊†◊ï÷π◊ì÷∂◊î ◊ú÷∞◊©÷¥◊Å◊û÷∞◊ö÷∏ ◊î÷∏◊í÷º÷∏◊ì◊ï÷π◊ú ◊°÷∂◊ú÷∏◊î):","c":"purim"},{"t":"◊ï÷∞◊¢÷∑◊ú÷æ◊õ÷º÷ª◊ú÷º÷∏◊ù ◊ô÷¥◊™÷∞◊ë÷º÷∏◊®÷∑◊ö÷∞ ◊ï÷∞◊ô÷¥◊™÷∞◊®◊ï÷π◊û÷∑◊ù ◊©◊Å÷¥◊û÷∞◊ö÷∏ ◊û÷∑◊ú÷∞◊õ÷º÷µ÷Ω◊†◊ï÷º ◊™÷º÷∏◊û÷¥◊ô◊ì ◊ú÷∞◊¢◊ï÷π◊ú÷∏◊ù ◊ï÷∏◊¢÷∂◊ì:","c":"always","ph":[{"t":"◊ï÷∞◊¢÷∑◊ú÷æ◊õ÷º÷ª◊ú÷º÷∏◊ù","en":null},{"t":"◊ô÷¥◊™÷∞◊ë÷º÷∏◊®÷∑◊ö÷∞ ◊ï÷∞◊ô÷¥◊™÷∞◊®◊ï÷π◊û÷∑◊ù ◊©◊Å÷¥◊û÷∞◊ö÷∏ ◊û÷∑◊ú÷∞◊õ÷º÷µ÷Ω◊†◊ï÷º ◊™÷º÷∏◊û÷¥◊ô◊ì ◊ú÷∞◊¢◊ï÷π◊ú÷∏◊ù ◊ï÷∏◊¢÷∂◊ì:","en":"May Your name, our King, be blessed and raised up forever and ever"}]},{"t":"◊ï÷º◊õ÷∞◊™◊ï÷π◊ë ◊ú÷∞◊ó÷∑◊ô÷º÷¥◊ô◊ù ◊ò◊ï÷π◊ë÷¥◊ô◊ù ◊õ÷º÷∏◊ú ◊ë÷º÷∞◊†÷µ◊ô ◊ë÷∞◊®÷¥◊ô◊™÷∂÷Ω◊ö÷∏:","c":"ayt","ph":[{"t":"◊ï÷º◊õ÷∞◊™◊ï÷π◊ë ◊ú÷∞◊ó÷∑◊ô÷º÷¥◊ô◊ù ◊ò◊ï÷π◊ë÷¥◊ô◊ù","en":null},{"t":"◊õ÷º÷∏◊ú","en":"And all the living will thank You, always,"},{"t":"◊ë÷º÷∞◊†÷µ◊ô ◊ë÷∞◊®÷¥◊ô◊™÷∂÷Ω◊ö÷∏:","en":null}]},{"t":"◊ï÷∞◊õ÷π◊ú ◊î÷∑◊ó÷∑◊ô÷º÷¥◊ô◊ù ◊ô◊ï÷π◊ì÷Ω◊ï÷º◊ö÷∏ ◊°÷º÷∂÷Ω◊ú÷∏◊î ◊ï÷¥◊ô◊î÷∑◊ú÷∞÷í◊ú◊ï÷º ◊ê÷∂◊™÷æ◊©◊Å÷¥◊û÷∞◊ö÷∏ ◊ë÷º÷∂◊ê÷±◊û÷∂◊™ ◊î÷∏◊ê÷µ◊ú ◊ô÷∞◊©◊Å◊ï÷º◊¢÷∏◊™÷µ÷Ω◊†◊ï÷º ◊ï÷∞◊¢÷∂◊ñ÷∞◊®÷∏◊™÷µ÷Ω◊†◊ï÷º ◊°÷∂÷Ω◊ú÷∏◊î: ◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î ◊î÷∑◊ò÷º◊ï÷π◊ë ◊©◊Å÷¥◊û÷∞◊ö÷∏ ◊ï÷º◊ú÷∞◊ö÷∏ ◊†÷∏◊ê÷∂◊î ◊ú÷∞◊î◊ï÷π◊ì◊ï÷π◊™:","c":"always","ph":[{"t":"◊ï÷∞◊õ÷π◊ú","en":null},{"t":"◊î÷∑◊ó÷∑◊ô÷º÷¥◊ô◊ù ◊ô◊ï÷π◊ì÷Ω◊ï÷º◊ö÷∏ ◊°÷º÷∂÷Ω◊ú÷∏◊î","en":"And all the living will thank You, always,"},{"t":"◊ï÷¥◊ô◊î÷∑◊ú÷∞÷í◊ú◊ï÷º ◊ê÷∂◊™÷æ◊©◊Å÷¥◊û÷∞◊ö÷∏ ◊ë÷º÷∂◊ê÷±◊û÷∂◊™","en":"And they will praise Your name with truth,"},{"t":"◊î÷∏◊ê÷µ◊ú ◊ô÷∞◊©◊Å◊ï÷º◊¢÷∏◊™÷µ÷Ω◊†◊ï÷º ◊ï÷∞◊¢÷∂◊ñ÷∞◊®÷∏◊™÷µ÷Ω◊†◊ï÷º ◊°÷∂÷Ω◊ú÷∏◊î:","en":"The God who is our salvation and our help, always."},{"t":"◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î","en":"Blessed are You, Hashem,"},{"t":"◊î÷∑◊ò÷º◊ï÷π◊ë ◊©◊Å÷¥◊û÷∞◊ö÷∏ ◊ï÷º◊ú÷∞◊ö÷∏ ◊†÷∏◊ê÷∂◊î ◊ú÷∞◊î◊ï÷π◊ì◊ï÷π◊™:","en":"Your name is good, and to You it is fitting to give thanks."}]}]},{"en":"Peace","he":"◊©÷∏◊Å◊ú◊ï÷π◊ù (◊©÷¥◊Ç◊ô◊ù ◊©÷∏◊Å◊ú◊ï÷π◊ù)","segs":[{"t":"◊©◊Ç÷¥◊ô◊ù ◊©◊Å÷∏◊ú◊ï÷π◊ù ◊ò◊ï÷π◊ë÷∏◊î ◊ï÷º◊ë÷∞◊®÷∏◊õ÷∏◊î ◊ó÷µ◊ü ◊ï÷∏◊ó÷∂÷Ω◊°÷∂◊ì ◊ï÷∞◊®÷∑◊ó÷≤◊û÷¥◊ô◊ù ◊¢÷∏◊ú÷µ÷Ω◊ô◊†◊ï÷º ◊ï÷∞◊¢÷∑◊ú ◊õ÷º÷∏◊ú÷æ◊ô÷¥◊©◊Ç÷∞◊®÷∏◊ê÷µ◊ú ◊¢÷∑◊û÷º÷∂÷Ω◊ö÷∏. ◊ë÷º÷∏◊®÷∞÷í◊õ÷µ÷Ω◊†◊ï÷º ◊ê÷∏◊ë÷¥÷Ω◊ô◊†◊ï÷º ◊õ÷º÷ª◊ú÷º÷∏÷Ω◊†◊ï÷º ◊õ÷º÷∞◊ê÷∂◊ó÷∏◊ì ◊ë÷º÷∞◊ê◊ï÷π◊® ◊§÷º÷∏◊†÷∂÷Ω◊ô◊ö÷∏. ◊õ÷º÷¥◊ô ◊ë÷∞◊ê◊ï÷π◊® ◊§÷º÷∏◊†÷∂÷Ω◊ô◊ö÷∏ ◊†÷∏◊™÷∑÷Ω◊™÷º÷∏ ◊ú÷º÷∏÷Ω◊†◊ï÷º ◊ô÷∞◊î÷π◊ï÷∏◊î ◊ê÷±◊ú÷π◊î÷µ÷Ω◊ô◊†◊ï÷º ◊™÷º◊ï÷π◊®÷∑◊™ ◊ó÷∑◊ô÷º÷¥◊ô◊ù ◊ï÷∞◊ê÷∑◊î÷≤◊ë÷∑◊™ ◊ó÷∂÷Ω◊°÷∂◊ì ◊ï÷º◊¶÷∞◊ì÷∏◊ß÷∏◊î ◊ï÷º◊ë÷∞◊®÷∏◊õ÷∏◊î ◊ï÷∞◊®÷∑◊ó÷≤◊û÷¥◊ô◊ù ◊ï÷∞◊ó÷∑◊ô÷º÷¥◊ô◊ù ◊ï÷∞◊©◊Å÷∏◊ú◊ï÷π◊ù. ◊ï÷∞◊ò◊ï÷π◊ë ◊ë÷º÷∞◊¢÷µ◊ô◊†÷∂÷Ω◊ô◊ö÷∏ ◊ú÷∞◊ë÷∏◊®÷µ◊ö÷∞ ◊ê÷∂◊™ ◊¢÷∑◊û÷º÷∞÷í◊ö÷∏ ◊ô÷¥◊©◊Ç÷∞◊®÷∏◊ê÷µ◊ú ◊ë÷º÷∞◊õ÷∏◊ú÷æ◊¢÷µ◊™ ◊ï÷º◊ë÷∞◊õ÷∏◊ú÷æ◊©◊Å÷∏◊¢÷∏◊î ◊ë÷º÷¥◊©◊Å÷∞◊ú◊ï÷π◊û÷∂÷Ω◊ö÷∏:","c":"always","ph":[{"t":"◊©◊Ç÷¥◊ô◊ù ◊©◊Å÷∏◊ú◊ï÷π◊ù","en":"Put peace"},{"t":"◊ò◊ï÷π◊ë÷∏◊î ◊ï÷º◊ë÷∞◊®÷∏◊õ÷∏◊î ◊ó÷µ◊ü ◊ï÷∏◊ó÷∂÷Ω◊°÷∂◊ì ◊ï÷∞◊®÷∑◊ó÷≤◊û÷¥◊ô◊ù","en":"Goodness, and blessing, favor, and kindness, and mercy,"},{"t":"◊¢÷∏◊ú÷µ÷Ω◊ô◊†◊ï÷º ◊ï÷∞◊¢÷∑◊ú ◊õ÷º÷∏◊ú÷æ◊ô÷¥◊©◊Ç÷∞◊®÷∏◊ê÷µ◊ú ◊¢÷∑◊û÷º÷∂÷Ω◊ö÷∏.","en":"On us, and on all of the Jewish people, Your nation."},{"t":"◊ë÷º÷∏◊®÷∞÷í◊õ÷µ÷Ω◊†◊ï÷º ◊ê÷∏◊ë÷¥÷Ω◊ô◊†◊ï÷º ◊õ÷º÷ª◊ú÷º÷∏÷Ω◊†◊ï÷º ◊õ÷º÷∞◊ê÷∂◊ó÷∏◊ì ◊ë÷º÷∞◊ê◊ï÷π◊® ◊§÷º÷∏◊†÷∂÷Ω◊ô◊ö÷∏.","en":"Bless us, our Father, all of us as one, with the light of Your face."},{"t":"◊õ÷º÷¥◊ô ◊ë÷∞◊ê◊ï÷π◊® ◊§÷º÷∏◊†÷∂÷Ω◊ô◊ö÷∏ ◊†÷∏◊™÷∑÷Ω◊™÷º÷∏ ◊ú÷º÷∏÷Ω◊†◊ï÷º ◊ô÷∞◊î÷π◊ï÷∏◊î ◊ê÷±◊ú÷π◊î÷µ÷Ω◊ô◊†◊ï÷º","en":"Because in the light of Your face You gave to us, Hashem our God,"},{"t":"◊™÷º◊ï÷π◊®÷∑◊™ ◊ó÷∑◊ô÷º÷¥◊ô◊ù ◊ï÷∞◊ê÷∑◊î÷≤◊ë÷∑◊™ ◊ó÷∂÷Ω◊°÷∂◊ì","en":"The living Torah, and the love of kindness."},{"t":"◊ï÷º◊¶÷∞◊ì÷∏◊ß÷∏◊î ◊ï÷º◊ë÷∞◊®÷∏◊õ÷∏◊î ◊ï÷∞◊®÷∑◊ó÷≤◊û÷¥◊ô◊ù ◊ï÷∞◊ó÷∑◊ô÷º÷¥◊ô◊ù ◊ï÷∞◊©◊Å÷∏◊ú◊ï÷π◊ù.","en":"And charity, and blessing, and mercy, and life, and peace,"},{"t":"◊ï÷∞◊ò◊ï÷π◊ë ◊ë÷º÷∞◊¢÷µ◊ô◊†÷∂÷Ω◊ô◊ö÷∏ ◊ú÷∞◊ë÷∏◊®÷µ◊ö÷∞ ◊ê÷∂◊™ ◊¢÷∑◊û÷º÷∞÷í◊ö÷∏ ◊ô÷¥◊©◊Ç÷∞◊®÷∏◊ê÷µ◊ú","en":"And may it be good in Your eyes to bless Your people, the Jewish people,"},{"t":"◊ë÷º÷∞◊õ÷∏◊ú÷æ◊¢÷µ◊™ ◊ï÷º◊ë÷∞◊õ÷∏◊ú÷æ◊©◊Å÷∏◊¢÷∏◊î ◊ë÷º÷¥◊©◊Å÷∞◊ú◊ï÷π◊û÷∂÷Ω◊ö÷∏:","en":"At every time and hour, in Your peace."}]},{"t":"◊ë÷º÷∞◊°÷µ÷Ω◊§÷∂◊® ◊ó÷∑◊ô÷º÷¥◊ô◊ù ◊ë÷º÷∞◊®÷∏◊õ÷∏◊î ◊ï÷∞◊©◊Å÷∏◊ú◊ï÷π◊ù ◊ï÷º◊§÷∑◊®÷∞◊†÷∏◊°÷∏◊î ◊ò◊ï÷π◊ë÷∏◊î ◊†÷¥◊ñ÷º÷∏◊õ÷µ◊® ◊ï÷∞◊†÷¥◊õ÷º÷∏◊™÷µ◊ë ◊ú÷∞◊§÷∏◊†÷∂÷Ω◊ô◊ö÷∏ ◊ê÷≤◊†÷∑÷Ω◊ó÷∞◊†◊ï÷º ◊ï÷∞◊õ÷∏◊ú ◊¢÷∑◊û÷º÷∞÷í◊ö÷∏ ◊ë÷º÷µ◊ô◊™ ◊ô÷¥◊©◊Ç÷∞◊®÷∏◊ê÷µ◊ú ◊ú÷∞◊ó÷∑◊ô÷º÷¥◊ô◊ù ◊ò◊ï÷π◊ë÷¥◊ô◊ù ◊ï÷º◊ú÷∞◊©◊Å÷∏◊ú◊ï÷π◊ù:","c":"ayt"},{"t":"◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î ◊î÷∑◊û÷∞÷í◊ë÷∏◊®÷µ◊ö÷∞ ◊ê÷∂◊™÷æ◊¢÷∑◊û÷º◊ï÷π ◊ô÷¥◊©◊Ç÷∞◊®÷∏◊ê÷µ◊ú ◊ë÷º÷∑◊©÷º◊Å÷∏◊ú◊ï÷π◊ù:","c":"always","ph":[{"t":"◊ë÷º÷∏◊®◊ï÷º◊ö÷∞ ◊ê÷∑◊™÷º÷∏◊î ◊ô÷∞◊î÷π◊ï÷∏◊î","en":"Blessed are You, Hashem"},{"t":"◊î÷∑◊û÷∞÷í◊ë÷∏◊®÷µ◊ö÷∞ ◊ê÷∂◊™÷æ◊¢÷∑◊û÷º◊ï÷π ◊ô÷¥◊©◊Ç÷∞◊®÷∏◊ê÷µ◊ú ◊ë÷º÷∑◊©÷º◊Å÷∏◊ú◊ï÷π◊ù:","en":"The one who blesses His nation, the Jewish people, with peace"}]}]},{"en":"Concluding Passage","he":"◊ê÷±◊ú÷π◊î÷∑◊ô ◊†÷∞◊¶÷π◊® + ◊¢÷π◊©÷∂◊Ç◊î ◊©÷∏◊Å◊ú◊ï÷π◊ù","segs":[{"t":"◊ô÷¥◊î÷∞◊ô◊ï÷º ◊ú÷∞◊®÷∏◊¶◊ï÷π◊ü ◊ê÷¥◊û÷∞◊®÷µ◊ô ◊§÷¥◊ô ◊ï÷∞◊î÷∂◊í÷∞◊ô◊ï÷π◊ü ◊ú÷¥◊ë÷º÷¥◊ô ◊ú÷∞◊§÷∏◊†÷∂÷Ω◊ô◊ö÷∏ ◊ô÷∞◊î÷π◊ï÷∏◊î ◊¶◊ï÷º◊®÷¥◊ô ◊ï÷∞◊í◊ï÷π◊ê÷≤◊ú÷¥◊ô:","c":"always"},{"t":"◊ê÷±◊ú÷π◊î÷∑◊ô ◊†÷∞◊¶◊ï÷π◊® ◊ú÷∞◊©◊Å◊ï÷π◊†÷¥◊ô ◊û÷µ◊®÷∏◊¢ ◊ï÷º◊©◊Ç÷∞◊§÷∏◊™÷∑◊ô ◊û÷¥◊ì÷º÷∑◊ë÷º÷µ◊® ◊û÷¥◊®÷∞◊û÷∏◊î. ◊ï÷∞◊ú÷¥◊û÷∞◊ß÷∑◊ú÷∞÷í◊ú÷∑◊ô ◊†÷∑◊§÷∞◊©◊Å÷¥◊ô ◊™÷¥◊ì÷º◊ï÷π◊ù ◊ï÷∞◊†÷∑◊§÷∞◊©◊Å÷¥◊ô ◊õ÷º÷∂◊¢÷∏◊§÷∏◊® ◊ú÷∑◊õ÷º÷π◊ú ◊™÷º÷¥◊î÷∞◊ô÷∂◊î. ◊§÷º÷∞◊™÷∑◊ó ◊ú÷¥◊ë÷º÷¥◊ô ◊ë÷º÷∞◊™◊ï÷π◊®÷∏◊™÷∂÷Ω◊ö÷∏ ◊ï÷º◊ë÷∞◊û÷¥◊¶÷∞◊ï÷π◊™÷∂÷Ω◊ô◊ö÷∏ ◊™÷º÷¥◊®÷∞◊ì÷º÷π◊£ ◊†÷∑◊§÷∞◊©◊Å÷¥◊ô. ◊ï÷∞◊õ÷π◊ú ◊î÷∑◊ó◊ï÷π◊©◊Å÷∞÷í◊ë÷¥◊ô◊ù ◊¢÷∏◊ú÷∑◊ô ◊®÷∏◊¢÷∏◊î ◊û÷∞◊î÷µ◊®÷∏◊î ◊î÷∏◊§÷µ◊® ◊¢÷≤◊¶÷∏◊™÷∏◊ù ◊ï÷∞◊ß÷∑◊ú÷∞◊ß÷µ◊ú ◊û÷∑◊ó÷≤◊©◊Å÷∑◊ë÷∞◊™÷º÷∏◊ù: ◊¢÷≤◊©◊Ç÷µ◊î ◊ú÷∞◊û÷∑÷Ω◊¢÷∑◊ü ◊©◊Å÷∞◊û÷∂÷Ω◊ö÷∏ ◊¢÷≤◊©◊Ç÷µ◊î ◊ú÷∞◊û÷∑÷Ω◊¢÷∑◊ü ◊ô÷∞◊û÷¥◊ô◊†÷∂÷Ω◊ö÷∏ ◊¢÷≤◊©◊Ç÷µ◊î ◊ú÷∞◊û÷∑÷Ω◊¢÷∑◊ü ◊ß÷∞◊ì÷ª◊©÷º◊Å÷∏◊™÷∂÷Ω◊ö÷∏ ◊¢÷≤◊©◊Ç÷µ◊î ◊ú÷∞◊û÷∑÷Ω◊¢÷∑◊ü ◊™÷º◊ï÷π◊®÷∏◊™÷∂÷Ω◊ö÷∏. ◊ú÷∞◊û÷∑÷Ω◊¢÷∑◊ü ◊ô÷µ◊ó÷∏◊ú÷∞÷í◊¶◊ï÷º◊ü ◊ô÷∞◊ì÷¥◊ô◊ì÷∂÷Ω◊ô◊ö÷∏ ◊î◊ï÷π◊©◊Å÷¥÷Ω◊ô◊¢÷∏◊î ◊ô÷∞◊û÷¥◊ô◊†÷∞÷í◊ö÷∏ ◊ï÷∑◊¢÷≤◊†÷µ÷Ω◊†÷¥◊ô: ◊ô÷¥◊î÷∞◊ô◊ï÷º ◊ú÷∞◊®÷∏◊¶◊ï÷π◊ü ◊ê÷¥◊û÷∞◊®÷µ◊ô ◊§÷¥◊ô ◊ï÷∞◊î÷∂◊í÷∞◊ô◊ï÷π◊ü ◊ú÷¥◊ë÷º÷¥◊ô ◊ú÷∞◊§÷∏◊†÷∂÷Ω◊ô◊ö÷∏ ◊ô÷∞◊î÷π◊ï÷∏◊î ◊¶◊ï÷º◊®÷¥◊ô ◊ï÷∞◊í◊ï÷π◊ê÷≤◊ú÷¥◊ô:","c":"always","ph":[{"t":"◊ê÷±◊ú÷π◊î÷∑◊ô","en":"My God,"},{"t":"◊†÷∞◊¶◊ï÷π◊® ◊ú÷∞◊©◊Å◊ï÷π◊†÷¥◊ô ◊û÷µ◊®÷∏◊¢ ◊ï÷º◊©◊Ç÷∞◊§÷∏◊™÷∑◊ô ◊û÷¥◊ì÷º÷∑◊ë÷º÷µ◊® ◊û÷¥◊®÷∞◊û÷∏◊î.","en":"Guard my tongue from bad, and my lips from speaking dishonestly."},{"t":"◊ï÷∞◊ú÷¥◊û÷∞◊ß÷∑◊ú÷∞÷í◊ú÷∑◊ô ◊†÷∑◊§÷∞◊©◊Å÷¥◊ô ◊™÷¥◊ì÷º◊ï÷π◊ù","en":"And to those who curse me, my soul should be silent (I should be humble and not respond)."},{"t":"◊ï÷∞◊†÷∑◊§÷∞◊©◊Å÷¥◊ô ◊õ÷º÷∂◊¢÷∏◊§÷∏◊® ◊ú÷∑◊õ÷º÷π◊ú ◊™÷º÷¥◊î÷∞◊ô÷∂◊î.","en":"And my soul should be like dirt (humble) to all."},{"t":"◊§÷º÷∞◊™÷∑◊ó ◊ú÷¥◊ë÷º÷¥◊ô ◊ë÷º÷∞◊™◊ï÷π◊®÷∏◊™÷∂÷Ω◊ö÷∏ ◊ï÷º◊ë÷∞◊û÷¥◊¶÷∞◊ï÷π◊™÷∂÷Ω◊ô◊ö÷∏ ◊™÷º÷¥◊®÷∞◊ì÷º÷π◊£ ◊†÷∑◊§÷∞◊©◊Å÷¥◊ô.","en":"Open my heart in Your Torah, and may my soul run after your mitzvot."},{"t":"◊ï÷∞◊õ÷π◊ú ◊î÷∑◊ó◊ï÷π◊©◊Å÷∞÷í◊ë÷¥◊ô◊ù ◊¢÷∏◊ú÷∑◊ô ◊®÷∏◊¢÷∏◊î","en":"And all those who think bad on me (about me),"},{"t":"◊û÷∞◊î÷µ◊®÷∏◊î ◊î÷∏◊§÷µ◊® ◊¢÷≤◊¶÷∏◊™÷∏◊ù ◊ï÷∞◊ß÷∑◊ú÷∞◊ß÷µ◊ú ◊û÷∑◊ó÷≤◊©◊Å÷∑◊ë÷∞◊™÷º÷∏◊ù:","en":"Quickly You should cancel their ideas, and ruin their thoughts."},{"t":"◊¢÷≤◊©◊Ç÷µ◊î ◊ú÷∞◊û÷∑÷Ω◊¢÷∑◊ü ◊©◊Å÷∞◊û÷∂÷Ω◊ö÷∏","en":"You should do this for the sake of Your name,"},{"t":"◊¢÷≤◊©◊Ç÷µ◊î ◊ú÷∞◊û÷∑÷Ω◊¢÷∑◊ü ◊ô÷∞◊û÷¥◊ô◊†÷∂÷Ω◊ö÷∏","en":"You should do this for the sake of Your right hand,"},{"t":"◊¢÷≤◊©◊Ç÷µ◊î ◊ú÷∞◊û÷∑÷Ω◊¢÷∑◊ü ◊ß÷∞◊ì÷ª◊©÷º◊Å÷∏◊™÷∂÷Ω◊ö÷∏","en":"You should do this for the sake of Your holiness,"},{"t":"◊¢÷≤◊©◊Ç÷µ◊î ◊ú÷∞◊û÷∑÷Ω◊¢÷∑◊ü ◊™÷º◊ï÷π◊®÷∏◊™÷∂÷Ω◊ö÷∏.","en":"You should do this for the sake of Your Torah."},{"t":"◊ú÷∞◊û÷∑÷Ω◊¢÷∑◊ü ◊ô÷µ◊ó÷∏◊ú÷∞÷í◊¶◊ï÷º◊ü ◊ô÷∞◊ì÷¥◊ô◊ì÷∂÷Ω◊ô◊ö÷∏","en":"So that they those who who You love (the Jewish people) should be rescued,"},{"t":"◊î◊ï÷π◊©◊Å÷¥÷Ω◊ô◊¢÷∏◊î ◊ô÷∞◊û÷¥◊ô◊†÷∞÷í◊ö÷∏ ◊ï÷∑◊¢÷≤◊†÷µ÷Ω◊†÷¥◊ô:","en":"Your right hand should save and answer me."},{"t":"◊ô÷¥◊î÷∞◊ô◊ï÷º ◊ú÷∞◊®÷∏◊¶◊ï÷π◊ü ◊ê÷¥◊û÷∞◊®÷µ◊ô ◊§÷¥◊ô ◊ï÷∞◊î÷∂◊í÷∞◊ô◊ï÷π◊ü ◊ú÷¥◊ë÷º÷¥◊ô ◊ú÷∞◊§÷∏◊†÷∂÷Ω◊ô◊ö÷∏","en":"Let the words of my mouth and the thoughts of my heart be desired and accepted before you,"},{"t":"◊ô÷∞◊î÷π◊ï÷∏◊î ◊¶◊ï÷º◊®÷¥◊ô ◊ï÷∞◊í◊ï÷π◊ê÷≤◊ú÷¥◊ô:","en":"Hashem, my rock and my redeemer"}]},{"t":"◊¢÷π◊©◊Ç÷∂◊î ( ◊î÷∑◊©÷º◊Å÷∏◊ú◊ï÷π◊ù) ◊©◊Å÷∏◊ú◊ï÷π◊ù ◊ë÷º÷¥◊û÷∞◊®◊ï÷π◊û÷∏◊ô◊ï ◊î◊ï÷º◊ê ◊ô÷∑◊¢÷≤◊©◊Ç÷∂◊î ◊©◊Å÷∏◊ú◊ï÷π◊ù ◊¢÷∏◊ú÷µ÷Ω◊ô◊†◊ï÷º ◊ï÷∞◊¢÷∑◊ú ◊õ÷º÷∏◊ú÷æ◊ô÷¥◊©◊Ç÷∞◊®÷∏◊ê÷µ◊ú ◊ï÷∞◊ê÷¥◊û÷∞◊®◊ï÷º ◊ê÷∏◊û÷µ◊ü:","c":"always","ph":[{"t":"◊¢÷π◊©◊Ç÷∂◊î ◊î÷∑◊©÷º◊Å÷∏◊ú◊ï÷π◊ù)","en":"He who makes peace in heaven,"},{"t":"◊©◊Å÷∏◊ú◊ï÷π◊ù","en":null},{"t":"◊ë÷º÷¥◊û÷∞◊®◊ï÷π◊û÷∏◊ô◊ï","en":"He who makes peace in heaven,"},{"t":"◊î◊ï÷º◊ê ◊ô÷∑◊¢÷≤◊©◊Ç÷∂◊î ◊©◊Å÷∏◊ú◊ï÷π◊ù","en":"He should make peace,"},{"t":"◊¢÷∏◊ú÷µ÷Ω◊ô◊†◊ï÷º ◊ï÷∞◊¢÷∑◊ú ◊õ÷º÷∏◊ú÷æ◊ô÷¥◊©◊Ç÷∞◊®÷∏◊ê÷µ◊ú","en":"On us and on all of the Jewish people,"},{"t":"◊ï÷∞◊ê÷¥◊û÷∞◊®◊ï÷º ◊ê÷∏◊û÷µ◊ü:","en":"And you should say Amen (‚ÄúI agree‚Äù)."}]},{"t":"◊ô÷∞◊î÷¥◊ô ◊®÷∏◊¶◊ï÷π◊ü ◊û÷¥◊ú÷º÷∞÷í◊§÷∏◊†÷∂÷Ω◊ô◊ö÷∏ ◊ô÷∞◊î÷π◊ï÷∏◊î ◊ê÷±◊ú÷π◊î÷µ÷Ω◊ô◊†◊ï÷º ◊ï÷µ◊ê◊ú÷π◊î÷µ◊ô ◊ê÷≤◊ë◊ï÷π◊™÷µ÷Ω◊ô◊†◊ï÷º ◊©◊Å÷∂◊ô÷º÷¥◊ë÷º÷∏◊†÷∂◊î ◊ë÷º÷µ◊ô◊™ ◊î÷∑◊û÷º÷¥◊ß÷∞◊ì÷º÷∏◊©◊Å ◊ë÷º÷¥◊û÷∞◊î÷µ◊®÷∏◊î ◊ë÷∞◊ô÷∏◊û÷µ÷Ω◊ô◊†◊ï÷º ◊ï÷∞◊™÷µ◊ü ◊ó÷∂◊ú÷∞◊ß÷µ÷Ω◊†◊ï÷º ◊ë÷º÷∞◊™◊ï÷π◊®÷∏◊™÷∂÷Ω◊ö÷∏: ◊ï÷∞◊©◊Å÷∏◊ù ◊†÷∑◊¢÷≤◊ë÷∏◊ì÷∞◊ö÷∏ ◊ë÷º÷∞◊ô÷¥◊®÷∞◊ê÷∏◊î ◊õ÷º÷¥◊ô◊û÷µ◊ô ◊¢◊ï÷π◊ú÷∏◊ù ◊ï÷º◊õ÷∞◊©◊Å÷∏◊†÷¥◊ô◊ù ◊ß÷∑◊ì÷∞◊û◊ï÷π◊†÷¥◊ô÷º◊ï÷π◊™: ◊ï÷∞◊¢÷∏◊®÷∞÷í◊ë÷∏◊î ◊ú÷∑◊ô◊î◊ï÷∏÷π◊î ◊û÷¥◊†÷∞◊ó÷∑◊™ ◊ô÷∞◊î◊ï÷º◊ì÷∏◊î ◊ï÷¥◊ô◊®◊ï÷º◊©◊Å÷∏◊ú÷∏÷Ω◊ù÷¥ ◊õ÷º÷¥◊ô◊û÷µ◊ô ◊¢◊ï÷π◊ú÷∏◊ù ◊ï÷º◊õ÷∞◊©◊Å÷∏◊†÷¥◊ô◊ù ◊ß÷∑◊ì÷∞◊û◊ï÷π◊†÷¥◊ô÷º◊ï÷π◊™:","c":"always","ph":[{"t":"◊ô÷∞◊î÷¥◊ô ◊®÷∏◊¶◊ï÷π◊ü ◊û÷¥◊ú÷º÷∞÷í◊§÷∏◊†÷∂÷Ω◊ô◊ö÷∏ ◊ô÷∞◊î÷π◊ï÷∏◊î ◊ê÷±◊ú÷π◊î÷µ÷Ω◊ô◊†◊ï÷º ◊ï÷µ◊ê◊ú÷π◊î÷µ◊ô ◊ê÷≤◊ë◊ï÷π◊™÷µ÷Ω◊ô◊†◊ï÷º","en":"It should be Your desire, Hashem our God and the God of our fathers,"},{"t":"◊©◊Å÷∂◊ô÷º÷¥◊ë÷º÷∏◊†÷∂◊î ◊ë÷º÷µ◊ô◊™ ◊î÷∑◊û÷º÷¥◊ß÷∞◊ì÷º÷∏◊©◊Å ◊ë÷º÷¥◊û÷∞◊î÷µ◊®÷∏◊î ◊ë÷∞◊ô÷∏◊û÷µ÷Ω◊ô◊†◊ï÷º","en":"That the Beit haMikdash should be rebuilt quickly in our day"},{"t":"◊ï÷∞◊™÷µ◊ü ◊ó÷∂◊ú÷∞◊ß÷µ÷Ω◊†◊ï÷º ◊ë÷º÷∞◊™◊ï÷π◊®÷∏◊™÷∂÷Ω◊ö÷∏:","en":"And You should give us our portion in Your Torah,"},{"t":"◊ï÷∞◊©◊Å÷∏◊ù ◊†÷∑◊¢÷≤◊ë÷∏◊ì÷∞◊ö÷∏ ◊ë÷º÷∞◊ô÷¥◊®÷∞◊ê÷∏◊î","en":"And there we will worship you with fear/awe,"},{"t":"◊õ÷º÷¥◊ô◊û÷µ◊ô ◊¢◊ï÷π◊ú÷∏◊ù ◊ï÷º◊õ÷∞◊©◊Å÷∏◊†÷¥◊ô◊ù ◊ß÷∑◊ì÷∞◊û◊ï÷π◊†÷¥◊ô÷º◊ï÷π◊™:","en":"Like in the days from the past and in earlier years (earlier generations, when the Beit haMikdash was built)."},{"t":"◊ï÷∞◊¢÷∏◊®÷∞÷í◊ë÷∏◊î","en":"And the gifts (korbanot) of the Jewish and Yerushalayim should be sweet to Hashem,"},{"t":"◊ú÷∑◊ô◊î◊ï÷∏÷π◊î","en":null},{"t":"◊û÷¥◊†÷∞◊ó÷∑◊™ ◊ô÷∞◊î◊ï÷º◊ì÷∏◊î ◊ï÷¥◊ô◊®◊ï÷º◊©◊Å÷∏◊ú÷∏÷Ω◊ù÷¥","en":"And the gifts (korbanot) of the Jewish and Yerushalayim should be sweet to Hashem,"},{"t":"◊õ÷º÷¥◊ô◊û÷µ◊ô ◊¢◊ï÷π◊ú÷∏◊ù ◊ï÷º◊õ÷∞◊©◊Å÷∏◊†÷¥◊ô◊ù ◊ß÷∑◊ì÷∞◊û◊ï÷π◊†÷¥◊ô÷º◊ï÷π◊™:","en":"Like in the days from the past and in earlier years (earlier generations, when the Beit haMikdash was built)."}]}]}],"glossary":{"◊©÷∞◊Ç◊§÷∏◊™÷∑◊ô":"my lips","◊™÷¥÷º◊§÷∞◊™÷∏÷º◊ó":"You open","◊ï÷º◊§÷¥◊ô":"And my mouth","◊ô÷∑◊í÷¥÷º◊ô◊ì":"it will say","◊™÷∞÷º◊î÷¥◊ú÷∏÷º◊™÷∂◊ö÷∏":"Your praise","◊ë÷∏÷º◊®◊ï÷º◊ö÷∞":"Blessed","◊ê÷∑◊™÷∏÷º◊î":"You","◊ê÷±◊ú÷π◊ß÷µ◊ô◊†◊ï÷º":"our God","◊ï÷µ◊ê◊ú÷π◊î÷µ◊ô":"and the God of","◊ê÷≤◊ë◊ï÷π◊™÷µ◊ô◊†◊ï÷º":"our fathers","◊ê÷±◊ú÷π◊î÷µ◊ô":"the God of","◊î÷∏◊ê÷µ◊ú":"the God","◊î÷∑◊í÷∏÷º◊ì◊ï÷π◊ú":"The Great","◊î÷∑◊í÷¥÷º◊ë÷º◊ï÷π◊®":"The strong","◊ï÷∞◊î÷∑◊†÷º◊ï÷π◊®÷∏◊ê":"And the Awesome","◊ê÷µ◊ú":"God","◊¢÷∂◊ú÷∞◊ô◊ï÷π◊ü":"The Most High","◊í÷º◊ï÷π◊û÷µ◊ú":"He gives","◊ó÷≤◊°÷∏◊ì÷¥◊ô◊ù":"kind deeds (chesed)","◊ò◊ï÷π◊ë÷¥◊ô◊ù":"good","◊ï÷∞◊ß◊ï÷π◊†÷µ◊î":"and creates","◊î÷∑◊õ÷π÷º◊ú":"all/everything","◊ï÷∞◊ñ◊ï÷π◊õ÷µ◊®":"and remembers","◊ó÷∑◊°÷∞◊ì÷µ◊ô":"the kindnesses (chesed)","◊ê÷∏◊ë◊ï÷π◊™":"fathers (Avraham, Yitzchak, and Yakov)","◊ï÷º◊û÷µ◊ë÷¥◊ô◊ê":"and He brings","◊í◊ï÷π◊ê÷µ◊ú":"redeemer (Mashiach)","◊ú÷¥◊ë÷∞◊†÷µ◊ô-◊ë÷∞◊†÷µ◊ô◊î÷∂◊ù":"to their grandchildren (the grandchildren of the avot)","◊ú÷∞◊û÷∑◊¢÷∑◊ü":"for the sake of","◊©÷∞◊Å◊û◊ï÷π":"His name","◊ë÷∞÷º◊ê÷∑◊î÷≤◊ë÷∏◊î":"with love","◊û÷∂◊ú÷∂◊ö÷∞":"king","◊¢◊ï÷π◊ñ÷µ◊®":"helper","◊ï÷º◊û◊ï÷π◊©÷¥◊Å◊ô◊¢÷∑":"and He saves","◊ï÷º◊û÷∏◊í÷µ◊ü":"and shield","◊û÷∏◊í÷µ◊ü":"shield","◊í÷¥◊ë÷º◊ï÷π◊®":"strong","◊ú÷∞◊¢◊ï÷π◊ú÷∏◊ù":"forever","◊û÷∞◊ó÷∑◊ô÷µ÷º◊î":"gives life/revives","◊û÷µ◊™÷¥◊ô◊ù":"dead people","◊®÷∑◊ë":"a lot","◊ú÷∞◊î◊ï÷π◊©÷¥◊Å◊ô◊¢÷∑":"to save","◊û÷∑◊©÷¥÷º◊Å◊ô◊ë":"He makes blow","◊î÷∏◊®◊ï÷º◊ó÷∑":"the wind","◊ï÷º◊û◊ï÷π◊®÷¥◊ô◊ì":"and He makes fall","◊î÷∑◊í÷∂÷º◊©÷∂◊Å◊ù":"the rain","◊û÷∞◊õ÷∑◊ú÷∞◊õ÷µ÷º◊ú":"He provides","◊ó÷∑◊ô÷¥÷º◊ô◊ù":"life","◊ë÷∞÷º◊ó÷∂◊°÷∂◊ì":"with kindness","◊ë÷∞÷º◊®÷∑◊ó÷≤◊û÷¥◊ô◊ù":"with mercy","◊®÷∑◊ë÷¥÷º◊ô◊ù":"a lot","◊°◊ï÷π◊û÷µ◊ö÷∞":"He supports","◊†◊ï÷π◊§÷∞◊ú÷¥◊ô◊ù":"people who are falling","◊ï÷∞◊®◊ï÷π◊§÷µ◊ê":"and heals","◊ó◊ï÷π◊ú÷¥◊ô◊ù":"sick people","◊ï÷º◊û÷∑◊™÷¥÷º◊ô◊®":"and He releases/frees","◊ê÷≤◊°◊ï÷º◊®÷¥◊ô◊ù":"captives","◊ï÷º◊û÷∞◊ß÷∑◊ô÷µ÷º◊ù":"and He keeps","◊ê÷±◊û◊ï÷º◊†÷∏◊™◊ï÷π":"his faithfulness","◊ú÷¥◊ô◊©÷µ◊Å◊†÷µ◊ô":"to those who sleep","◊¢÷∏◊§÷∏◊®":"dirt","◊û÷¥◊ô":"Who","◊õ÷∏◊û◊ï÷π◊ö÷∏":"Like you","◊ë÷∑÷º◊¢÷∑◊ú":"owner","◊í÷∞÷º◊ë◊ï÷º◊®◊ï÷π◊™":"strengths","◊ï÷º◊û÷¥◊ô":"and who","◊ì÷º◊ï÷π◊û÷∂◊î":"similar","◊ú÷∏÷º◊ö÷∞":"to you","◊û÷µ◊û÷¥◊ô◊™":"who causes death","◊ï÷º◊û÷∞◊ó÷∑◊ô÷µ÷º◊î":"and gives life/revives","◊ï÷º◊û÷∑◊¶÷∞◊û÷¥◊ô◊ó÷∑":"and causes to grow","◊ô÷∞◊©◊Å◊ï÷º◊¢÷∏◊î":"the redemption (Mashiach)","◊ï÷∞◊†÷∂◊ê÷±◊û÷∏◊ü":"and trustworthy","◊ú÷∞◊î÷∑◊ó÷≤◊ô◊ï÷π◊™":"to cause to live","◊î÷∑◊û÷µ÷º◊™÷¥◊ô◊ù":"the dead people","◊ß÷∏◊ì◊ï÷π◊©◊Å":"holy","◊ï÷∞◊©÷¥◊Å◊û÷∞◊ö÷∏":"and your name","◊ï÷º◊ß÷∞◊ì◊ï÷π◊©÷¥◊Å◊ô◊ù":"and holy ones (Jewish people)","◊ë÷∞÷º◊õ÷∏◊ú":"in every/in all","◊ô÷∞◊î÷∑◊ú÷∞◊ú◊ï÷º◊ö÷∏":"they will praise you","◊°÷∂÷º◊ú÷∏◊î":"forever","◊î÷∑◊ß÷∏÷º◊ì◊ï÷π◊©◊Å":"the holy","◊ó◊ï÷π◊†÷µ◊ü":"give as a gift","◊ú÷∞◊ê÷∏◊ì÷∏◊ù":"to man","◊ì÷∑÷º◊¢÷∑◊™":"wisdom","◊ï÷º◊û÷∞◊ú÷∑◊û÷µ÷º◊ì":"and you teach","◊ú÷∂◊ê÷±◊†◊ï÷π◊©◊Å":"to humans","◊ë÷¥÷º◊ô◊†÷∏◊î":"understanding","◊ó÷∏◊†÷µ÷º◊†◊ï÷º":"give as a gift to us","◊û÷µ◊ê÷¥◊™÷∞÷º◊ö÷∏":"from You","◊ì÷µ÷º◊¢÷∏◊î":"wisdom","◊ï÷∞◊î÷∑◊©÷∞◊Ç◊õ÷µ÷º◊ú":"and insight","◊ô◊ï÷π◊ù":"day","◊î÷≤◊©÷¥◊Å◊ô◊ë÷µ◊†◊ï÷º":"You return us","◊ê÷∏◊ë÷¥◊ô◊†◊ï÷º":"our father","◊ú÷∞◊™◊ï÷π◊®÷∏◊™÷∂◊ö÷∏":"to Your Torah","◊ï÷∞◊ß÷∏◊®÷∞◊ë÷µ◊†◊ï÷º":"and bring us close","◊û÷∑◊ú÷∞◊õ÷µ÷º◊†◊ï÷º":"our king","◊ú÷∑◊¢÷≤◊ë◊ï÷π◊ì÷∏◊™÷∂◊ö÷∏":"to Your service","◊ï÷∞◊î÷∑◊ó÷≤◊ñ÷¥◊ô◊®÷µ◊†◊ï÷º":"and return us","◊ë÷¥÷º◊™÷∞◊©◊Å◊ï÷º◊ë÷∏◊î":"with Teshuva (repentance)","◊©÷∞◊Å◊ú÷µ◊û÷∏◊î":"complete","◊ú÷∞◊§÷∏◊†÷∂◊ô◊ö÷∏":"before you","◊î÷∏◊®◊ï÷π◊¶÷∂◊î":"the one who wants","◊°÷∞◊ú÷∑◊ó":"you forgive","◊ú÷∏◊†◊ï÷º":"to us/us","◊õ÷¥÷º◊ô":"because","◊ó÷∏◊ò÷∏◊ê◊†◊ï÷º":"we sinned (by accident)","◊û÷∞◊ó÷∑◊ú":"you excuse","◊§÷∏◊©÷∏◊Å◊¢÷∞◊†◊ï÷º":"we sinned (on purpose)","◊û◊ï÷π◊ó÷µ◊ú":"the one who excuses","◊ï÷∞◊°◊ï÷π◊ú÷µ◊ó÷∑":"and the one who forgives","◊ó÷∑◊†÷º◊ï÷º◊ü":"the kind one","◊î÷∑◊û÷∑÷º◊®÷∞◊ë÷∂÷º◊î":"the one who does a lot","◊ú÷¥◊°÷∞◊ú◊ï÷π◊ó÷∑":"to forgive","◊®÷∞◊ê÷µ◊î":"You see","◊ë÷∞◊¢÷∏◊†÷∞◊ô÷µ◊†◊ï÷º":"in our pain","◊ï÷∞◊®÷¥◊ô◊ë÷∏◊î":"and fight","◊®÷¥◊ô◊ë÷µ◊†◊ï÷º":"our fights","◊ï÷º◊í÷∞◊ê÷∏◊ú÷µ◊†◊ï÷º":"and redeem us","◊û÷∞◊î÷µ◊®÷∏◊î":"quickly","◊©÷∞◊Å◊û÷∂◊ö÷∏":"your name","◊ó÷∏◊ñ÷∏◊ß":"strong","◊®÷∞◊§÷∏◊ê÷µ◊†◊ï÷º":"heal us","◊ï÷∞◊†÷µ◊®÷∏◊§÷µ◊ê":"and we will be healed","◊î◊ï÷π◊©÷¥◊Å◊ô◊¢÷µ◊†◊ï÷º":"save us","◊ï÷∞◊†÷¥◊ï÷∏÷º◊©÷µ◊Å◊¢÷∏◊î":"and we will be saved","◊™÷∞◊î÷¥◊ú÷∏÷º◊™÷µ◊†◊ï÷º":"the one who we praise","◊ï÷∞◊î÷∑◊¢÷≤◊ú÷µ◊î":"and bring","◊®÷∞◊§◊ï÷º◊ê÷∏◊î":"healing","◊ú÷∞◊õ÷∏◊ú":"to all","◊û÷∑◊õ÷º◊ï÷π◊™÷µ◊ô◊†◊ï÷º":"our sicknesses","◊®◊ï÷π◊§÷µ◊ê":"healer/heals","◊†÷∂◊ê÷±◊û÷∏◊ü":"trustworthy","◊ï÷∞◊®÷∑◊ó÷≤◊û÷∏◊ü":"and merciful","◊ó◊ï÷π◊ú÷µ◊ô":"the sick people","◊¢÷∑◊û÷º◊ï÷π":"his nation","◊ë÷∏÷º◊®÷µ◊ö÷∞":"You bless","◊¢÷∏◊ú÷µ◊ô◊†◊ï÷º":"on us","◊î÷∑◊©÷∏÷º◊Å◊†÷∏◊î":"the year","◊î÷∑◊ñ÷π÷º◊ê◊™":"this","◊ï÷∞◊ê÷∂◊™":"and","◊õ÷∏÷º◊ú":"all/everything","◊û÷¥◊ô◊†÷µ◊ô":"types/species","◊™÷∞◊ë◊ï÷º◊ê÷∏◊™÷∏◊î÷º":"its grain","◊ú÷∞◊ò◊ï÷π◊ë÷∏◊î":"for good","◊ï÷∞◊™÷µ◊ü":"and you give","◊ò÷∑◊ú":"dew","◊ï÷º◊û÷∏◊ò÷∏◊®":"and rain","◊ú÷¥◊ë÷∞◊®÷∏◊õ÷∏◊î":"for a blessing","◊¢÷∑◊ú":"on","◊§÷∞÷º◊†÷µ◊ô":"the face of","◊î÷∏◊ê÷≤◊ì÷∏◊û÷∏◊î":"the ground","◊ï÷∞◊©÷∑◊Ç◊ë÷∞÷º◊¢÷µ◊†◊ï÷º":"and fill us up","◊û÷¥◊ò÷º◊ï÷º◊ë÷∂◊ö÷∏":"from Your goodness","◊ï÷º◊ë÷∏◊®÷µ◊ö÷∞":"and You bless","◊©÷∞◊Å◊†÷∏◊™÷µ◊†◊ï÷º":"our years","◊õ÷∑÷º◊©÷∏÷º◊Å◊†÷¥◊ô◊ù":"like the years","◊î÷∑◊ò÷º◊ï÷π◊ë◊ï÷π◊™":"the good ones","◊û÷∞◊ë÷∏◊®÷µ◊ö÷∞":"the one who blesses","◊î÷∑◊©÷∏÷º◊Å◊†÷¥◊ô◊ù":"the years","◊™÷∞÷º◊ß÷∑◊¢":"you blow","◊ë÷∞÷º◊©◊Å◊ï÷π◊§÷∏◊®":"with a shofar","◊í÷∏÷º◊ì◊ï÷π◊ú":"big/great","◊ú÷∞◊ó÷µ◊®◊ï÷º◊™÷µ◊†◊ï÷º":"for our saving","◊ï÷∞◊©÷∏◊Ç◊ê":"and raise","◊†÷µ◊°":"a banner","◊ú÷∞◊ß÷∑◊ë÷µ÷º◊•":"to gather","◊í÷∏÷º◊ú÷ª◊ô÷º◊ï÷π◊™÷µ◊ô◊†◊ï÷º":"our exiles","◊ï÷∞◊ß÷∑◊ë÷∞÷º◊¶÷µ◊†◊ï÷º":"and gather us","◊ô÷∑◊ó÷∑◊ì":"together","◊û÷µ◊ê÷∑◊®÷∞◊ë÷∑÷º◊¢":"from the four","◊õ÷∑÷º◊†÷∞◊§◊ï÷π◊™":"corners","◊î÷∏◊ê÷∏◊®÷∂◊•":"the land","◊û÷∞◊ß÷∑◊ë÷µ÷º◊•":"the one who gathers","◊†÷¥◊ì÷∞◊ó÷µ◊ô":"the scattered ones","◊î÷∏◊©÷¥◊Å◊ô◊ë÷∏◊î":"bring back","◊©◊Å◊ï÷π◊§÷∞◊ò÷µ◊ô◊†◊ï÷º":"our judges","◊õ÷∞÷º◊ë÷∏◊®÷¥◊ê◊©◊Å◊ï÷π◊†÷∏◊î":"like they were originally","◊ï÷∞◊ô◊ï÷π◊¢÷≤◊¶÷µ◊ô◊†◊ï÷º":"and our advisers","◊õ÷∞÷º◊ë÷∑◊™÷∞÷º◊ó÷¥◊ú÷∏÷º◊î":"like they were at first","◊ï÷∞◊î÷∏◊°÷µ◊®":"and remove","◊û÷¥◊û÷∂÷º◊†÷º◊ï÷º":"from us","◊ô÷∏◊í◊ï÷π◊ü":"sadness","◊ï÷∑◊ê÷≤◊†÷∏◊ó÷∏◊î":"and sighing","◊ï÷º◊û÷∞◊ú◊ï÷π◊ö÷∞":"and rule","◊ú÷∞◊ë÷∑◊ì÷∞÷º◊ö÷∏":"you alone","◊ï÷º◊ë÷∞◊®÷∑◊ó÷≤◊û÷¥◊ô◊ù":"and with mercy","◊ï÷∞◊¶÷∑◊ì÷∞÷º◊ß÷µ÷Ω◊†◊ï÷º":"and judges us fairly","◊ë÷∑÷º◊û÷¥◊©÷∞◊Å◊§÷∏÷º◊ò":"in judgement","◊ê÷π◊î÷µ◊ë":"He loves","◊¶÷∞◊ì÷∏◊ß÷∏◊î":"righteousness","◊ï÷º◊û÷¥◊©÷∞◊Å◊§÷∏÷º◊ò":"and justice","◊ï÷∞◊ú÷∑◊û÷∑÷º◊ú÷∞◊©÷¥◊Å◊ô◊†÷¥◊ô◊ù":"to people who speak badly (against the Jewish people)","◊ê÷∑◊ú":"no/not","◊™÷∞÷º◊î÷¥◊ô":"there should be","◊™÷¥◊ß÷∞◊ï÷∏◊î":"hope","◊ï÷∞◊õ÷∏◊ú":"and all/everything","◊î÷∏◊®÷¥◊©÷∞◊Å◊¢÷∏◊î":"the evil","◊õ÷∞÷º◊®÷∂◊í÷∑◊¢":"in a moment","◊™÷π÷º◊ê◊ë÷µ◊ì":"will be destroyed","◊ê÷π◊ô÷∞◊ë÷∂◊ô◊ö÷∏":"your enemies","◊ô÷¥◊õ÷∏÷º◊®÷µ◊™◊ï÷º":"they should be destroyed","◊ï÷∞◊î÷∑◊ñ÷µ÷º◊ì÷¥◊ô◊ù":"and the enemies of the Jews","◊™÷∞◊¢÷∑◊ß÷µ÷º◊®":"You uproot","◊ï÷º◊™÷∞◊©÷∑◊Å◊ë÷µ÷º◊®":"and You break","◊ï÷º◊™÷∞◊û÷∑◊í÷µ÷º◊®":"and You crumble","◊ï÷∞◊™÷∑◊õ÷∞◊†÷¥◊ô◊¢÷∑":"and You humble","◊ë÷¥÷º◊û÷∞◊î÷µ◊®÷∏◊î":"quickly","◊ë÷∞◊ô÷∏◊û÷µ◊ô◊†◊ï÷º":"in our days","◊©◊Å◊ï÷π◊ë÷µ◊®":"You break","◊ê÷π◊ô÷∞◊ë÷¥◊ô◊ù":"enemies","◊ï÷º◊û÷∑◊õ÷∞◊†÷¥◊ô◊¢÷∑":"and You humble","◊ñ÷µ◊ì÷¥◊ô◊ù":"enemies of the Jews","◊î÷∑◊¶÷∑÷º◊ì÷¥÷º◊ô◊ß÷¥◊ô◊ù":"the righteous people","◊ï÷∞◊¢÷∑◊ú":"and on","◊î÷∑◊ó÷≤◊°÷¥◊ô◊ì÷¥◊ô◊ù":"the saintly","◊ñ÷¥◊ß÷∞◊†÷µ◊ô":"the elders of","◊¢÷∑◊û÷∞÷º◊ö÷∏":"Your nation","◊ë÷µ÷º◊ô◊™":"the house of","◊ô÷¥◊©÷∞◊Ç◊®÷∏◊ê÷µ◊ú":"the Jewish people","◊§÷∞÷º◊ú÷µ◊ô◊ò÷∑◊™":"the remainder of","◊°◊ï÷π◊§÷∞◊®÷µ◊ô◊î÷∂◊ù":"their Torah scholars","◊í÷µ÷º◊®÷µ◊ô":"converts","◊î÷∑◊¶÷∂÷º◊ì÷∂◊ß":"righteous","◊ï÷∞◊¢÷∏◊ú÷µ◊ô◊†◊ï÷º":"and on us","◊ô÷∂◊î÷±◊û◊ï÷º":"you should give","◊®÷∑◊ó÷≤◊û÷∂◊ô◊ö÷∏":"your mercy","◊©÷∏◊Ç◊õ÷∏◊®":"reward","◊ò◊ï÷π◊ë":"good","◊î÷∑◊ë÷º◊ï÷π◊ò÷∞◊ó÷¥◊ô◊ù":"those who rely","◊ë÷∞÷º◊©÷¥◊Å◊û÷∞◊ö÷∏":"in Your name","◊ë÷∂÷º◊ê÷±◊û÷∂◊™":"in truth","◊ï÷∞◊©÷¥◊Ç◊ô◊ù":"and you put","◊ó÷∂◊ú÷∞◊ß÷µ◊†◊ï÷º":"our portion","◊¢÷¥◊û÷∏÷º◊î÷∂◊ù":"with them","◊†÷µ◊ë◊ï÷π◊©◊Å":"we will be embarrassed","◊ë÷∞◊ö÷∏":"in you","◊ë÷∏÷º◊ò÷∏◊ó÷∞◊†◊ï÷º":"we have relied","◊û÷¥◊©÷∞◊Å◊¢÷∏◊ü":"the supporter","◊ï÷º◊û÷¥◊ë÷∞◊ò÷∏◊ó":"and the one who is trusted","◊ï÷∞◊ú÷¥◊ô◊®◊ï÷º◊©÷∏◊Å◊ú÷∑◊ô÷¥◊ù":"and to Yerushalayim","◊¢÷¥◊ô◊®÷∞◊ö÷∏":"your city","◊™÷∏÷º◊©◊Å◊ï÷º◊ë":"return","◊ï÷∞◊™÷¥◊©÷∞◊Å◊õ÷º◊ï÷π◊ü":"and you will live","◊ë÷∞÷º◊™◊ï÷π◊õ÷∏◊î÷º":"in it","◊õ÷∑÷º◊ê÷≤◊©÷∂◊Å◊®":"just like","◊ì÷¥÷º◊ë÷∑÷º◊®÷∞◊™÷∏÷º":"You spoke","◊ï÷º◊ë÷∞◊†÷µ◊î":"and build","◊ê◊ï÷π◊™÷∏◊î÷º":"it","◊ë÷∞÷º◊ß÷∏◊®◊ï÷π◊ë":"soon","◊ë÷∞÷º◊ô÷∏◊û÷µ◊ô◊†◊ï÷º":"in our days","◊ë÷¥÷º◊†÷∞◊ô÷∑◊ü":"a building of","◊¢◊ï÷π◊ú÷∏◊ù":"forever","◊ï÷∞◊õ÷¥◊°÷µ÷º◊ê":"and the chair","◊ì÷∏◊ï÷¥◊ì":"King David","◊ú÷∞◊™◊ï÷π◊õ÷∏◊î÷º":"into it","◊™÷∏÷º◊õ÷¥◊ô◊ü":"establish","◊ë÷º◊ï÷π◊†÷µ◊î":"build","◊¶÷∂◊û÷∑◊ó":"sprouting","◊¢÷∑◊ë÷∞◊ì÷∞÷º◊ö÷∏":"your servant","◊™÷∑◊¶÷∞◊û÷¥◊ô◊ó÷∑":"you cause to sprout/grow","◊ï÷∞◊ß÷∑◊®÷∞◊†◊ï÷π":"and his power","◊™÷∏÷º◊®◊ï÷º◊ù":"raise up","◊ë÷¥÷º◊ô◊©◊Å◊ï÷º◊¢÷∏◊™÷∂◊ö÷∏":"with your saving","◊ú÷¥◊ô◊©◊Å◊ï÷º◊¢÷∏◊™÷∞◊ö÷∏":"to your saving","◊ß÷¥◊ï÷¥÷º◊ô◊†◊ï÷º":"we hope","◊î÷∑◊ô÷º◊ï÷π◊ù":"today","◊û÷∑◊¶÷∞◊û÷¥◊ô◊ó÷∑":"who causes to sprout","◊ß÷∂◊®÷∂◊ü":"power","◊©÷∞◊Å◊û÷∑◊¢":"You listen","◊ß◊ï÷π◊ú÷µ◊†◊ï÷º":"our voice","◊ó◊ï÷º◊°":"You spare us","◊ï÷∞◊®÷∑◊ó÷µ◊ù":"and have mercy","◊ï÷∞◊ß÷∑◊ë÷µ÷º◊ú":"and You accept","◊ï÷º◊ë÷∞◊®÷∏◊¶◊ï÷π◊ü":"and favorably","◊™÷∞÷º◊§÷¥◊ú÷∏÷º◊™÷µ◊†◊ï÷º":"our prayers","◊©◊Å◊ï÷π◊û÷µ◊¢÷∑":"who listens","◊™÷∞÷º◊§÷¥◊ú÷º◊ï÷π◊™":"prayers","◊ï÷∞◊™÷∑◊ó÷≤◊†◊ï÷º◊†÷¥◊ô◊ù":"and requests","◊ï÷º◊û÷¥◊ú÷∞÷º◊§÷∏◊†÷∂◊ô◊ö÷∏":"and from before you","◊®÷µ◊ô◊ß÷∏◊ù":"empty handed","◊™÷∞÷º◊©÷¥◊Å◊ô◊ë÷µ◊†◊ï÷º":"you return us","◊™÷∞÷º◊§÷¥◊ú÷∑÷º◊™":"the prayer of","◊®÷∞◊¶÷µ◊î":"You should find favor","◊ë÷∞÷º◊¢÷∑◊û÷∞÷º◊ö÷∏":"in your nation","◊ï÷º◊ë÷¥◊™÷∞◊§÷¥◊ú÷∏÷º◊™÷∏◊ù":"and in their prayers","◊ï÷∞◊î÷∏◊©÷µ◊Å◊ë":"and you should return","◊î÷∏◊¢÷≤◊ë◊ï÷π◊ì÷∏◊î":"the service (in the Beit haMikdash)","◊ú÷¥◊ì÷∞◊ë÷¥◊ô◊®":"to the holy place of","◊ë÷µ÷º◊ô◊™÷∂◊ö÷∏":"Your house","◊ï÷∞◊ê÷¥◊©÷µ÷º◊Å◊ô":"and the fire korbanot of","◊ï÷º◊™÷∞◊§÷¥◊ú÷∏÷º◊™÷∏◊ù":"and their prayers","◊™÷∞◊ß÷∑◊ë÷µ÷º◊ú":"you should accept","◊ë÷∞÷º◊®÷∏◊¶◊ï÷π◊ü":"with favor","◊ï÷º◊™÷∞◊î÷¥◊ô":"and it should be","◊ú÷∞◊®÷∏◊¶◊ï÷π◊ü":"as favorable","◊™÷∏÷º◊û÷¥◊ô◊ì":"always","◊¢÷≤◊ë◊ï÷π◊ì÷∑◊™":"the service of","◊¢÷∑◊û÷∂÷º◊ö÷∏":"your nation","◊ï÷∞◊™÷∂◊ó÷±◊ñ÷∂◊ô◊†÷∏◊î":"and you should cause to see","◊¢÷µ◊ô◊†÷µ◊ô◊†◊ï÷º":"our eyes","◊ë÷∞÷º◊©◊Å◊ï÷º◊ë÷∞◊ö÷∏":"in Your return","◊ú÷∞◊¶÷¥◊ô÷º◊ï÷π◊ü":"to Yerushalayim (Zion)","◊î÷∑◊û÷∑÷º◊ó÷≤◊ñ÷¥◊ô◊®":"the one who returns","◊©÷∞◊Å◊õ÷¥◊ô◊†÷∏◊™◊ï÷π":"His Godly presence","◊û◊ï÷π◊ì÷¥◊ô◊ù":"we thank","◊ê÷≤◊†÷∑◊ó÷∞◊†◊ï÷º":"we/us","◊©÷∏◊Å◊ê÷∑◊™÷∏÷º◊î":"that you","◊ú÷∞◊¢◊ï÷π◊ú÷∏◊ù-◊ï÷∏◊¢÷∂◊ì":"forever","◊¶◊ï÷º◊®":"rock","◊ó÷∑◊ô÷µ÷º◊ô◊†◊ï÷º":"our life","◊ô÷¥◊©÷∞◊Å◊¢÷µ◊†◊ï÷º":"our saving","◊ú÷∞◊ì◊ï÷π◊®-◊ï÷∏◊ì◊ï÷π◊®":"from generation to generation (for all time)","◊†◊ï÷π◊ì÷∂◊î":"we thank","◊ú÷∞÷º◊ö÷∏":"to you","◊ï÷º◊†÷∞◊°÷∑◊§÷µ÷º◊®":"and we tell","◊î÷∑◊û÷∞÷º◊°◊ï÷º◊®÷¥◊ô◊ù":"that is placed in","◊ë÷∞÷º◊ô÷∏◊ì÷∂◊ö÷∏":"in your hand","◊†÷¥◊©÷∞◊Å◊û◊ï÷π◊™÷µ◊ô◊†◊ï÷º":"our souls","◊î÷∑◊§÷∞÷º◊ß◊ï÷º◊ì◊ï÷π◊™":"that is entrusted","◊†÷¥◊°÷∂÷º◊ô◊ö÷∏":"your miracles","◊©÷∂◊Å◊ë÷∞÷º◊õ÷∏◊ú":"that every","◊¢÷¥◊û÷∏÷º◊†◊ï÷º":"with us","◊†÷¥◊§÷∞◊ú÷∞◊ê◊ï÷π◊™÷∂◊ô◊ö÷∏":"your miracles","◊ï÷∞◊ò◊ï÷π◊ë◊ï÷π◊™÷∂◊ô◊ö÷∏":"and your goodness","◊¢÷µ◊™":"time","◊¢÷∂◊®÷∂◊ë":"evening","◊ï÷∏◊ë÷π◊ß÷∂◊®":"and morning","◊ï÷∞◊¶÷∏◊î÷≥◊®÷∏◊ô÷¥◊ù":"and afternoon","◊î÷∑◊ò÷º◊ï÷π◊ë":"The good one","◊ú÷π◊ê":"No","◊õ÷∏◊ú◊ï÷º":"They were completed","◊ï÷∞◊î÷∑◊û÷∞◊®÷∑◊ó÷µ◊ù":"And the merciful one","◊™÷∑◊û÷º◊ï÷º":"They are finished","◊ó÷≤◊°÷∏◊ì÷∂◊ô◊ö÷∏":"Your kindnesses","◊û÷µ◊¢◊ï÷π◊ú÷∏◊ù":"forever","◊õ÷ª÷º◊ú÷∏÷º◊ù":"All of them","◊ô÷¥◊™÷∞◊ë÷∏÷º◊®÷∑◊ö÷∞":"Should be blessed","◊ï÷∞◊ô÷¥◊™÷∞◊®◊ï÷π◊û÷∑◊ù":"And should be raised high","◊©÷¥◊Å◊û÷∞◊ö÷∏":"Your name","◊î÷∑◊ó÷∑◊ô÷¥÷º◊ô◊ù":"the living","◊ô◊ï÷π◊ì◊ï÷º◊ö÷∏":"They will thank You","◊ï÷¥◊ô◊î÷∑◊ú÷∞◊ú◊ï÷º":"And they will praise","◊ô÷∞◊©◊Å◊ï÷º◊¢÷∏◊™÷µ◊†◊ï÷º":"Our salvation","◊ï÷∞◊¢÷∂◊ñ÷∞◊®÷∏◊™÷µ◊†◊ï÷º":"And our help","◊ï÷º◊ú÷∞◊ö÷∏":"And to You","◊†÷∏◊ê÷∂◊î":"appropriate","◊ú÷∞◊î◊ï÷π◊ì◊ï÷π◊™":"To thank","◊©÷¥◊Ç◊ô◊ù":"put","◊©÷∏◊Å◊ú◊ï÷π◊ù":"Peace","◊ò◊ï÷π◊ë÷∏◊î":"Goodness","◊ï÷º◊ë÷∞◊®÷∏◊õ÷∏◊î":"And blessing","◊ó÷µ◊ü":"Favor","◊ï÷∏◊ó÷∂◊°÷∂◊ì":"And kindness","◊ï÷∞◊®÷∑◊ó÷≤◊û÷¥◊ô◊ù":"And mercy","◊ë÷∏÷º◊®÷∞◊õ÷µ◊†◊ï÷º":"Bless us","◊õ÷ª÷º◊ú÷∏÷º◊†◊ï÷º":"All of us","◊õ÷∞÷º◊ê÷∂◊ó÷∏◊ì":"As one","◊ë÷∞÷º◊ê◊ï÷π◊®":"In the light","◊§÷∏÷º◊†÷∂◊ô◊ö÷∏":"Of Your face","◊†÷∏◊™÷∑◊™÷∏÷º":"You gave","◊™÷º◊ï÷π◊®÷∑◊™":"Torah of","◊ï÷∞◊ê÷∑◊î÷≤◊ë÷∑◊™":"And the love of","◊ó÷∂◊°÷∂◊ì":"Kindness","◊ï÷º◊¶÷∞◊ì÷∏◊ß÷∏◊î":"and charity","◊ï÷∞◊ó÷∑◊ô÷¥÷º◊ô◊ù":"And life","◊ï÷∞◊©÷∏◊Å◊ú◊ï÷π◊ù":"And peace","◊ï÷∞◊ò◊ï÷π◊ë":"And good","◊ë÷∞÷º◊¢÷µ◊ô◊†÷∂◊ô◊ö÷∏":"In Your eyes","◊ú÷∞◊ë÷∏◊®÷µ◊ö÷∞":"To bless","◊ï÷º◊ë÷∞◊õ÷∏◊ú":"And in every","◊©÷∏◊Å◊¢÷∏◊î":"time","◊ë÷¥÷º◊©÷∞◊Å◊ú◊ï÷π◊û÷∂◊ö÷∏":"In Your peace","◊î÷∑◊û÷∞◊ë÷∏◊®÷µ◊ö÷∞":"The one who blesses","◊ë÷∑÷º◊©÷∏÷º◊Å◊ú◊ï÷π◊ù":"With peace","◊ô÷¥◊î÷∞◊ô◊ï÷º":"Let them be","◊ê÷¥◊û÷∞◊®÷µ◊ô":"The words of","◊§÷¥◊ô":"My mouth","◊ï÷∞◊î÷∂◊í÷∞◊ô◊ï÷π◊ü":"And the thoughts of","◊ú÷¥◊ë÷¥÷º◊ô":"My heart","◊¶◊ï÷º◊®÷¥◊ô":"My rock","◊ï÷∞◊í◊ï÷π◊ê÷≤◊ú÷¥◊ô":"And my redeemer","◊ê÷±◊ú÷π◊î÷∑◊ô":"my God","◊†÷∞◊¶◊ï÷π◊®":"you guard","◊ú÷∞◊©◊Å◊ï÷π◊†÷¥◊ô":"my tongue","◊û÷µ◊®÷∏◊¢":"from bad","◊ï÷º◊©÷∞◊Ç◊§÷∏◊™÷∑◊ô":"and my lips","◊û÷¥◊ì÷∑÷º◊ë÷µ÷º◊®":"from speaking","◊û÷¥◊®÷∞◊û÷∏◊î":"dishonestly","◊ï÷∞◊ú÷¥◊û÷∞◊ß÷∑◊ú÷∞◊ú÷∑◊ô":"and to those who curse me","◊†÷∑◊§÷∞◊©÷¥◊Å◊ô":"my soul","◊™÷¥◊ì÷º◊ï÷π◊ù":"it should be silent","◊ï÷∞◊†÷∑◊§÷∞◊©÷¥◊Å◊ô":"and my soul","◊õ÷∂÷º◊¢÷∏◊§÷∏◊®":"like dirt","◊ú÷∑◊õ÷π÷º◊ú":"to all","◊™÷¥÷º◊î÷∞◊ô÷∂◊î":"it should be","◊§÷∞÷º◊™÷∑◊ó":"You open","◊ë÷∞÷º◊™◊ï÷π◊®÷∏◊™÷∂◊ö÷∏":"in Your Torah","◊ï÷º◊ë÷∞◊û÷¥◊¶÷∞◊ï÷π◊™÷∂◊ô◊ö÷∏":"and in Your mitzvot","◊™÷¥÷º◊®÷∞◊ì÷π÷º◊£":"it should run after","◊ï÷∞◊õ÷π◊ú":"and all","◊î÷∑◊ó◊ï÷π◊©÷∞◊Å◊ë÷¥◊ô◊ù":"those who think","◊¢÷∏◊ú÷∑◊ô":"on me","◊®÷∏◊¢÷∏◊î":"bad","◊î÷∏◊§÷µ◊®":"You should cancel","◊¢÷≤◊¶÷∏◊™÷∏◊ù":"their ideas","◊ï÷∞◊ß÷∑◊ú÷∞◊ß÷µ◊ú":"and You ruin","◊û÷∑◊ó÷≤◊©÷∑◊Å◊ë÷∞◊™÷∏÷º◊ù":"their thoughts","◊¢÷≤◊©÷µ◊Ç◊î":"You should do","◊ô÷∞◊û÷¥◊ô◊†÷∂◊ö÷∏":"Your right hand","◊ß÷∞◊ì÷ª◊©÷∏÷º◊Å◊™÷∂◊ö÷∏":"Your holiness","◊™÷º◊ï÷π◊®÷∏◊™÷∂◊ö÷∏":"Your Torah","◊ô÷µ◊ó÷∏◊ú÷∞◊¶◊ï÷º◊ü":"they should be rescued","◊ô÷∞◊ì÷¥◊ô◊ì÷∂◊ô◊ö÷∏":"those who you love","◊î◊ï÷π◊©÷¥◊Å◊ô◊¢÷∏◊î":"You save","◊ï÷∑◊¢÷≤◊†÷µ◊†÷¥◊ô":"and answer me","◊¢÷π◊©÷∂◊Ç◊î":"He does","◊ë÷¥÷º◊û÷∞◊®◊ï÷π◊û÷∏◊ô◊ï":"in His heavens","◊î◊ï÷º◊ê":"He","◊ô÷∑◊¢÷≤◊©÷∂◊Ç◊î":"He will do","◊ï÷∞◊ê÷¥◊û÷∞◊®◊ï÷º":"and you should say","◊ê÷∏◊û÷µ◊ü":"Amen (saying ‚ÄúI agree‚Äù)","◊ô÷∞◊î÷¥◊ô":"it should be","◊®÷∏◊¶◊ï÷π◊ü":"want/desire","◊û÷¥◊ú÷∞÷º◊§÷∏◊†÷∂◊ô◊ö÷∏":"before You","◊©÷∂◊Å◊ô÷¥÷º◊ë÷∏÷º◊†÷∂◊î":"that it should be built","◊ë÷µ÷º◊ô◊™-◊î÷∑◊û÷¥÷º◊ß÷∞◊ì÷∏÷º◊©◊Å":"Beit haMikdash","◊ï÷∞◊©÷∏◊Å◊ù":"and there","◊†÷∑◊¢÷≤◊ë÷∏◊ì÷∞◊ö÷∏":"we will worship You","◊ë÷∞÷º◊ô÷¥◊®÷∞◊ê÷∏◊î":"with fear/awe","◊õ÷¥÷º◊ô◊û÷µ◊ô":"like in the days of","◊ï÷º◊õ÷∞◊©÷∏◊Å◊†÷¥◊ô◊ù":"and like the years","◊ß÷∑◊ì÷∞◊û◊ï÷π◊†÷¥◊ô÷º◊ï÷π◊™":"earlier ones","◊ï÷∞◊¢÷∏◊®÷∞◊ë÷∏◊î":"and it should be sweet","◊û÷¥◊†÷∞◊ó÷∑◊™":"the gift of","◊ô÷∞◊î◊ï÷º◊ì÷∏◊î":"Yehuda (the Jewish people)","◊ï÷¥◊ô◊®◊ï÷º◊©÷∏◊Å◊ú÷∏◊ù÷¥":"and Yerushalayim"}};
+
+/* ================= text utils & engine ================= */
+const FINALS={'◊ö':'◊õ','◊ù':'◊û','◊ü':'◊†','◊£':'◊§','◊•':'◊¶'};
+function norm(w){ // vocalized or plain word -> bare letters
+  let s=(w||'').replace(/[^◊ê-◊™]/g,'');
+  s=s.replace(/[◊ö◊ù◊ü◊£◊•]/g,c=>FINALS[c]);
+  return s;
+}
+function normTranscript(w){
+  let s=norm(w);
+  s=s.replace(/◊ê◊ú◊ï?◊ß/g,'◊ê◊ú◊î');     // Elokim-spellings (◊ê◊ú◊ï◊ß◊ô◊†◊ï/◊ê◊ú◊ß◊ô◊ù) -> Elohim family
+  return s;
+}
+const FOLD_MAP={'◊¢':'◊ê','◊ò':'◊™','◊ß':'◊õ','◊ó':'◊õ','◊°':'◊©'};
+function fold(s){let o='';for(const c of s)o+=(FOLD_MAP[c]||c);return o;}
+function foldAshk(s){ // extra leniency for Ashkenazi havara: sav (◊™->◊°) BEFORE the ◊°->◊© fold, then "oy"->"o"
+  return fold(s.replace(/◊™/g,'◊°')).replace(/◊ï◊ô/g,'◊ï');
+}
+function lev(a,b){
+  const m=a.length,n=b.length;
+  if(!m)return n; if(!n)return m;
+  let prev=new Array(n+1),cur=new Array(n+1);
+  for(let j=0;j<=n;j++)prev[j]=j;
+  for(let i=1;i<=m;i++){
+    cur[0]=i;
+    for(let j=1;j<=n;j++){
+      cur[j]=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));
+    }
+    [prev,cur]=[cur,prev];
+  }
+  return prev[n];
+}
+function ratio(a,b){
+  if(!a.length&&!b.length)return 1;
+  const d=lev(a,b);
+  return 1-d/Math.max(a.length,b.length);
+}
+const DIVINE=new Set(['◊î◊©◊û','◊ê◊ì◊†◊ô','◊ê◊ì◊ï◊†◊ô','◊ê◊ì◊ï◊©◊û','◊ê◊ì◊†◊ï◊ô','◊ô◊î◊ï◊î']); // final letters already folded by norm() ‚Äî bare '◊î' removed so the divine slot can't trivially pass
+function isDivineTarget(n){return n==='◊ô◊î◊ï◊î';}
+const MATRES=new Set(['◊ê','◊î','◊ï','◊ô']);
+function singleEdit(a,b){ // if a->b is one edit, return {type:'sub'|'ins'|'del', ca, cb}
+  const la=a.length,lb=b.length;
+  if(Math.abs(la-lb)>1)return null;
+  if(la===lb){
+    let d=-1;
+    for(let i=0;i<la;i++)if(a[i]!==b[i]){if(d>=0)return null;d=i;}
+    return d>=0?{type:'sub',ca:a[d],cb:b[d]}:null;
+  }
+  const [sh,lo]=la<lb?[a,b]:[b,a];
+  let i=0;while(i<sh.length&&sh[i]===lo[i])i++;
+  if(sh.slice(i)!==lo.slice(i+1))return null;
+  return {type:la<lb?'ins':'del',ca:lo[i],cb:lo[i]};
+}
+function analyzeEdits(a,b,maxE){ // list of ‚â§maxE edits turning a into b, matres-insertions preferred; null if more
+  if(a===b)return [];
+  const e=singleEdit(a,b);
+  if(e)return [e];
+  if(maxE<2)return null;
+  const [sh,lo,dir]=a.length<=b.length?[a,b,'ins']:[b,a,'del'];
+  for(let i=0;i<lo.length;i++){
+    if(!MATRES.has(lo[i]))continue;
+    const lo2=lo.slice(0,i)+lo.slice(i+1);
+    const sub=dir==='ins'?analyzeEdits(sh,lo2,maxE-1):analyzeEdits(lo2,sh,maxE-1);
+    if(sub)return [{type:dir,ca:lo[i],cb:lo[i]},...sub];
+  }
+  return null;
+}
+function simWords(tNorm,gNorm,ashk){ // transcript token vs target word (both normalized)
+  if(isDivineTarget(gNorm))return DIVINE.has(tNorm)?1:0;
+  if(!tNorm||!gNorm)return 0;
+  if(tNorm===gNorm)return 1;
+  const ft=fold(tNorm),fg=fold(gNorm);
+  if(ft===fg)return 0.97;                      // identical sound (◊ò/◊™, ◊õ/◊ß, ◊ê/◊¢, ◊°/◊©◊Ç spelling variance)
+  if(ashk&&foldAshk(tNorm)===foldAshk(gNorm))return 0.94;
+  if(gNorm.length<=2||tNorm.length<=2)return 0; // short words: sound-exact or nothing
+  const edits=analyzeEdits(ft,fg,2);
+  if(edits){
+    const real=edits.filter(e=>e.type==='sub'||!MATRES.has(e.ca));
+    if(real.length===0)return 0.9;   // only plene/defective spelling differences (extra ◊ô/◊ï etc.)
+    if(real.length===1)return 0.55;  // ONE real sound wrong (e.g. ◊ì/◊®) -> "almost", flagged
+    return 0.3;
+  }
+  let s=Math.max(ratio(tNorm,gNorm),ratio(ft,fg));
+  if(ashk)s=Math.max(s,ratio(foldAshk(tNorm),foldAshk(gNorm)));
+  return Math.min(s,0.62); // 2+ sounds differ: never auto-green
+}
+/* word states */
+const ST={PENDING:0,OK:1,WARN:2,BAD:3};
+const TH_OK=0.65, TH_WARN=0.35, TH_MERGE=0.72;
+const MAX_SKIP=2; // a single confident match may skip at most this many un-read words (prevents line-leaps)
+const SKIP_TOKEN='__SKIP__';
+function stateFor(s){return s>=TH_OK?ST.OK:(s>=TH_WARN?ST.WARN:ST.BAD);}
+
+/* Full (re-)alignment of a token stream against the target words.
+   Called on EVERY recognition update (including interim results), so coloring is
+   near-instant and self-corrects as the recognizer firms up its transcript. */
+function alignTokens(tokens,words,ashk){
+  const st=new Array(words.length).fill(null); // per word: {state,score,heard} | null(pending)
+  let c=0, streak=0, prev=null, skips=0; // skips = words auto-marked BAD by a jump-ahead (used for confidence/flagging)
+  for(const raw of tokens){
+    if(c>=words.length)break;
+    if(raw===SKIP_TOKEN){ // manual skip / tap-ahead (deliberate, not counted as an auto-skip)
+      st[c]={state:ST.BAD,score:0,heard:null};c++;prev=null;streak=0;continue;
+    }
+    const t=normTranscript(raw);
+    if(!t)continue;
+    const W=streak>=3?12:8;               // widen the search window only to FIND the word ‚Äî never to authorize a big leap
+    const end=Math.min(c+W,words.length);
+
+    // (1) Does this token read the CURRENT word (possibly imperfectly)?
+    const curS=simWords(t,words[c].norm,ashk);
+    // (2) Merge: one spoken token covering the current word + the next one.
+    const mS=(c+1<words.length)?simWords(t,words[c].norm+words[c+1].norm,ashk):0;
+    // (3) Best match anywhere in the window (to detect a genuine short skip ahead).
+    let best=-1,bs=0;
+    for(let i=c;i<end;i++){const s=simWords(t,words[i].norm,ashk);if(s>bs){bs=s;best=i;}}
+
+    // Merge wins only if it clearly beats reading the current word alone.
+    if(mS>=TH_MERGE&&mS>curS&&mS>=bs){
+      st[c]={state:stateFor(mS),score:mS,heard:raw};
+      st[c+1]={state:ST.WARN,score:mS,heard:raw}; // 2nd word not independently verified ‚Üí "almost", not full credit
+      c+=2;prev=null;streak=0;continue;
+    }
+    // Prefer reading the current word if it's acceptable ‚Äî do NOT jump ahead when the current word matched.
+    if(curS>=TH_WARN){
+      st[c]={state:stateFor(curS),score:curS,heard:raw};
+      c++;prev=null;streak=0;continue;
+    }
+    // Current word wasn't matched. Allow only a SHORT + CONFIDENT skip to a word just ahead.
+    if(best>c&&bs>=TH_OK&&best-c<=MAX_SKIP){
+      for(let k=c;k<best;k++){st[k]={state:ST.BAD,score:0,heard:null};skips++;}
+      st[best]={state:stateFor(bs),score:bs,heard:raw};
+      c=best+1;prev=null;streak=0;continue;
+    }
+    // Split: recognizer broke one word into two tokens (prev + this) ‚Üí the current word.
+    if(prev){
+      const js=simWords(prev.t+t,words[c].norm,ashk);
+      if(js>=TH_OK){
+        st[c]={state:stateFor(js),score:js,heard:prev.raw+' '+raw};
+        c++;prev=null;streak=0;continue;
+      }
+    }
+    // Unmatched token: keep it as a possible split fragment; cursor stays put (no silent leap).
+    prev={t,raw};streak++;
+  }
+  return {st,cursor:c,skips};
+}
+function alignScore(tokens,words,ashk){ // used to pick the best ASR alternative
+  const r=alignTokens(tokens,words,ashk);
+  const mass=r.st.reduce((s,x)=>s+(x?x.score:0),0);
+  return mass-0.5*(r.skips||0); // penalize auto-skipped gaps so a jump-ahead alternative can't win on raw mass
+}
+
+/* letter-level diff for mistake feedback */
+function letterDiff(exp,heard){
+  const a=exp,b=heard;
+  const m=a.length,n=b.length;
+  const dp=[];
+  for(let i=0;i<=m;i++){dp[i]=[];for(let j=0;j<=n;j++){dp[i][j]=i===0?j:(j===0?i:Math.min(dp[i-1][j]+1,dp[i][j-1]+1,dp[i-1][j-1]+(a[i-1]===b[j-1]?0:1)));}}
+  const A=[],B=[];let i=m,j=n;
+  while(i>0||j>0){
+    if(i>0&&j>0&&dp[i][j]===dp[i-1][j-1]+(a[i-1]===b[j-1]?0:1)){
+      const d=a[i-1]!==b[j-1];A.unshift({c:a[i-1],diff:d});B.unshift({c:b[j-1],diff:d});i--;j--;
+    }else if(i>0&&dp[i][j]===dp[i-1][j]+1){A.unshift({c:a[i-1],diff:true});i--;}
+    else{B.unshift({c:b[j-1],diff:true});j--;}
+  }
+  return [A,B];
+}
+const CONFUSIONS=[[['◊ì','◊®'],'Did you read a ◊ì (dalet) as a ◊® (reish), or the other way around? Look for the corner on the dalet.'],
+ [['◊î','◊ó'],'◊î (hey) vs ◊ó (ches) ‚Äî check whether the left leg has a gap at the top.'],
+ [['◊ë','◊õ'],'◊ë (beis) vs ◊õ (chaf) ‚Äî the beis has a square corner and a little heel.'],
+ [['◊ï','◊ñ'],'◊ï (vav) vs ◊ñ (zayin) ‚Äî the zayin has a crown on top.'],
+ [['◊í','◊†'],'◊í (gimmel) vs ◊† (nun) ‚Äî the gimmel has a little foot.'],
+ [['◊ò','◊û'],'◊ò (tes) vs ◊û (mem) ‚Äî check the opening.'],
+ [['◊¢','◊¶'],'◊¢ (ayin) vs ◊¶ (tzadi).'],
+ [['◊™','◊ó'],'◊™ (taf) vs ◊ó (ches) ‚Äî the taf has a foot on the left leg.']];
+function classifyMistake(expN,heardN){
+  if(!heardN)return 'This word was skipped or not heard.';
+  const [A,B]=letterDiff(expN,heardN);
+  const diffsA=A.filter(x=>x.diff).map(x=>x.c), diffsB=B.filter(x=>x.diff).map(x=>x.c);
+  if(diffsA.length===1&&diffsB.length===1){
+    for(const [pair,msg] of CONFUSIONS){
+      if((pair[0]===diffsA[0]&&pair[1]===diffsB[0])||(pair[1]===diffsA[0]&&pair[0]===diffsB[0]))return msg;
+    }
+    if(fold(diffsA[0])===fold(diffsB[0]))return 'Very close ‚Äî a letter may not have been pronounced clearly.';
+    return 'One letter is different: expected "'+diffsA[0]+'" but heard "'+diffsB[0]+'".';
+  }
+  if(fold(expN)===fold(heardN))return 'Almost! It sounded very close ‚Äî make sure to pronounce each letter clearly.';
+  return 'This word sounded different ‚Äî try reading it slowly, letter by letter.';
+}
+
+/* ================= word list builder ================= */
+function activeSegs(bracha,settings){
+  return bracha.segs.filter(s=>{
+    switch(s.c){
+      case 'always':return true;
+      case 'winter':return settings.winter;
+      case 'notwinter':return !settings.winter;
+      case 'ayt':return settings.ayt;
+      case 'notayt':return !settings.ayt;
+      case 'rc':return settings.rc;
+      case 'nissim':return settings.chanukah||settings.purim;
+      case 'chanukah':return settings.chanukah;
+      case 'purim':return settings.purim;
+      default:return true;
+    }
+  });
+}
+function buildWords(bIdx,settings){
+  const b=DATA.brachot[bIdx];
+  const segs=activeSegs(b,settings);
+  const words=[];const phrases=[];
+  segs.forEach((seg,si)=>{
+    const chunks=(seg.ph&&seg.ph.length)?seg.ph:seg.t.split(/(?<=[:.])\s+/).map(t=>({t}));
+    chunks.forEach(ch=>{
+      const pIdx=phrases.length;
+      phrases.push({trans:ch.en||null,words:[],seg:si});
+      ch.t.split(/\s+/).forEach(tok=>{
+        const parts=tok.split('÷æ');
+        parts.forEach((p,pi)=>{
+          const display=p+(pi<parts.length-1?'÷æ':'');
+          const n=norm(p);
+          if(!n&&!/[◊ê-◊™]/.test(p))return;
+          const w={display,norm:n,phrase:pIdx,state:ST.PENDING,score:0,heard:null};
+          phrases[pIdx].words.push(words.length);
+          words.push(w);
+        });
+      });
+    });
+  });
+  return {words,phrases,name:b.he,en:b.en};
+}
+
+/* ================= speech ================= */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+function micPolicyBlocked(){
+  try{return document.featurePolicy&&!document.featurePolicy.allowsFeature('microphone');}catch(_){return false;}
+}
+class Listener{
+  /* onCommit(altsTokenArrays) ‚Äî a phrase just finalized; several ASR alternatives given.
+     onInterim(tokens)        ‚Äî live (unfinalized) words; fired continuously for instant feedback.
+     onState(state)                                                                              */
+  constructor({onCommit,onInterim,onState}){
+    this.onCommit=onCommit;this.onInterim=onInterim;this.onState=onState;
+    this.active=false;this.rec=null;this._restartT=null;this._nCommitted=0;
+  }
+  start(){
+    if(!SR){this.onState('unsupported');return;}
+    if(micPolicyBlocked()){this.onState('policy');return;}
+    this.active=true;this._spin();this.onState('live');
+  }
+  _spin(){
+    if(!this.active)return;
+    const r=new SR();this.rec=r;this._nCommitted=0;
+    r.lang='he-IL';r.continuous=true;r.interimResults=true;r.maxAlternatives=4;
+    const toks=s=>s.trim().split(/\s+/).filter(Boolean);
+    r.onresult=(e)=>{
+      let interim=[];
+      for(let i=0;i<e.results.length;i++){
+        const res=e.results[i];
+        if(res.isFinal){
+          if(i>=this._nCommitted){            // newly finalized -> commit once
+            const alts=[];
+            for(let a=0;a<res.length;a++)alts.push(toks(res[a].transcript));
+            this._nCommitted=i+1;
+            if(alts.length&&alts[0].length)this.onCommit(alts);
+          }
+        }else interim=interim.concat(toks(res[0].transcript));
+      }
+      this.onInterim(interim);
+    };
+    r.onerror=(e)=>{
+      if(e.error==='not-allowed'||e.error==='service-not-allowed'){this.active=false;this.onState('denied');}
+      if(e.error==='audio-capture'){this.active=false;this.onState('nomic');}
+    };
+    r.onend=()=>{
+      if(this.active){
+        clearTimeout(this._restartT);
+        this._restartT=setTimeout(()=>this._spin(),150);  // tighter restart -> fewer dead gaps
+      }else this.onState('off');
+    };
+    try{r.start();}catch(_){/* already started */}
+  }
+  stop(){this.active=false;clearTimeout(this._restartT);try{this.rec&&this.rec.stop();}catch(_){}}
+}
+class Recorder{
+  async start(){
+    this.stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    this.chunks=[];
+    this.mr=new MediaRecorder(this.stream,{mimeType:MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?'audio/webm;codecs=opus':''});
+    this.mr.ondataavailable=e=>{if(e.data.size)this.chunks.push(e.data);};
+    this.mr.start(1000);
+  }
+  stop(){
+    return new Promise(res=>{
+      if(!this.mr||this.mr.state==='inactive'){res(null);return;}
+      this.mr.onstop=()=>{
+        this.stream.getTracks().forEach(t=>t.stop());
+        res(new Blob(this.chunks,{type:'audio/webm'}));
+      };
+      this.mr.stop();
+    });
+  }
+}
+/* ---- reference-audio storage (teacher's own voice, per bracha) ---- */
+const AudioDB={
+  _db:null,
+  open(){return this._db?Promise.resolve(this._db):new Promise((res,rej)=>{const q=indexedDB.open('se-trainer-audio',1);q.onupgradeneeded=()=>q.result.createObjectStore('clips');q.onsuccess=()=>{this._db=q.result;res(this._db);};q.onerror=()=>rej(q.error);});},
+  async set(k,blob){const db=await this.open();return new Promise((res,rej)=>{const t=db.transaction('clips','readwrite');t.objectStore('clips').put(blob,k);t.oncomplete=res;t.onerror=()=>rej(t.error);});},
+  async get(k){const db=await this.open();return new Promise((res,rej)=>{const r=db.transaction('clips').objectStore('clips').get(k);r.onsuccess=()=>res(r.result||null);r.onerror=()=>rej(r.error);});},
+  async del(k){const db=await this.open();return new Promise((res,rej)=>{const t=db.transaction('clips','readwrite');t.objectStore('clips').delete(k);t.oncomplete=res;t.onerror=()=>rej(t.error);});},
+  async keys(){const db=await this.open();return new Promise((res,rej)=>{const r=db.transaction('clips').objectStore('clips').getAllKeys();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+};
+function blobToB64(blob){return new Promise(res=>{const f=new FileReader();f.onload=()=>res(f.result.split(',')[1]);f.readAsDataURL(blob);});}
+function b64ToBlob(b64,type){const bin=atob(b64);const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new Blob([u],{type:type||'audio/webm'});}
+/* ---- computer voice (fallback when no teacher recording) ---- */
+function hebVoices(){
+  if(!('speechSynthesis' in window))return [];
+  return speechSynthesis.getVoices().filter(v=>(v.lang&&v.lang.toLowerCase().startsWith('he'))||/hebrew|ivrit|◊¢◊ë◊®◊ô◊™/i.test(v.name));
+}
+function pickVoice(){
+  const vs=hebVoices();
+  if(!vs.length)return null;
+  const saved=vs.find(v=>v.voiceURI===S.settings.voiceURI);
+  if(saved)return saved;
+  return vs.find(v=>/asaf|guy|male/i.test(v.name))||vs[0]; // prefer a male voice when the device has one
+}
+function speakHebrew(text){
+  const u=new SpeechSynthesisUtterance(text);
+  const v=pickVoice();
+  if(v)u.voice=v;u.lang='he-IL';u.rate=0.85;
+  speechSynthesis.cancel();speechSynthesis.speak(u);
+}
+const IN_VIEWER=window!==window.top||/claude\.ai$/.test(location.hostname);
+const MIC_MSG={
+  policy:'‚ö†Ô∏è This page\'s host blocks microphone access. Ask your teacher for the downloadable app file (Help tab ‚Üí Download), then open it in Chrome.',
+  denied:IN_VIEWER
+    ?'‚ö†Ô∏è The claude.ai viewer blocks the microphone even when Chrome allows it. Fix: go to Help ‚Üí "Download the app file", then open the downloaded file in Chrome ‚Äî the mic works there.'
+    :'‚ö†Ô∏è Microphone permission was denied. Click the üîí/üé§ icon in Chrome\'s address bar, allow the microphone, and reload.',
+  nomic:'‚ö†Ô∏è No working microphone was found on this device.',
+  unsupported:'‚ö†Ô∏è This browser does not support speech recognition ‚Äî please use Google Chrome.'
+};
+async function micCheck(){
+  const out=[];
+  out.push(SR?'‚úÖ Speech recognition: available':'‚ùå Speech recognition: NOT available ‚Äî use Google Chrome');
+  if(micPolicyBlocked())out.push('‚ùå Microphone: BLOCKED by this page\'s host (permissions policy). Fix: use the downloadable app file (button below) or ask your school to host the file on its website.');
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){out.push('‚ùå Microphone API not available in this browser.');return out.join('\n');}
+  try{
+    const s=await navigator.mediaDevices.getUserMedia({audio:true});
+    s.getTracks().forEach(t=>t.stop());
+    out.push('‚úÖ Microphone: working ‚Äî you\'re all set!');
+  }catch(e){
+    const why={NotAllowedError:IN_VIEWER
+        ?'the claude.ai viewer runs this app in a sandbox that cannot receive microphone permission, even when Chrome shows it as Allowed. Fix: click "Download the app file" below and open the downloaded file in Chrome ‚Äî everything works there, and progress still saves.'
+        :'permission denied (or blocked by the page host). Click the üîí/üé§ icon in the address bar and allow the microphone, then reload.',
+      NotFoundError:'no microphone found on this device.',
+      NotReadableError:'the microphone is being used by another app.',
+      SecurityError:'blocked by browser security settings on this page.'}[e.name]||e.message;
+    out.push('‚ùå Microphone: '+e.name+' ‚Äî '+why);
+  }
+  return out.join('\n');
+}
+async function downloadSelf(){
+  let html=null;
+  try{const r=await fetch(location.href);if(r.ok)html=await r.text();}catch(_){}
+  if(!html)html='<!doctype html>\n'+document.documentElement.outerHTML;
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([html],{type:'text/html'}));
+  a.download='shemoneh-esrei-trainer.html';
+  a.click();
+}
+
+/* ================= store ================= */
+const LSK='se-trainer-v1';
+function loadStore(){
+  try{return JSON.parse(localStorage.getItem(LSK))||{};}catch(_){return{};}
+}
+function saveStore(){localStorage.setItem(LSK,JSON.stringify(S));}
+const DEFAULTS={winter:false,ayt:false,rc:false,chanukah:false,purim:false,ashk:false,masteryPct:90,tsize:2.0,showTrans:false,showTrouble:false,unlockAll:false,tts:false,voiceURI:''};
+const S=Object.assign({
+  profile:null,
+  progress:{},
+  wordErr:{},
+  settings:{...DEFAULTS},
+  history:[]
+},loadStore());
+S.settings=Object.assign({...DEFAULTS},S.settings);
+
+function isUnlocked(i){
+  if(S.settings.unlockAll)return true;
+  if(i===0)return true;
+  const p=S.progress[i-1];
+  return !!(p&&p.mastered);
+}
+
+/* result codes */
+function encodeResult(o){return 'SET1.'+btoa(unescape(encodeURIComponent(JSON.stringify(o))));}
+function decodeResult(s){
+  s=s.trim();
+  if(!s.startsWith('SET1.'))return null;
+  try{return JSON.parse(decodeURIComponent(escape(atob(s.slice(5)))));}catch(_){return null;}
+}
+
+/* ================= UI ================= */
+const app=document.getElementById('app');
+const DEBUG=/[?&]debug=1/.test(location.search);
+let view={name:S.profile?'home':'welcome'};
+let session=null;
+
+function esc(s){return (s??'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function go(v){ if(session){teardownSession();} view=v; render(); window.scrollTo(0,0); }
+function teardownSession(){
+  if(session){
+    session.listener&&session.listener.stop();
+    session.recorder&&session.recorder.stop();
+    session.timerI&&clearInterval(session.timerI);
+    session=null;
+  }
+}
+
+function header(){
+  const tabs=[['home','Brachot'],['teacher','Teacher'],['help','Help']];
+  return `<header class="top">
+    <div class="brand"><div class="logo">üé§</div><div>
+      <div style="font-weight:800">Shemoneh Esrei Master</div>
+      <div class="muted" style="font-size:.78rem">${S.profile?esc(S.profile.name)+(S.profile.cls?' ¬∑ '+esc(S.profile.cls):''):'Welcome'}</div>
+    </div></div>
+    <nav class="tabs">${tabs.map(([k,l])=>`<button data-go="${k}" class="${view.name===k?'on':''}">${l}</button>`).join('')}
+    <button data-go="settings" title="Settings">‚öôÔ∏è</button></nav>
+  </header>`;
+}
+
+/* ---- welcome / profile ---- */
+function vWelcome(){
+  return `<div class="card center" style="margin-top:40px">
+    <div style="font-size:3rem">üé§üìñ</div>
+    <h1>Shemoneh Esrei Master</h1>
+    <p class="muted">Read out loud ‚Äî the computer checks you word by word.<br>Master a bracha to unlock the next one, until the whole Shemoneh Esrei is yours!</p>
+    <div style="max-width:330px;margin:18px auto;display:grid;gap:10px">
+      <input type="text" id="pf-name" placeholder="My name" autocomplete="off">
+      <input type="text" id="pf-cls" placeholder="Class (e.g. 5-2)" autocomplete="off">
+      <button class="primary" id="pf-go" style="font-size:1.05rem">Let's go! üöÄ</button>
+    </div>
+    <p class="muted" style="font-size:.78rem">Works in Google Chrome with a microphone. Progress is saved on this computer.</p>
+    <p style="margin-top:14px"><a href="#" id="teacherSkip" class="muted" style="font-size:.85rem">I'm a teacher ‚Äî preview everything ‚Üí</a></p>
+  </div>`;
+}
+
+/* ---- home: ladder ---- */
+function vHome(){
+  const total=DATA.brachot.length;
+  const mastered=Object.values(S.progress).filter(p=>p.mastered).length;
+  const rungs=DATA.brachot.map((b,i)=>{
+    const p=S.progress[i];const unlocked=isUnlocked(i);
+    const st=p&&p.mastered?'mastered':(unlocked?'':'locked');
+    return `<div class="rung ${st}" data-bracha="${i}" role="button" tabindex="${unlocked?0:-1}" aria-disabled="${!unlocked}">
+      <span class="num">${i+1}</span>
+      <div class="star">${p&&p.mastered?'‚≠ê':(unlocked?'üìñ':'üîí')}</div>
+      <div class="nm heb">${esc(b.he)}</div>
+      <div class="sub">${esc(b.en)}</div>
+      <div class="sc">${p?('Best: '+p.best+'%'):(unlocked?'Ready to practice':'Unlocks after the previous one')}</div>
+    </div>`;
+  }).join('');
+  return `<div class="row spread"><h1>My Path</h1><span class="tag">‚≠ê ${mastered} / ${total} brachot</span></div>
+  ${S.settings.unlockAll?'<div class="notice">üëÄ Teacher preview is ON ‚Äî every bracha is unlocked on this device. Turn it off in the Teacher tab.</div>':''}
+  <div class="ladder">${rungs}</div>
+  <div class="card muted" style="font-size:.85rem">Tap a bracha ‚Üí <b>Practice</b> with the microphone ‚Üí when you're ready, take the <b>Mastery Test</b>. Score ${S.settings.masteryPct}% or higher to earn a ‚≠ê and unlock the next bracha!</div>`;
+}
+
+/* ---- bracha menu ---- */
+function vBracha(){
+  const i=view.bracha,b=DATA.brachot[i],p=S.progress[i];
+  return `<button class="ghost" data-go="home">‚Üê Back to path</button>
+  <div class="card center">
+    <h1 class="heb">${esc(b.he)}</h1>
+    <p class="muted">${esc(b.en)} ¬∑ Bracha ${i+1} of ${DATA.brachot.length} ¬∑ ${p&&p.mastered?'‚≠ê Mastered! ('+p.best+'%)':(p?'Best score: '+p.best+'%':'Not tested yet')}</p>
+    <div class="row" style="justify-content:center;gap:14px;margin-top:14px">
+      <button class="primary" style="font-size:1.1rem;padding:14px 26px" data-mode="practice">üéØ Practice</button>
+      <button class="primary" style="font-size:1.1rem;padding:14px 26px;background:var(--gold)" data-mode="test">üìù Mastery Test</button>
+    </div>
+    <p class="muted" style="font-size:.8rem;margin-top:12px">In Practice, every word colors as you read. In the Test you read to the end and get a score (plus a recording!).</p>
+  </div>`;
+}
+
+/* ---- reading session ---- */
+function startSession(mode){
+  const bIdx=view.bracha;
+  const built=buildWords(bIdx,S.settings);
+  session={
+    mode,bIdx,words:built.words,phrases:built.phrases,
+    startT:null,timerI:null,listener:null,recorder:null,audioBlob:null,
+    insertions:0,done:false,
+  };
+  view={name:'session',bracha:bIdx,mode};
+  render();
+}
+function sessionStats(){
+  const w=session.words;
+  const ok=w.filter(x=>x.state===ST.OK).length;
+  const warn=w.filter(x=>x.state===ST.WARN).length;
+  const bad=w.filter(x=>x.state===ST.BAD).length;
+  const donew=ok+warn+bad;
+  const acc=donew?Math.round(100*(ok+0.5*warn)/donew):0;
+  return {ok,warn,bad,donew,acc,total:w.length};
+}
+function finalScore(){
+  const w=session.words;
+  const ok=w.filter(x=>x.state===ST.OK).length;
+  const warn=w.filter(x=>x.state===ST.WARN).length;
+  return Math.round(100*(ok+0.5*warn)/w.length);
+}
+function vSession(){
+  const b=DATA.brachot[session.bIdx];
+  const isTest=session.mode==='test';
+  const phrasesHtml=session.phrases.map((ph,pi)=>{
+    const ws=ph.words.map(wi=>{
+      const w=session.words[wi];
+      const cls=['w'];
+      if(!isTest){
+        if(w.state===ST.OK)cls.push('ok');else if(w.state===ST.WARN)cls.push('warn');else if(w.state===ST.BAD)cls.push('bad');
+      }
+      const errKey=session.bIdx+':'+w.norm;
+      if(!isTest&&S.settings.showTrouble&&(S.wordErr[errKey]||0)>=2)cls.push('trouble');
+      return `<span class="${cls.join(' ')}" id="w${wi}" data-w="${wi}">${esc(w.display)}</span>`;
+    }).join(' ');
+    const trans=(S.settings.showTrans&&ph.trans)?`<div class="trans">${esc(ph.trans)}</div>`:'';
+    return `<div class="phrase" id="ph${pi}">${ws}${trans}</div>`;
+  }).join('');
+  const ttsBtn=`<button id="listenBtn" class="ghost" style="display:none">üîä</button>`;
+  return `<div class="row spread">
+    <button class="ghost" id="exitSession">‚úï Exit</button>
+    <h2 style="margin:0"><span class="heb">${esc(b.he)}</span> ¬∑ ${isTest?'üìù Test':'üéØ Practice'}</h2>
+    <span class="tag" id="liveTimer">0:00</span>
+  </div>
+  ${isTest?`<div class="notice">üìù <b>Test mode:</b> read the whole bracha out loud, clearly and in order. No hints until the end ‚Äî good luck!</div>`
+    :`<div class="notice" style="border-left-color:var(--accent);background:var(--cur-bg)">üí° Read at your normal pace ‚Äî words light up as you go. Stuck on a word? Use <b>Skip ‚ñ∂</b>. Want to re-read? Tap <b>‚óÄ Back</b> or tap any earlier word to go back to it.</div>`}
+  <div class="card"><div class="tefilla heb" style="--tsize:${S.settings.tsize}rem">${phrasesHtml}</div></div>
+  <div class="micbar">
+    <button class="micbtn" id="micBtn" aria-label="Start microphone">üé§</button>
+    <div style="flex:1">
+      <div class="interim" id="interim">${SR?'Click the microphone and start reading':MIC_MSG.unsupported}</div>
+      <div class="muted" style="font-size:.78rem" id="liveLine"></div>
+    </div>
+    <div class="livestats" id="liveAcc"></div>
+    ${ttsBtn}
+    ${isTest?'':`<button class="ghost" id="backBtn" style="display:none" title="Go back to re-read the previous word">‚óÄ Back</button>`}
+    ${isTest?'':`<button class="ghost" id="skipBtn" style="display:none" title="Skip the current word">Skip ‚ñ∂</button>`}
+    <button class="primary" id="finishBtn" style="display:none">I'm done ‚úî</button>
+  </div>
+  ${DEBUG?`<div class="card"><input type="text" id="dbg" placeholder="debug: type words and press Enter" style="width:100%"></div>`:''}`;
+}
+function bindSession(){
+  const isTest=session.mode==='test';
+  const micBtn=document.getElementById('micBtn');
+  const interimEl=document.getElementById('interim');
+  const accEl=document.getElementById('liveAcc');
+  const timerEl=document.getElementById('liveTimer');
+  const finishBtn=document.getElementById('finishBtn');
+
+  const skipBtn=document.getElementById('skipBtn');
+  const backBtn=document.getElementById('backBtn');
+  session.committed=[];   // chosen best-alternative tokens + skip markers
+  session.interim=[];     // live unfinalized tokens
+  session.cursor=0;
+  const ashk=S.settings.ashk;
+
+  // Re-align the ENTIRE transcript every update: instant feedback, self-correcting, never sticks.
+  function reAlign(){
+    const tokens=session.committed.concat(session.interim);
+    const {st,cursor}=alignTokens(tokens,session.words,ashk);
+    session.cursor=cursor;
+    for(let i=0;i<session.words.length;i++){
+      const a=st[i],w=session.words[i];
+      w.state=a?a.state:ST.PENDING;w.score=a?a.score:0;w.heard=a?a.heard:null;
+      if(!isTest){
+        const el=document.getElementById('w'+i);
+        if(el){
+          el.classList.remove('ok','warn','bad');
+          if(a)el.classList.add(a.state===ST.OK?'ok':a.state===ST.WARN?'warn':'bad');
+        }
+      }
+    }
+    updateCursorUI();
+    const s2=sessionStats();
+    accEl.textContent=s2.donew?s2.acc+'%':'';
+  }
+
+  function updateCursorUI(){
+    document.querySelectorAll('.w.cur').forEach(e=>e.classList.remove('cur','listening'));
+    document.querySelectorAll('.phrase.active').forEach(e=>e.classList.remove('active'));
+    const c=session.cursor;
+    if(c<session.words.length&&!isTest){
+      const el=document.getElementById('w'+c);
+      if(el){
+        el.classList.add('cur');if(session.live)el.classList.add('listening');
+        const ph=document.getElementById('ph'+session.words[c].phrase);
+        ph&&ph.classList.add('active');
+        el.scrollIntoView({block:'center',behavior:'smooth'});
+      }
+    }
+  }
+
+  function commitAndCheck(){
+    session.interim=[];
+    reAlign();
+    if(session.cursor>=session.words.length)setTimeout(()=>{if(!session.done)endSession();},400);
+  }
+
+  // Rewind: drop just enough committed tokens so re-alignment lands at (or just before) `target`,
+  // then let the student re-read from there. Cursor is a pure function of committed, so we truncate.
+  function rewindToWord(target){
+    target=Math.max(0,Math.min(target,session.words.length-1));
+    let keep=0; // cursor is monotonic in prefix length, so find the longest prefix still at/behind target
+    for(let n=0;n<=session.committed.length;n++){
+      const {cursor}=alignTokens(session.committed.slice(0,n),session.words,ashk);
+      if(cursor<=target)keep=n; else break;
+    }
+    session.committed=session.committed.slice(0,keep);
+    session.interim=[];
+    reAlign();
+  }
+
+  session.listener=new Listener({
+    onCommit:(alts)=>{
+      if(!session.startT)startTimer();
+      let best=alts[0],bestSc=-1;                 // keep the ASR alternative that best fits the tefillah
+      for(const alt of alts){
+        const sc=alignScore(session.committed.concat(alt),session.words,ashk);
+        if(sc>bestSc){bestSc=sc;best=alt;}
+      }
+      session.committed=session.committed.concat(best);
+      commitAndCheck();
+    },
+    onInterim:(tokens)=>{
+      if(!session.startT&&tokens.length)startTimer();
+      session.interim=tokens;
+      if(tokens.length)interimEl.innerHTML='<span class="hebtxt">'+esc(tokens.join(' '))+'</span>';
+      reAlign();
+    },
+    onState:(st)=>{
+      session.live=(st==='live');
+      micBtn.classList.toggle('live',session.live);
+      micBtn.textContent=session.live?'‚è∏':'üé§';
+      if(skipBtn)skipBtn.style.display=session.live?'':'none';
+      if(backBtn)backBtn.style.display=session.live?'':'none';
+      if(MIC_MSG[st])interimEl.textContent=MIC_MSG[st];
+      updateCursorUI();
+    }
+  });
+
+  // Skip button: mark the current word missed and move on.
+  if(skipBtn)skipBtn.addEventListener('click',()=>{
+    session.committed=session.committed.concat(SKIP_TOKEN);
+    commitAndCheck();
+  });
+  // Back button: step back one word to re-read it.
+  if(backBtn)backBtn.addEventListener('click',()=>{rewindToWord(session.cursor-1);});
+  // Tap any word: earlier ‚Üí go back and re-read; later ‚Üí jump ahead (pads skips in between).
+  document.querySelectorAll('[data-w]').forEach(el=>el.addEventListener('click',()=>{
+    if(isTest)return;
+    const j=+el.dataset.w;
+    if(j<session.cursor){rewindToWord(j);return;}
+    if(j>session.cursor){
+      for(let k=session.cursor;k<j;k++)session.committed.push(SKIP_TOKEN);
+      commitAndCheck();
+    }
+  }));
+
+  function startTimer(){
+    session.startT=Date.now();
+    session.timerI=setInterval(()=>{
+      const s=Math.floor((Date.now()-session.startT)/1000);
+      timerEl.textContent=Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+    },500);
+  }
+
+  micBtn.addEventListener('click',async()=>{
+    if(session.live){session.listener.stop();return;}
+    if(isTest&&!session.recorder){
+      try{session.recorder=new Recorder();await session.recorder.start();}
+      catch(e){
+        const why={NotAllowedError:MIC_MSG.denied,NotFoundError:MIC_MSG.nomic,NotReadableError:'‚ö†Ô∏è The microphone is busy in another app.'}[e.name]||('‚ö†Ô∏è Recording failed: '+e.name);
+        interimEl.textContent=why;session.recorder=null;return;
+      }
+    }
+    session.listener.start();
+    finishBtn.style.display='';
+    if(!session.startT)startTimer();
+  });
+  finishBtn.addEventListener('click',()=>endSession());
+  document.getElementById('exitSession').addEventListener('click',()=>{go({name:'bracha',bracha:session.bIdx});});
+  const listenBtn=document.getElementById('listenBtn');
+  AudioDB.get(session.bIdx).then(clip=>{
+    if(!listenBtn)return;
+    if(clip){
+      listenBtn.style.display='';
+      listenBtn.title='Listen to your teacher read this bracha';
+      listenBtn.textContent='üîäüë®‚Äçüè´';
+      listenBtn.onclick=()=>{
+        if(session.refAudio&&!session.refAudio.paused){session.refAudio.pause();session.refAudio=null;listenBtn.textContent='üîäüë®‚Äçüè´';return;}
+        session.refAudio=new Audio(URL.createObjectURL(clip));
+        session.refAudio.onended=()=>{listenBtn.textContent='üîäüë®‚Äçüè´';};
+        session.refAudio.play();listenBtn.textContent='‚è∏';
+      };
+    }else if(S.settings.tts&&('speechSynthesis' in window)){
+      listenBtn.style.display='';
+      listenBtn.title='Listen (computer voice ‚Äî approximate, always says "Hashem")';
+      listenBtn.onclick=()=>{
+        // never let the computer voice attempt Hashem's name ‚Äî substitute "Hashem"
+        const spoken=session.words.map(w=>(w.norm==='◊ô◊î◊ï◊î'||w.norm==='◊ê◊ì◊†◊ô')?'◊î÷∑◊©÷µ÷º◊Å◊ù':w.display).join(' ');
+        speakHebrew(spoken);
+      };
+    }
+  }).catch(()=>{});
+  if(DEBUG){
+    const dbg=document.getElementById('dbg');
+    dbg&&dbg.addEventListener('keydown',e=>{
+      if(e.key==='Enter'){
+        if(!session.startT)startTimer();
+        session.committed=session.committed.concat(dbg.value.trim().split(/\s+/).filter(Boolean));
+        dbg.value='';commitAndCheck();
+      }
+    });
+  }
+  reAlign();
+}
+async function endSession(){
+  if(session.done)return;session.done=true;
+  session.listener&&session.listener.stop();
+  session.timerI&&clearInterval(session.timerI);
+  const durMs=session.startT?Date.now()-session.startT:0;
+  // final scoring from committed tokens only (drop any half-heard interim tail)
+  const {st,skips}=alignTokens(session.committed,session.words,S.settings.ashk);
+  for(let i=0;i<session.words.length;i++){
+    const a=st[i],w=session.words[i];
+    w.state=a?a.state:ST.BAD;w.score=a?a.score:0;w.heard=a?a.heard:null;
+    if(w.state!==ST.OK)S.wordErr[session.bIdx+':'+w.norm]=(S.wordErr[session.bIdx+':'+w.norm]||0)+1;
+  }
+  if(session.recorder){session.audioBlob=await session.recorder.stop();}
+  const score=finalScore();
+  const stats=sessionStats();
+  const wpm=durMs>=5000?Math.round(stats.ok/(durMs/60000)):0;
+  const isTest=session.mode==='test';
+  // Confidence flag: the computer can't hear every letter distinction, so surface the reads it's unsure
+  // about for the teacher to review rather than pretending the auto-grade is final.
+  const warnRatio=stats.total?stats.warn/stats.total:0;
+  const flagReasons=[];
+  if(score>=55&&score<S.settings.masteryPct)flagReasons.push('score near the pass line');
+  if(stats.warn>=3&&warnRatio>=0.15)flagReasons.push(stats.warn+' "almost" words');
+  if((skips||0)>=2)flagReasons.push('several words skipped');
+  const flagged=isTest&&flagReasons.length>0;
+  let newlyMastered=false;
+  if(isTest){
+    const p=S.progress[session.bIdx]||{mastered:false,best:0,attempts:0};
+    p.attempts++;p.lastDate=new Date().toISOString().slice(0,10);
+    if(score>p.best)p.best=score;
+    if(score>=S.settings.masteryPct&&!p.mastered){p.mastered=true;newlyMastered=true;}
+    S.progress[session.bIdx]=p;
+    const missed=session.words.map((w,i)=>w.state===ST.BAD?i:-1).filter(i=>i>=0);
+    const partial=session.words.map((w,i)=>w.state===ST.WARN?i:-1).filter(i=>i>=0);
+    session.resultCode=encodeResult({v:1,n:S.profile.name,c:S.profile.cls,b:session.bIdx+1,bn:DATA.brachot[session.bIdx].he,d:p.lastDate,a:score,w:wpm,dur:Math.round(durMs/1000),m:missed,p:partial,tw:session.words.length,fl:flagged?1:0,fr:flagReasons});
+    S.history.unshift({b:session.bIdx,a:score,d:p.lastDate,f:flagged?1:0});S.history=S.history.slice(0,50);
+  }
+  saveStore();
+  session.final={score,wpm,durMs,newlyMastered,flagged,flagReasons};
+  view={name:'results'};
+  render();
+  if(newlyMastered)confetti();
+}
+function vResults(){
+  const {score,wpm,durMs,newlyMastered,flagged,flagReasons}=session.final;
+  const stats=sessionStats();
+  const isTest=session.mode==='test';
+  const passed=score>=S.settings.masteryPct;
+  const b=DATA.brachot[session.bIdx];
+  const mistakes=session.words.map((w,i)=>({w,i})).filter(x=>x.w.state!==ST.OK);
+  const mHtml=mistakes.length?mistakes.map(({w,i})=>{
+    let heardHtml='<span class="muted">‚Äî not heard ‚Äî</span>';
+    const why=classifyMistake(w.norm,w.heard?normTranscript(w.heard):'');
+    if(w.heard){
+      const [A,B]=letterDiff(w.norm,normTranscript(w.heard));
+      heardHtml=`I heard: <span class="hebtxt">${B.map(x=>x.diff?`<span class="dl">${esc(x.c)}</span>`:esc(x.c)).join('')}</span>`;
+    }
+    return `<div class="mistake">
+      <span class="exp heb">${esc(w.display)}</span>
+      <span class="tag">${w.state===ST.WARN?'Almost':'Missed'}</span>
+      <span class="heard muted">${heardHtml}</span>
+      <span class="why">üí° ${esc(why)}</span>
+    </div>`;
+  }).join(''):'<p class="center" style="font-size:1.2rem">üéâ Zero mistakes ‚Äî a perfect read!</p>';
+  const audioHtml=session.audioBlob?`
+    <div class="row" style="margin-top:8px">
+      <audio controls src="${URL.createObjectURL(session.audioBlob)}" style="flex:1"></audio>
+      <button id="dlAudio">‚¨áÔ∏è Download recording</button>
+    </div>`:'';
+  const codeHtml=(isTest&&session.resultCode)?`
+    <h3>Send to your teacher</h3>
+    <p class="muted" style="font-size:.85rem">Copy the result code and paste it into the Google Classroom assignment (together with your recording file):</p>
+    <textarea rows="3" readonly id="rcode" style="font-size:.75rem">${session.resultCode}</textarea>
+    <div class="row"><button class="primary" id="copyCode">üìã Copy code</button><span id="copied" class="muted"></span></div>`:'';
+  return `<div class="card center">
+    ${newlyMastered?`<div style="font-size:2.4rem">‚≠ê</div><h1>Bracha mastered!</h1><p class="muted"><span class="heb">${esc(b.he)}</span> ‚Äî the next bracha is now unlocked üéâ</p>`:`<h1 class="heb">${esc(b.he)}</h1>`}
+    <div class="scorewrap" style="justify-content:center">
+      <div class="bigscore ${passed?'pass':'fail'}">${score}%</div>
+      <div class="statgrid" style="flex:1;min-width:260px">
+        <div class="stat"><b>${stats.ok}</b><span>correct</span></div>
+        <div class="stat"><b>${stats.warn}</b><span>almost</span></div>
+        <div class="stat"><b>${stats.bad}</b><span>missed/skipped</span></div>
+        <div class="stat"><b>${wpm||'‚Äî'}</b><span>words per minute</span></div>
+      </div>
+    </div>
+    ${isTest&&!passed?`<p class="muted">You need ${S.settings.masteryPct}% to master this bracha ‚Äî a little more practice and you're there! üí™</p>`:''}
+    ${flagged?`<div class="notice" style="border-left-color:var(--warn);background:var(--warn-bg);text-align:left">‚öë <b>Flagged for teacher review.</b> The computer isn't fully sure about this read${flagReasons&&flagReasons.length?' ('+esc(flagReasons.join('; '))+')':''} ‚Äî your teacher will listen and give the final grade.</div>`:''}
+    ${audioHtml}
+  </div>
+  <div class="card"><h3>Words to work on (${mistakes.length})</h3>${mHtml}</div>
+  <div class="card">${codeHtml}
+    <div class="row" style="margin-top:10px">
+      <button class="primary" data-mode="${session.mode}" id="again">üîÅ Try again</button>
+      ${isTest&&passed?`<button class="primary" id="nextBracha" style="background:var(--gold)">‚û° Next bracha</button>`:''}
+      <button class="ghost" data-go="home">üè† Back to path</button>
+    </div>
+  </div>`;
+}
+function bindResults(){
+  const dl=document.getElementById('dlAudio');
+  if(dl)dl.addEventListener('click',()=>{
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(session.audioBlob);
+    a.download=`${S.profile.name}_${S.profile.cls}_bracha${session.bIdx+1}_${new Date().toISOString().slice(0,10)}.webm`.replace(/\s+/g,'-');
+    a.click();
+  });
+  const cp=document.getElementById('copyCode');
+  if(cp)cp.addEventListener('click',async()=>{
+    const t=document.getElementById('rcode');
+    try{await navigator.clipboard.writeText(t.value);}catch(_){t.select();document.execCommand('copy');}
+    document.getElementById('copied').textContent='Copied ‚úî';
+  });
+  const ag=document.getElementById('again');
+  if(ag)ag.addEventListener('click',()=>{const m=session.mode,b=session.bIdx;teardownSession();view={name:'bracha',bracha:b};startSession(m);});
+  const nx=document.getElementById('nextBracha');
+  if(nx)nx.addEventListener('click',()=>{const b=Math.min(session.bIdx+1,DATA.brachot.length-1);teardownSession();go({name:'bracha',bracha:b});});
+}
+
+/* ---- teacher ---- */
+function vTeacher(){
+  return `<h1>Teacher Zone</h1>
+  <div class="card">
+    <h3>üëÄ Preview all brachot</h3>
+    <label style="display:flex;gap:8px"><input type="checkbox" id="unlockAll" ${S.settings.unlockAll?'checked':''}> <b>Teacher preview</b> ‚Äî unlock all ${DATA.brachot.length} brachot on this device (no mastery required)</label>
+    <p class="muted" style="font-size:.8rem">Turn this on to walk through every bracha's practice and test screens yourself. Leave it off on student devices.</p>
+  </div>
+  <div class="card">
+    <h3>üéôÔ∏è Reference recordings ‚Äî your voice</h3>
+    <p class="muted" style="font-size:.88rem">Record yourself reading each bracha. Students then get a <b>üîäüë®‚Äçüè´ button</b> in practice that plays <i>your</i> reading instead of a computer voice. Record here, then <b>Export voice pack</b> and share the file with students (Classroom/Drive) ‚Äî they load it once via Settings ‚Üí "Load teacher voice pack."</p>
+    <div class="tblwrap"><table><tbody id="refRows"></tbody></table></div>
+    <div class="row" style="margin-top:10px">
+      <button class="primary" id="expPack">üì¶ Export voice pack</button>
+      <span class="muted" id="packStatus" style="font-size:.8rem"></span>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Collect results</h3>
+    <p class="muted" style="font-size:.88rem">Students submit a "result code" (from their test results screen) through Google Classroom. Paste all the codes here ‚Äî one per line ‚Äî and get a table:</p>
+    <textarea rows="6" id="codes" placeholder="SET1.eyJ2IjoxLC4uLg==&#10;SET1.eyJ2IjoxLC4uLg=="></textarea>
+    <div class="row" style="margin-top:8px"><button class="primary" id="parseCodes">Build table</button><button class="ghost" id="csvBtn" style="display:none">‚¨áÔ∏è Download CSV for Google Sheets</button></div>
+    <div class="tblwrap" id="tbl"></div>
+  </div>
+  <div class="card">
+    <h3>Class settings</h3>
+    <div class="row"><label>Mastery threshold: <input type="number" id="thresh" min="50" max="100" value="${S.settings.masteryPct}" style="width:80px">%</label></div>
+    <p class="muted" style="font-size:.8rem">Settings are saved on this device only. Adjust them on student devices as needed.</p>
+  </div>
+  <div class="card">
+    <h3>What this tool can ‚Äî and can't ‚Äî do</h3>
+    <ul class="muted" style="font-size:.88rem;line-height:1.7">
+      <li>‚úÖ Catches skipped, garbled, or substituted words; gives an accuracy score, reading speed, and points at the exact word.</li>
+      <li>‚úÖ When a different word was heard ‚Äî shows "expected / heard" with the differing letters highlighted (e.g. a ◊ì/◊® mix-up).</li>
+      <li>‚ö†Ô∏è Hebrew speech recognition is trained on modern Israeli Hebrew and can't see nekudos: a vowel mistake that doesn't change the letters (◊û÷∂◊ú÷∂◊ö÷∞ vs ◊û÷∏◊ú÷∑◊ö÷∞) usually won't be caught. That's why every test keeps a <b>recording</b> ‚Äî spot-check the students the system flags.</li>
+      <li>üí° Pilot with 5‚Äì10 students to calibrate the threshold before rolling out to everyone.</li>
+    </ul>
+  </div>`;
+}
+function bindTeacher(){
+  let rows=[];
+  document.getElementById('unlockAll').addEventListener('change',e=>{S.settings.unlockAll=e.target.checked;saveStore();});
+
+  /* --- reference recording studio --- */
+  const refRows=document.getElementById('refRows');
+  let refRec=null,refRecIdx=-1,playingA=null;
+  async function drawRefRows(){
+    const have=new Set(await AudioDB.keys().catch(()=>[]));
+    refRows.innerHTML=DATA.brachot.map((b,i)=>`<tr>
+      <td style="width:30px">${i+1}</td>
+      <td><span class="heb">${esc(b.he)}</span></td>
+      <td style="width:110px">${have.has(i)?'<span style="color:var(--ok)">‚óè recorded</span>':'<span class="muted">‚Äî</span>'}</td>
+      <td style="width:230px">
+        <button data-refrec="${i}">${refRecIdx===i?'‚èπ Stop':'üéôÔ∏è Record'}</button>
+        ${have.has(i)?`<button data-refplay="${i}">‚ñ∂</button><button data-refdel="${i}" title="Delete">üóë</button>`:''}
+      </td></tr>`).join('');
+    refRows.querySelectorAll('[data-refrec]').forEach(el=>el.addEventListener('click',async()=>{
+      const i=+el.dataset.refrec;
+      if(refRecIdx===i){ // stop & save
+        const blob=await refRec.stop();refRec=null;refRecIdx=-1;
+        if(blob&&blob.size>1000)await AudioDB.set(i,blob);
+        drawRefRows();return;
+      }
+      if(refRecIdx>=0){const b=await refRec.stop();if(b&&b.size>1000)await AudioDB.set(refRecIdx,b);refRec=null;refRecIdx=-1;}
+      try{refRec=new Recorder();await refRec.start();refRecIdx=i;drawRefRows();}
+      catch(e){alert('Microphone not available: '+e.name);refRec=null;refRecIdx=-1;}
+    }));
+    refRows.querySelectorAll('[data-refplay]').forEach(el=>el.addEventListener('click',async()=>{
+      if(playingA){playingA.pause();playingA=null;}
+      const blob=await AudioDB.get(+el.dataset.refplay);
+      if(blob){playingA=new Audio(URL.createObjectURL(blob));playingA.play();}
+    }));
+    refRows.querySelectorAll('[data-refdel]').forEach(el=>el.addEventListener('click',async()=>{
+      await AudioDB.del(+el.dataset.refdel);drawRefRows();
+    }));
+  }
+  drawRefRows();
+  document.getElementById('expPack').addEventListener('click',async()=>{
+    const st=document.getElementById('packStatus');st.textContent='Packing‚Ä¶';
+    const keys=await AudioDB.keys().catch(()=>[]);
+    if(!keys.length){st.textContent='No recordings yet ‚Äî record at least one bracha first.';return;}
+    const clips={};
+    for(const k of keys){const b=await AudioDB.get(k);if(b)clips[k]={b64:await blobToB64(b),type:b.type||'audio/webm'};}
+    const pack={v:1,kind:'se-voice-pack',teacher:S.profile?S.profile.name:'',date:new Date().toISOString().slice(0,10),clips};
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([JSON.stringify(pack)],{type:'application/json'}));
+    a.download='tefillah-voice-pack.json';a.click();
+    st.textContent=`Exported ${keys.length} recording(s). Share the file with your students.`;
+  });
+  document.getElementById('parseCodes').addEventListener('click',()=>{
+    const lines=document.getElementById('codes').value.split(/\s+/).filter(x=>x.startsWith('SET1.'));
+    rows=lines.map(decodeResult).filter(Boolean);
+    const tbl=document.getElementById('tbl');
+    if(!rows.length){tbl.innerHTML='<p class="muted">No valid codes found.</p>';return;}
+    rows.sort((a,b)=>(b.fl?1:0)-(a.fl?1:0)); // flagged reads first ‚Äî those are the ones to listen to
+    tbl.innerHTML=`<table><thead><tr><th>Review?</th><th>Name</th><th>Class</th><th>Bracha</th><th>Score</th><th>WPM</th><th>Date</th><th>Errors</th></tr></thead><tbody>${
+      rows.map(r=>`<tr${r.fl?' style="background:var(--warn-bg)"':''}><td title="${esc((r.fr||[]).join('; '))}">${r.fl?'‚öë':''}</td><td>${esc(r.n)}</td><td>${esc(r.c)}</td><td>${r.b}. <span class="heb">${esc(r.bn||'')}</span></td><td><b>${r.a}%</b></td><td>${r.w||'‚Äî'}</td><td>${esc(r.d)}</td><td>${(r.m||[]).length} missed, ${(r.p||[]).length} almost</td></tr>`).join('')
+    }</tbody></table>`;
+    document.getElementById('csvBtn').style.display='';
+  });
+  document.getElementById('csvBtn').addEventListener('click',()=>{
+    const csv='Ôªø'+['Name,Class,Bracha,Score,WPM,Date,Missed,Almost,TotalWords,Flagged,FlagReasons',
+      ...rows.map(r=>[r.n,r.c,r.b+' '+(r.bn||''),r.a,r.w,r.d,(r.m||[]).length,(r.p||[]).length,r.tw,r.fl?'YES':'',(r.fr||[]).join('; ')].map(x=>'"'+String(x??'').replace(/"/g,'""')+'"').join(','))].join('\n');
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+    a.download='shemoneh-esrei-results.csv';a.click();
+  });
+  document.getElementById('thresh').addEventListener('change',e=>{S.settings.masteryPct=Math.max(50,Math.min(100,+e.target.value||90));saveStore();});
+}
+
+/* ---- help ---- */
+function vHelp(){
+  return `<h1>Help</h1>
+  <div class="card">
+    <h3>üéôÔ∏è Microphone check</h3>
+    <p class="muted">If the microphone isn't working, click this first ‚Äî it will tell you exactly what's wrong:</p>
+    <div class="row"><button class="primary" id="micCheckBtn">Run mic check</button><button class="ghost" id="dlSelf">‚¨áÔ∏è Download the app file</button></div>
+    <div class="micreport" id="micReport" style="display:none"></div>
+    <p class="muted" style="font-size:.8rem;margin-top:8px">If this page's host blocks the microphone: download the app file (button above), keep it anywhere (Drive, desktop), and open it by double-clicking ‚Äî it runs in Chrome as a local page. Or ask your school to host the file on its website.</p>
+  </div>
+  <div class="card">
+    <h3>How it works</h3>
+    <ol style="line-height:1.9">
+      <li>Pick a bracha on your path and click <b>Practice</b>.</li>
+      <li>Click üé§ and allow microphone access.</li>
+      <li>Read out loud, clearly and not too fast ‚Äî every word colors as you go: <span class="w ok">green = correct</span> ¬∑ <span class="w warn">orange = almost</span> ¬∑ <span class="w bad">red = skipped/wrong</span>.</li>
+      <li>When you're ready ‚Äî take the <b>Mastery Test</b>: read the whole bracha, get a score and a recording, and send your teacher the result code.</li>
+      <li>Score ${S.settings.masteryPct}% or higher ‚Üí ‚≠ê and the next bracha unlocks!</li>
+    </ol>
+  </div>
+  <div class="card">
+    <h3>Tips for good recognition</h3>
+    <ul style="line-height:1.8" class="muted">
+      <li>ü§´ Quiet room, microphone about 8‚Äì12 inches away.</li>
+      <li>üó£Ô∏è Read clearly at a natural pace ‚Äî don't whisper and don't shout.</li>
+      <li>üåê Works in <b>Google Chrome</b> (including Chromebooks) with internet.</li>
+      <li>For Hashem's name ‚Äî just say "Hashem" like you normally would. The app understands.</li>
+      <li>If the mic "falls asleep," click the button again.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>10-second self-test</h3>
+    <p class="muted">Open the first bracha ‚Üí Practice ‚Üí üé§ ‚Üí say "Hashem sefatai tiftach." If the first words turn green ‚Äî everything works!</p>
+  </div>
+  <footer class="src">Nusach Ashkenaz ¬∑ Hebrew text courtesy of Sefaria (Metsudah Siddur, CC-BY) ¬∑ Phrase divisions &amp; translations: the school's tefillah curriculum</footer>`;
+}
+function bindHelp(){
+  document.getElementById('micCheckBtn').addEventListener('click',async()=>{
+    const el=document.getElementById('micReport');
+    el.style.display='';el.textContent='Checking‚Ä¶';
+    el.textContent=await micCheck();
+  });
+  document.getElementById('dlSelf').addEventListener('click',downloadSelf);
+}
+
+/* ---- settings ---- */
+function vSettings(){
+  const s=S.settings;
+  const chk=(k,l,hint)=>`<label><input type="checkbox" data-set="${k}" ${s[k]?'checked':''}> ${l} ${hint?`<span class="muted" style="font-size:.78rem">${hint}</span>`:''}</label>`;
+  return `<h1>Settings</h1>
+  <div class="card toggles">
+    <h3>Seasonal additions (nusach)</h3>
+    ${chk('winter','Winter ‚Äî ◊û÷∑◊©÷¥÷º◊Å◊ô◊ë ◊î÷∏◊®◊ï÷º◊ó÷∑ + ◊ï÷∞◊™÷µ◊ü ◊ò÷∑◊ú ◊ï÷º◊û÷∏◊ò÷∏◊®')}
+    ${chk('ayt','Aseres Yemei Teshuva ‚Äî ◊ñ÷∏◊õ÷∞◊®÷µ◊†◊ï÷º, ◊û÷¥◊ô ◊õ÷∏◊û◊ï÷π◊ö÷∏, ◊î÷∑◊û÷∂÷º◊ú÷∂◊ö÷∞ ◊î÷∑◊ß÷∏÷º◊ì◊ï÷π◊©◊Å‚Ä¶')}
+    ${chk('rc','Rosh Chodesh / Chol Hamoed ‚Äî ◊ô÷∑◊¢÷≤◊ú÷∂◊î ◊ï÷∞◊ô÷∏◊ë÷π◊ê')}
+    ${chk('chanukah','Chanukah ‚Äî ◊¢÷∑◊ú ◊î÷∑◊†÷¥÷º◊°÷¥÷º◊ô◊ù')}
+    ${chk('purim','Purim ‚Äî ◊¢÷∑◊ú ◊î÷∑◊†÷¥÷º◊°÷¥÷º◊ô◊ù')}
+  </div>
+  <div class="card toggles">
+    <h3>Reading &amp; matching</h3>
+    ${chk('ashk','Ashkenazi pronunciation','(Shabbos-style havara ‚Äî more forgiving matching for ◊°◊ï÷π◊£/◊°◊ï÷π◊° etc.)')}
+    ${chk('showTrans','Show English translation under each phrase')}
+    ${chk('showTrouble','Highlight "my tricky words" during practice','(words missed 2+ times)')}
+    ${chk('tts','Enable üîä computer-voice fallback','(approximate; always says "Hashem", never the shem. Not needed for brachot that have a teacher recording.)')}
+    <div class="row" id="voiceRow" style="display:none"><label>Computer voice: <select id="voiceSel"></select></label><button class="ghost" id="voiceTest">Test</button></div>
+    <label>Tefillah text size: <input type="range" min="1.4" max="3" step=".1" value="${s.tsize}" data-set="tsize"></label>
+  </div>
+  <div class="card">
+    <h3>üë®‚Äçüè´ Teacher voice pack</h3>
+    <p class="muted" style="font-size:.85rem">If your teacher shared a <span style="font-family:ui-monospace,monospace">tefillah-voice-pack.json</span> file, load it here ‚Äî the üîäüë®‚Äçüè´ button in practice will play your teacher's own reading.</p>
+    <div class="row"><input type="file" id="packFile" accept=".json,application/json"><span class="muted" id="packInfo" style="font-size:.8rem"></span></div>
+  </div>
+  <div class="card">
+    <h3>My profile</h3>
+    <div class="row"><input type="text" id="edName" value="${esc(S.profile?S.profile.name:'')}" placeholder="Name"><input type="text" id="edCls" value="${esc(S.profile?S.profile.cls:'')}" placeholder="Class"><button id="saveProf">Save</button></div>
+    <p class="muted" style="font-size:.8rem;margin-top:10px">Progress is saved in the browser on this computer (on a Chromebook it follows the student's Google login).</p>
+    <div class="row" style="margin-top:6px">
+      <button class="ghost" id="expProg">üì§ Backup code</button>
+      <button class="ghost" id="impProg">üì• Restore from code</button>
+      <button class="ghost" id="resetAll" style="color:var(--bad)">Reset everything</button>
+    </div>
+    <textarea id="progCode" rows="2" style="margin-top:8px;display:none;font-size:.75rem"></textarea>
+  </div>`;
+}
+function bindSettings(){
+  document.querySelectorAll('[data-set]').forEach(el=>{
+    el.addEventListener('change',()=>{
+      const k=el.dataset.set;
+      S.settings[k]=el.type==='checkbox'?el.checked:+el.value;
+      saveStore();
+    });
+  });
+  document.getElementById('saveProf').addEventListener('click',()=>{
+    S.profile={name:document.getElementById('edName').value.trim()||'Student',cls:document.getElementById('edCls').value.trim()||''};
+    saveStore();render();
+  });
+  document.getElementById('expProg').addEventListener('click',()=>{
+    const t=document.getElementById('progCode');t.style.display='';
+    t.value='SEP1.'+btoa(unescape(encodeURIComponent(JSON.stringify({p:S.profile,g:S.progress,e:S.wordErr}))));
+    t.select();try{document.execCommand('copy');}catch(_){}
+  });
+  document.getElementById('impProg').addEventListener('click',()=>{
+    const t=document.getElementById('progCode');
+    if(t.style.display==='none'){t.style.display='';t.value='';t.placeholder='Paste a SEP1. backup code here and click again';t.focus();return;}
+    const v=t.value.trim();
+    if(v.startsWith('SEP1.')){
+      try{const o=JSON.parse(decodeURIComponent(escape(atob(v.slice(5)))));
+        if(o.p)S.profile=o.p;if(o.g)S.progress=o.g;if(o.e)S.wordErr=o.e;
+        saveStore();render();}catch(_){alert('Invalid code');}
+    }
+  });
+  document.getElementById('resetAll').addEventListener('click',()=>{
+    if(confirm('Reset ALL progress and the profile on this device?')){localStorage.removeItem(LSK);location.reload();}
+  });
+  /* voice picker (computer-voice fallback) */
+  const voiceRow=document.getElementById('voiceRow'),voiceSel=document.getElementById('voiceSel');
+  function fillVoices(){
+    const vs=hebVoices();
+    if(!vs.length)return;
+    voiceRow.style.display='';
+    const cur=pickVoice();
+    voiceSel.innerHTML=vs.map(v=>`<option value="${esc(v.voiceURI)}" ${cur&&v.voiceURI===cur.voiceURI?'selected':''}>${esc(v.name)}</option>`).join('');
+  }
+  if('speechSynthesis' in window){
+    fillVoices();
+    speechSynthesis.onvoiceschanged=fillVoices;
+    voiceSel.addEventListener('change',()=>{S.settings.voiceURI=voiceSel.value;saveStore();});
+    document.getElementById('voiceTest').addEventListener('click',()=>speakHebrew('◊©÷∏◊Å◊ú◊ï÷π◊ù ◊™÷∑÷º◊ú÷∞◊û÷¥◊ô◊ì÷¥◊ô◊ù, ◊ë÷∞÷º◊î÷∑◊¶÷∞◊ú÷∏◊ó÷∏◊î!'));
+  }
+  /* voice pack import */
+  const packInfo=document.getElementById('packInfo');
+  AudioDB.keys().then(ks=>{if(ks.length)packInfo.textContent=ks.length+' teacher recording(s) loaded on this device.';}).catch(()=>{});
+  document.getElementById('packFile').addEventListener('change',async(e)=>{
+    const f=e.target.files[0];if(!f)return;
+    packInfo.textContent='Loading‚Ä¶';
+    try{
+      const pack=JSON.parse(await f.text());
+      if(pack.kind!=='se-voice-pack'||!pack.clips)throw new Error('not a voice pack');
+      let n=0;
+      for(const [k,c] of Object.entries(pack.clips)){await AudioDB.set(+k,b64ToBlob(c.b64,c.type));n++;}
+      packInfo.textContent=`‚úÖ Loaded ${n} recording(s)${pack.teacher?' from '+pack.teacher:''}. The üîäüë®‚Äçüè´ button is now available in practice.`;
+    }catch(err){packInfo.textContent='‚ùå That file is not a valid voice pack.';}
+  });
+}
+
+/* ---- confetti ---- */
+function confetti(){
+  const c=document.createElement('div');c.className='confetti';
+  const colors=['#e8b931','#2456a6','#187a4b','#b3383e','#7aa7e8'];
+  for(let i=0;i<80;i++){
+    const p=document.createElement('i');
+    p.style.left=Math.random()*100+'vw';
+    p.style.background=colors[i%colors.length];
+    p.style.animationDelay=(Math.random()*0.8)+'s';
+    p.style.transform='rotate('+Math.random()*360+'deg)';
+    c.appendChild(p);
+  }
+  document.body.appendChild(c);
+  setTimeout(()=>c.remove(),3600);
+}
+
+/* ---- render / routing ---- */
+function render(){
+  let body='';
+  switch(view.name){
+    case 'welcome':body=vWelcome();break;
+    case 'home':body=header()+vHome();break;
+    case 'bracha':body=header()+vBracha();break;
+    case 'session':body=vSession();break;
+    case 'results':body=header()+vResults();break;
+    case 'teacher':body=header()+vTeacher();break;
+    case 'help':body=header()+vHelp();break;
+    case 'settings':body=header()+vSettings();break;
+  }
+  app.innerHTML=body;
+  app.querySelectorAll('[data-go]').forEach(el=>el.addEventListener('click',()=>go({name:el.dataset.go,bracha:view.bracha})));
+  if(view.name==='welcome'){
+    document.getElementById('pf-go').addEventListener('click',()=>{
+      const n=document.getElementById('pf-name').value.trim();
+      if(!n){document.getElementById('pf-name').focus();return;}
+      S.profile={name:n,cls:document.getElementById('pf-cls').value.trim()};
+      saveStore();go({name:'home'});
+    });
+    document.getElementById('teacherSkip').addEventListener('click',(e)=>{
+      e.preventDefault();
+      S.profile={name:'Teacher',cls:''};
+      S.settings.unlockAll=true;
+      saveStore();go({name:'home'});
+    });
+  }
+  if(view.name==='home'){
+    app.querySelectorAll('.rung').forEach(el=>{
+      const i=+el.dataset.bracha;
+      const open=()=>{if(isUnlocked(i))go({name:'bracha',bracha:i});};
+      el.addEventListener('click',open);
+      el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')open();});
+    });
+  }
+  if(view.name==='bracha'){
+    app.querySelectorAll('[data-mode]').forEach(el=>el.addEventListener('click',()=>startSession(el.dataset.mode)));
+  }
+  if(view.name==='session')bindSession();
+  if(view.name==='results')bindResults();
+  if(view.name==='teacher')bindTeacher();
+  if(view.name==='help')bindHelp();
+  if(view.name==='settings')bindSettings();
+}
+render();
+</script>

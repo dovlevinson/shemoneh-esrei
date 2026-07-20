@@ -227,7 +227,8 @@ function simWords(tNorm,gNorm,ashk){ // transcript token vs target word (both no
 /* word states */
 const ST={PENDING:0,OK:1,WARN:2,BAD:3};
 const TH_OK=0.65, TH_WARN=0.35, TH_MERGE=0.72;
-const MAX_SKIP=2; // a single confident match may skip at most this many un-read words (prevents line-leaps)
+const MAX_SKIP=2; // a single match may skip at most this many un-read words (prevents line-leaps)
+const STUCK_LIMIT=3; // after this many unmatched tokens on one word, give up on it and move on (prevents wedging)
 const SKIP_TOKEN='__SKIP__';
 function stateFor(s){return s>=TH_OK?ST.OK:(s>=TH_WARN?ST.WARN:ST.BAD);}
 
@@ -244,16 +245,23 @@ function alignTokens(tokens,words,ashk){
     }
     const t=normTranscript(raw);
     if(!t)continue;
-    const W=streak>=3?12:8;               // widen the search window only to FIND the word — never to authorize a big leap
-    const end=Math.min(c+W,words.length);
+
+    // Anti-wedge: if we've failed to match the current word several times running, the recognizer
+    // probably just can't hear it (common with liturgical Hebrew) — mark it uncertain and move on,
+    // so the cursor never gets permanently stuck. One word at a time, so this is never a line-leap.
+    if(streak>=STUCK_LIMIT){
+      st[c]={state:ST.BAD,score:0,heard:null};skips++;c++;prev=null;streak=0;
+      if(c>=words.length)break;
+    }
 
     // (1) Does this token read the CURRENT word (possibly imperfectly)?
     const curS=simWords(t,words[c].norm,ashk);
     // (2) Merge: one spoken token covering the current word + the next one.
     const mS=(c+1<words.length)?simWords(t,words[c].norm+words[c+1].norm,ashk):0;
-    // (3) Best match anywhere in the window (to detect a genuine short skip ahead).
+    // (3) Best match among the next few words — only as far ahead as we're allowed to skip.
+    const skipEnd=Math.min(c+MAX_SKIP+1,words.length);
     let best=-1,bs=0;
-    for(let i=c;i<end;i++){const s=simWords(t,words[i].norm,ashk);if(s>bs){bs=s;best=i;}}
+    for(let i=c+1;i<skipEnd;i++){const s=simWords(t,words[i].norm,ashk);if(s>bs){bs=s;best=i;}}
 
     // Merge wins only if it clearly beats reading the current word alone.
     if(mS>=TH_MERGE&&mS>curS&&mS>=bs){
@@ -266,8 +274,9 @@ function alignTokens(tokens,words,ashk){
       st[c]={state:stateFor(curS),score:curS,heard:raw};
       c++;prev=null;streak=0;continue;
     }
-    // Current word wasn't matched. Allow only a SHORT + CONFIDENT skip to a word just ahead.
-    if(best>c&&bs>=TH_OK&&best-c<=MAX_SKIP){
+    // Current word wasn't matched, but a word just ahead was heard — the student read past it.
+    // Bounded by MAX_SKIP so a stray word can never leap a whole line.
+    if(best>c&&bs>=TH_WARN&&best-c<=MAX_SKIP){
       for(let k=c;k<best;k++){st[k]={state:ST.BAD,score:0,heard:null};skips++;}
       st[best]={state:stateFor(bs),score:bs,heard:raw};
       c=best+1;prev=null;streak=0;continue;
@@ -280,7 +289,7 @@ function alignTokens(tokens,words,ashk){
         c++;prev=null;streak=0;continue;
       }
     }
-    // Unmatched token: keep it as a possible split fragment; cursor stays put (no silent leap).
+    // Unmatched token: keep it as a possible split fragment; count toward the anti-wedge streak.
     prev={t,raw};streak++;
   }
   return {st,cursor:c,skips};

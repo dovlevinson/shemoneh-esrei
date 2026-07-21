@@ -1,0 +1,184 @@
+<meta charset="utf-8">
+<title>Hebrew Speech Model Tester — Whisper</title>
+<style>
+  :root{--bg:#f6f3ea;--panel:#fffdf7;--line:#ddd5c2;--ink:#25304e;--ink2:#66708c;--accent:#2456a6;--accent-ink:#fff;--ok:#187a4b;--bad:#b3383e;--gold:#a8781c;--gold-bg:#f7ecd2}
+  @media (prefers-color-scheme:dark){:root{--bg:#131828;--panel:#1c2336;--line:#333d5c;--ink:#e9e7dd;--ink2:#9aa3bd;--accent:#7aa7e8;--accent-ink:#10203c;--ok:#5ecb93;--bad:#f08a8f;--gold:#d9b45c;--gold-bg:#3a3220}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,Arial,sans-serif}
+  #app{max-width:760px;margin:0 auto;padding:20px 16px 60px}
+  h1{font-size:1.4rem}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:14px 0;box-shadow:0 2px 10px rgba(37,48,78,.08)}
+  button{font:inherit;cursor:pointer;border:0;border-radius:10px;padding:10px 18px;background:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent;border:1px solid var(--line);color:var(--ink);font-weight:400}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  select,input[type=text]{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+  .muted{color:var(--ink2);font-size:.9em}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .heb{font-family:"Frank Ruhl Libre","Times New Roman",serif;direction:rtl;text-align:right;font-size:1.6rem;line-height:2}
+  .bar{height:10px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:6px}
+  .bar>div{height:100%;background:var(--accent);width:0%}
+  code{background:var(--gold-bg);color:var(--gold);padding:1px 6px;border-radius:6px}
+  #status{white-space:pre-wrap;font-size:.9rem}
+</style>
+
+<div id="app">
+  <h1>🧪 Hebrew Speech Model Tester</h1>
+  <p class="muted">This is a throwaway tester. Goal: find out whether a real Whisper speech model transcribes your students' Hebrew reading accurately — before we build it into the trainer. Open this in <b>Google Chrome</b> on a real device with a microphone. Nothing is uploaded; everything runs on your device.</p>
+
+  <div class="card">
+    <h3>Step 1 — Load the model</h3>
+    <div class="row">
+      <label>Model:
+        <select id="model">
+          <option value="Xenova/whisper-tiny">tiny — fastest, ~40 MB, least accurate</option>
+          <option value="Xenova/whisper-base" selected>base — balanced, ~80 MB</option>
+          <option value="Xenova/whisper-small">small — best Hebrew, ~250 MB, slower</option>
+        </select>
+      </label>
+      <button id="loadBtn">Load model</button>
+    </div>
+    <div class="muted" id="deviceNote" style="margin-top:8px"></div>
+    <div class="bar"><div id="loadBar"></div></div>
+    <div id="status" class="muted" style="margin-top:8px">Not loaded yet.</div>
+  </div>
+
+  <div class="card">
+    <h3>Step 2 — Record yourself reading (a bracha, a line, anything Hebrew)</h3>
+    <div class="row">
+      <button id="recBtn" disabled>🎤 Start recording</button>
+      <span id="recTime" class="muted"></span>
+    </div>
+    <audio id="player" controls style="width:100%;margin-top:10px;display:none"></audio>
+  </div>
+
+  <div class="card">
+    <h3>Step 3 — Transcribe & judge</h3>
+    <button id="txBtn" disabled>Transcribe what I recorded</button>
+    <div id="txStatus" class="muted" style="margin-top:8px"></div>
+    <div id="result" class="heb" style="margin-top:10px"></div>
+    <p class="muted" style="margin-top:12px">How to judge: does the transcript match the <b>letters</b> of what you read (ignore vowels/nikud — the model doesn't output those, and that's fine)? If it's close, a real model is the answer and I'll build it into the trainer. If it's still off, we'll know browser-only won't cut it.</p>
+  </div>
+
+  <div class="card muted" style="font-size:.85rem">
+    <b>Notes / honest caveats:</b>
+    <ul style="line-height:1.7">
+      <li>First load downloads the model (cached afterward on this device). On a slow connection or a Chromebook, <code>tiny</code>/<code>base</code> load faster; <code>small</code> is more accurate but heavier.</li>
+      <li>This runs on <b>WebGPU</b> if your browser supports it (fast), otherwise falls back to CPU (slower). The device in use is shown above.</li>
+      <li>Transcription happens after you finish reading (a few seconds), not live word-by-word. For an accurate <i>graded</i> test that's the right trade.</li>
+      <li>These are general multilingual Whisper models. If Hebrew accuracy is close but not perfect, there are Hebrew-specialized models (ivrit.ai) we can try next.</li>
+    </ul>
+  </div>
+</div>
+
+<script type="module">
+import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3';
+
+const $ = id => document.getElementById(id);
+const statusEl = $('status'), loadBar = $('loadBar');
+let transcriber = null, mediaRec = null, chunks = [], recordedBlob = null, recTimer = null, recStart = 0;
+
+// Detect device
+const hasWebGPU = 'gpu' in navigator;
+$('deviceNote').textContent = hasWebGPU
+  ? 'Compute: WebGPU available (fast path).'
+  : 'Compute: WebGPU not available — will run on CPU (slower, still works).';
+
+$('loadBtn').addEventListener('click', async () => {
+  const model = $('model').value;
+  $('loadBtn').disabled = true;
+  $('model').disabled = true;
+  statusEl.textContent = 'Loading ' + model + ' … (first time downloads the model)';
+  const t0 = performance.now();
+  const seen = {};
+  try {
+    transcriber = await pipeline('automatic-speech-recognition', model, {
+      device: hasWebGPU ? 'webgpu' : 'wasm',
+      dtype: hasWebGPU ? 'fp32' : 'q8',
+      progress_callback: (p) => {
+        if (p.status === 'progress' && p.file) {
+          seen[p.file] = p.progress || 0;
+          const vals = Object.values(seen);
+          const avg = vals.reduce((a,b)=>a+b,0) / vals.length;
+          loadBar.style.width = Math.min(100, avg).toFixed(0) + '%';
+        }
+      }
+    });
+    loadBar.style.width = '100%';
+    statusEl.textContent = '✅ Model ready (' + ((performance.now()-t0)/1000).toFixed(1) + 's). Now record in Step 2.';
+    $('recBtn').disabled = false;
+  } catch (e) {
+    statusEl.textContent = '❌ Failed to load model: ' + (e && e.message ? e.message : e) + '\nTry a smaller model, or check your connection.';
+    $('loadBtn').disabled = false;
+    $('model').disabled = false;
+  }
+});
+
+$('recBtn').addEventListener('click', async () => {
+  if (mediaRec && mediaRec.state === 'recording') {
+    mediaRec.stop();
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    chunks = [];
+    mediaRec = new MediaRecorder(stream);
+    mediaRec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+    mediaRec.onstop = () => {
+      clearInterval(recTimer);
+      stream.getTracks().forEach(t => t.stop());
+      recordedBlob = new Blob(chunks, { type: mediaRec.mimeType || 'audio/webm' });
+      const url = URL.createObjectURL(recordedBlob);
+      $('player').src = url; $('player').style.display = '';
+      $('recBtn').textContent = '🎤 Start recording';
+      $('txBtn').disabled = false;
+      $('recTime').textContent = 'Recorded. Ready to transcribe.';
+    };
+    mediaRec.start();
+    recStart = performance.now();
+    recTimer = setInterval(() => {
+      $('recTime').textContent = 'Recording… ' + ((performance.now()-recStart)/1000).toFixed(0) + 's';
+    }, 250);
+    $('recBtn').textContent = '⏹ Stop recording';
+  } catch (e) {
+    $('recTime').textContent = '❌ Microphone error: ' + (e && e.name ? e.name : e) + '. Allow the mic and use HTTPS (not a downloaded file).';
+  }
+});
+
+// Decode a recorded blob to 16 kHz mono Float32 (what Whisper expects)
+async function toMono16k(blob) {
+  const buf = await blob.arrayBuffer();
+  const ac = new (window.AudioContext || window.webkitAudioContext)();
+  const decoded = await ac.decodeAudioData(buf);
+  ac.close();
+  const off = new OfflineAudioContext(1, Math.ceil(decoded.duration * 16000), 16000);
+  const src = off.createBufferSource();
+  src.buffer = decoded;
+  src.connect(off.destination);
+  src.start();
+  const rendered = await off.startRendering();
+  return rendered.getChannelData(0);
+}
+
+$('txBtn').addEventListener('click', async () => {
+  if (!transcriber || !recordedBlob) return;
+  $('txBtn').disabled = true;
+  $('txStatus').textContent = 'Transcribing…';
+  $('result').textContent = '';
+  const t0 = performance.now();
+  try {
+    const audio = await toMono16k(recordedBlob);
+    const out = await transcriber(audio, {
+      language: 'hebrew',
+      task: 'transcribe',
+      chunk_length_s: 30,
+      stride_length_s: 5
+    });
+    const text = (out && out.text ? out.text : '').trim();
+    $('result').textContent = text || '(nothing recognized)';
+    $('txStatus').textContent = '✅ Done in ' + ((performance.now()-t0)/1000).toFixed(1) + 's. Compare the letters above to what you read.';
+  } catch (e) {
+    $('txStatus').textContent = '❌ Transcription failed: ' + (e && e.message ? e.message : e);
+  }
+  $('txBtn').disabled = false;
+});
+</script>

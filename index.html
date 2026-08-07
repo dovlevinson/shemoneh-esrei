@@ -89,6 +89,7 @@ nav.tabs button.on{background:var(--accent);color:var(--accent-ink);font-weight:
 .w.warn{background:var(--warn-bg);color:var(--warn)}
 .w.bad{background:var(--bad-bg);color:var(--bad);text-decoration:underline wavy var(--bad) 1.5px}
 .w.trouble{box-shadow:0 2px 0 var(--warn)}
+.notice.sayrule{border-left-color:var(--accent);background:var(--cur-bg)}
 /* mic bar */
 .micbar{position:sticky;bottom:0;background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:10px 14px;display:flex;gap:12px;align-items:center;margin-top:14px}
 .micbtn{width:58px;height:58px;border-radius:50%;font-size:24px;background:var(--accent);color:var(--accent-ink);flex:none}
@@ -147,7 +148,13 @@ function norm(w){ // vocalized or plain word -> bare letters
   return s;
 }
 function normTranscript(w){
+  // Hashem abbreviations the speech model commonly emits -> the spelled Name, so
+  // the divine slot matches. Detect the geresh/apostrophe BEFORE norm() strips it;
+  // a BARE ה (no mark) still won't pass, keeping the anti-false-match guard intact.
+  const bare=(w||'').replace(/[֑-ׇ]/g,'');   // drop nikud/taamim, keep letters + marks
+  if(/^ה['׳’][^א-ת]*$/.test(bare))return 'יהוה'; // standalone ה' / ה׳ (not ה' glued to a following word)
   let s=norm(w);
+  if(s==='יי')return 'יהוה';        // double-yod abbreviation (יְיָ)
   s=s.replace(/אלו?ק/g,'אלה');     // Elokim-spellings (אלוקינו/אלקים) -> Elohim family
   return s;
 }
@@ -176,7 +183,7 @@ function ratio(a,b){
   return 1-d/Math.max(a.length,b.length);
 }
 const DIVINE=new Set(['השמ','אדני','אדוני','אדושמ','אדנוי','יהוה']); // final letters already folded by norm() — bare 'ה' removed so the divine slot can't trivially pass
-function isDivineTarget(n){return n==='יהוה';}
+function isDivineTarget(n){return n==='יהוה'||n==='אדני';} // both spellings of the Name in the text (יְהֹוָה and the opening אֲדֹנָי) — students read both as "Hashem"
 const MATRES=new Set(['א','ה','ו','י']);
 function singleEdit(a,b){ // if a->b is one edit, return {type:'sub'|'ins'|'del', ca, cb}
   const la=a.length,lb=b.length;
@@ -211,6 +218,12 @@ function simWords(tNorm,gNorm,ashk){ // transcript token vs target word (both no
   if(tNorm===gNorm)return 1;
   const ft=fold(tNorm),fg=fold(gNorm);
   if(ft===fg)return 0.97;                      // identical sound (ט/ת, כ/ק, א/ע, ס/שׂ spelling variance)
+  // Word-final ה/א are both silent vowel-letters -> same sound (e.g. סלה vs "סלא", נא vs נה).
+  // Only fires when the words are otherwise identical, so it can't cause false matches.
+  if(ft.length===fg.length&&ft.length>1&&ft.slice(0,-1)===fg.slice(0,-1)){
+    const SILENT_FINAL=new Set(['א','ה']); // ע already folded to א above
+    if(SILENT_FINAL.has(ft.slice(-1))&&SILENT_FINAL.has(fg.slice(-1)))return 0.96;
+  }
   if(ashk&&foldAshk(tNorm)===foldAshk(gNorm))return 0.94;
   if(gNorm.length<=2||tNorm.length<=2)return 0; // short words: sound-exact or nothing
   const edits=analyzeEdits(ft,fg,2);
@@ -298,6 +311,68 @@ function alignScore(tokens,words,ashk){ // used to pick the best ASR alternative
   const r=alignTokens(tokens,words,ashk);
   const mass=r.st.reduce((s,x)=>s+(x?x.score:0),0);
   return mass-0.5*(r.skips||0); // penalize auto-skipped gaps so a jump-ahead alternative can't win on raw mass
+}
+
+/* ---- server-transcript scorer (used ONLY for accurate/server grading) ----
+   Whisper gives us the WHOLE transcript at once, but its word boundaries for
+   short/liturgical words (and Hashem's Name) don't line up with the tefillah.
+   So instead of the streaming greedy aligner, do an OPTIMAL global word
+   alignment that treats boundaries as suggestions: every expected word can be
+   read by one token (match), be split across two tokens (merge), share a token
+   with its neighbor (split), be omitted (skip), or a stray token can be ignored
+   (insertion) — whichever combination best explains the reading. Divine-name
+   matching is extra-lenient here because the model transcribes the Name every
+   which way (ה' , יי , אדני , השם , or a bare fragment). */
+function divineCanon(n){return DIVINE.has(n)?'יהוה':n;}
+function simServer(tn,wnorm,ashk){
+  if(isDivineTarget(wnorm)){
+    // Students are told to read the Name as the plain word "Hashem" (הַשֵּׁם). Accept that,
+    // and still accept a clearly-said "Adonai" (habit). Clear forms are already canonicalized
+    // to יהוה by divineCanon before we get here. We deliberately do NOT accept a bare ה or a
+    // breathy heh-run (הה/ההה) — that mush can't tell a real Name from a mumble or a skip, so
+    // it now scores 0 and gets flagged for the teacher instead of a false pass.
+    if(tn==='יהוה')return 1;
+    if(/^(יהוה?|יי|אדנ[יו]?|אדונ[יי]?|אדוש[מ]?|השמ)$/.test(tn))return 0.9; // clear Hashem/Adonai attempt (not a bare ה / heh-run)
+    return 0;
+  }
+  return simWords(tn,wnorm,ashk);
+}
+function scoreServer(rawTranscript,words,ashk){
+  const toks=[];
+  // Students read the Name as the plain word "Hashem", which the model transcribes cleanly.
+  // We still canonicalize a written ה' / ה׳ (how the model often renders a clearly-said
+  // "Adonai") to the Name and isolate it. We deliberately DROPPED the old "run of hehs -> Name"
+  // rule: heh-mush is what the model emits for ANY quiet/mumbled sound in the Name slot, so
+  // crediting it made the Name unfailable. Now mush stays mush and gets flagged, not passed.
+  const cleaned=(rawTranscript||'')
+    .replace(/ה[֑-ׇ]*['׳’]/g,' יהוה ');                 // ה' / ה׳  (a clearly-written Adonai)
+  for(const r of cleaned.split(/\s+/)){
+    if(!r)continue;
+    const n=divineCanon(normTranscript(r));
+    if(n)toks.push({n,raw:r});
+  }
+  const P=words.length,Q=toks.length,INF=1e9,INS=0.35,SKIP=1.0,ME=0.06;
+  const cost=Array.from({length:P+1},()=>new Float64Array(Q+1).fill(INF));
+  const back=Array.from({length:P+1},()=>new Array(Q+1).fill(null));
+  cost[0][0]=0;
+  for(let i=0;i<=P;i++)for(let j=0;j<=Q;j++){
+    const c=cost[i][j]; if(c>=INF)continue;
+    if(j<Q){const nc=c+INS;if(nc<cost[i][j+1]){cost[i][j+1]=nc;back[i][j+1]={op:'ins',pi:i,pj:j};}}          // ignore a stray token
+    if(i<P){const nc=c+SKIP;if(nc<cost[i+1][j]){cost[i+1][j]=nc;back[i+1][j]={op:'skip',pi:i,pj:j};}}          // student omitted this word
+    if(i<P&&j<Q){const s=simServer(toks[j].n,words[i].norm,ashk);const nc=c+(1-s);if(nc<cost[i+1][j+1]){cost[i+1][j+1]=nc;back[i+1][j+1]={op:'m',pi:i,pj:j,s,heard:toks[j].raw};}}                                        // 1 token = 1 word
+    if(i<P&&j+1<Q){const s=simServer(toks[j].n+toks[j+1].n,words[i].norm,ashk);const nc=c+(1-s)+ME;if(nc<cost[i+1][j+2]){cost[i+1][j+2]=nc;back[i+1][j+2]={op:'m2',pi:i,pj:j,s,heard:toks[j].raw+' '+toks[j+1].raw};}}      // word split across 2 tokens
+    if(i+1<P&&j<Q){const s=simServer(toks[j].n,words[i].norm+words[i+1].norm,ashk);const nc=c+(1-s)+ME;if(nc<cost[i+2][j+1]){cost[i+2][j+1]=nc;back[i+2][j+1]={op:'sp',pi:i,pj:j,s,heard:toks[j].raw};}}                       // 1 token = 2 words
+  }
+  const st=new Array(P).fill(null); let skips=0,i=P,j=Q;
+  while(!(i===0&&j===0)){
+    const b=back[i][j]; if(!b)break;
+    if(b.op==='skip'){st[b.pi]={state:ST.BAD,score:0,heard:null};skips++;}
+    else if(b.op==='m'||b.op==='m2'){st[b.pi]={state:stateFor(b.s),score:b.s,heard:b.heard};}
+    else if(b.op==='sp'){const s2=stateFor(b.s);st[b.pi]={state:s2,score:b.s,heard:b.heard};st[b.pi+1]={state:s2,score:b.s,heard:b.heard};} // glued pair: both words get the combined verdict (no auto-"almost")
+    i=b.pi;j=b.pj;
+  }
+  for(let k=0;k<P;k++)if(!st[k]){st[k]={state:ST.BAD,score:0,heard:null};skips++;}
+  return {st,skips};
 }
 
 /* letter-level diff for mistake feedback */
@@ -462,6 +537,33 @@ const AudioDB={
 };
 function blobToB64(blob){return new Promise(res=>{const f=new FileReader();f.onload=()=>res(f.result.split(',')[1]);f.readAsDataURL(blob);});}
 function b64ToBlob(b64,type){const bin=atob(b64);const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new Blob([u],{type:type||'audio/webm'});}
+
+/* ---- server grading (Phase 1: local ivrit.ai Whisper) ----
+   In test mode, when server grading is on, we send the recording to a Whisper
+   endpoint and grade the returned transcript instead of the browser's Web
+   Speech guess. Endpoint is overridable so the same code points at localhost
+   now and a cloud host later, without a rebuild:
+       localStorage.setItem('se-grader-url','https://your-host/transcribe')  */
+function graderURL(){return localStorage.getItem('se-grader-url')||'http://127.0.0.1:8000/transcribe';}
+async function gradeWithServer(blob,words){
+  const fd=new FormData();
+  fd.append('audio',blob,'reading.webm');
+  fd.append('language','he');
+  // The KITZ trick: bias Whisper toward the exact tefillah text we expect (with nikud).
+  // The Name is primed as הַשֵּׁם — the plain word we tell students to say — so the model
+  // hears a clean word there instead of guessing at a mumbled Name.
+  fd.append('prompt',words.map(w=>isDivineTarget(w.norm)?'הַשֵּׁם':w.display).join(' '));
+  const ctrl=new AbortController();
+  const to=setTimeout(()=>ctrl.abort(),120000);
+  let r;
+  try{r=await fetch(graderURL(),{method:'POST',body:fd,signal:ctrl.signal});}
+  catch(e){throw new Error(e.name==='AbortError'?'the grading server timed out':'could not reach the grading server');}
+  finally{clearTimeout(to);}
+  let j=null;try{j=await r.json();}catch(_){}
+  if(!r.ok||!j)throw new Error((j&&j.error)?j.error:('grading server error '+r.status));
+  if(typeof j.transcript!=='string')throw new Error(j.error||'no transcript returned');
+  return j.transcript;
+}
 /* ---- computer voice (fallback when no teacher recording) ---- */
 function hebVoices(){
   if(!('speechSynthesis' in window))return [];
@@ -525,7 +627,7 @@ function loadStore(){
   try{return JSON.parse(localStorage.getItem(LSK))||{};}catch(_){return{};}
 }
 function saveStore(){localStorage.setItem(LSK,JSON.stringify(S));}
-const DEFAULTS={winter:false,ayt:false,rc:false,chanukah:false,purim:false,ashk:false,masteryPct:90,tsize:2.0,showTrans:false,showTrouble:false,unlockAll:false,tts:false,voiceURI:''};
+const DEFAULTS={winter:false,ayt:false,rc:false,chanukah:false,purim:false,ashk:false,masteryPct:90,tsize:2.0,showTrans:false,showTrouble:false,unlockAll:false,tts:false,voiceURI:'',serverGrade:false};
 const S=Object.assign({
   profile:null,
   progress:{},
@@ -670,7 +772,8 @@ function vSession(){
       }
       const errKey=session.bIdx+':'+w.norm;
       if(!isTest&&S.settings.showTrouble&&(S.wordErr[errKey]||0)>=2)cls.push('trouble');
-      return `<span class="${cls.join(' ')}" id="w${wi}" data-w="${wi}">${esc(w.display)}</span>`;
+      if(isDivineTarget(w.norm))cls.push('dvn');
+      return `<span class="${cls.join(' ')}" id="w${wi}" data-w="${wi}"${isDivineTarget(w.norm)?' title="Read this as &quot;Hashem&quot;"':''}>${esc(w.display)}</span>`;
     }).join(' ');
     const trans=(S.settings.showTrans&&ph.trans)?`<div class="trans">${esc(ph.trans)}</div>`:'';
     return `<div class="phrase" id="ph${pi}">${ws}${trans}</div>`;
@@ -683,6 +786,7 @@ function vSession(){
   </div>
   ${isTest?`<div class="notice">📝 <b>Test mode:</b> read the whole bracha out loud, clearly and in order. No hints until the end — good luck!</div>`
     :`<div class="notice" style="border-left-color:var(--accent);background:var(--cur-bg)">💡 Read at your normal pace — words light up as you go. Stuck on a word? Use <b>Skip ▶</b>. Want to re-read? Tap <b>◀ Back</b> or tap any earlier word to go back to it.</div>`}
+  <div class="notice sayrule">🙏 When you reach <b>Hashem's Name</b> (marked <span class="heb">יְהֹוָה</span>), say the word <b>"Hashem"</b> out loud — not the Name itself.</div>
   <div class="card"><div class="tefilla heb" style="--tsize:${S.settings.tsize}rem">${phrasesHtml}</div></div>
   <div class="micbar">
     <button class="micbtn" id="micBtn" aria-label="Start microphone">🎤</button>
@@ -878,18 +982,34 @@ async function endSession(){
   session.listener&&session.listener.stop();
   session.timerI&&clearInterval(session.timerI);
   const durMs=session.startT?Date.now()-session.startT:0;
-  // final scoring from committed tokens only (drop any half-heard interim tail)
-  const {st,skips}=alignTokens(session.committed,session.words,S.settings.ashk);
+  const isTest=session.mode==='test';
+  // Stop the recording first — we need the audio for server grading (and playback).
+  if(session.recorder){session.audioBlob=await session.recorder.stop();}
+  // Decide which transcript to grade. Default: the browser's Web Speech tokens.
+  // In test mode with server grading on, send the recording to the ivrit.ai
+  // Whisper endpoint and grade its (far more accurate) transcript instead.
+  session.gradedBy='browser';session.serverErr=null;session.serverTranscript=null;
+  if(isTest&&S.settings.serverGrade&&session.audioBlob){
+    const gv=document.getElementById('interim');
+    if(gv)gv.innerHTML='⏳ Grading your reading with the accurate model… (a few seconds)';
+    const mb=document.getElementById('micBtn');if(mb)mb.disabled=true;
+    try{
+      session.serverTranscript=await gradeWithServer(session.audioBlob,session.words);
+      session.gradedBy='server';
+    }catch(e){session.serverErr=e.message||String(e);/* graceful fall back to browser grading */}
+  }
+  // final scoring: server transcript → boundary-agnostic scorer; browser → live-token aligner
+  const {st,skips}=(session.gradedBy==='server')
+    ? scoreServer(session.serverTranscript,session.words,S.settings.ashk)
+    : alignTokens(session.committed,session.words,S.settings.ashk);
   for(let i=0;i<session.words.length;i++){
     const a=st[i],w=session.words[i];
     w.state=a?a.state:ST.BAD;w.score=a?a.score:0;w.heard=a?a.heard:null;
     if(w.state!==ST.OK)S.wordErr[session.bIdx+':'+w.norm]=(S.wordErr[session.bIdx+':'+w.norm]||0)+1;
   }
-  if(session.recorder){session.audioBlob=await session.recorder.stop();}
   const score=finalScore();
   const stats=sessionStats();
   const wpm=durMs>=5000?Math.round(stats.ok/(durMs/60000)):0;
-  const isTest=session.mode==='test';
   // Confidence flag: the computer can't hear every letter distinction, so surface the reads it's unsure
   // about for the teacher to review rather than pretending the auto-grade is final.
   const warnRatio=stats.total?stats.warn/stats.total:0;
@@ -907,7 +1027,7 @@ async function endSession(){
     S.progress[session.bIdx]=p;
     const missed=session.words.map((w,i)=>w.state===ST.BAD?i:-1).filter(i=>i>=0);
     const partial=session.words.map((w,i)=>w.state===ST.WARN?i:-1).filter(i=>i>=0);
-    session.resultCode=encodeResult({v:1,n:S.profile.name,c:S.profile.cls,b:session.bIdx+1,bn:DATA.brachot[session.bIdx].he,d:p.lastDate,a:score,w:wpm,dur:Math.round(durMs/1000),m:missed,p:partial,tw:session.words.length,fl:flagged?1:0,fr:flagReasons});
+    session.resultCode=encodeResult({v:1,n:S.profile.name,c:S.profile.cls,b:session.bIdx+1,bn:DATA.brachot[session.bIdx].he,d:p.lastDate,a:score,w:wpm,dur:Math.round(durMs/1000),m:missed,p:partial,tw:session.words.length,fl:flagged?1:0,fr:flagReasons,g:session.gradedBy==='server'?1:0,tr:(session.serverTranscript||'').slice(0,400)});
     S.history.unshift({b:session.bIdx,a:score,d:p.lastDate,f:flagged?1:0});S.history=S.history.slice(0,50);
   }
   saveStore();
@@ -922,6 +1042,10 @@ function vResults(){
   const isTest=session.mode==='test';
   const passed=score>=S.settings.masteryPct;
   const b=DATA.brachot[session.bIdx];
+  const gradedHtml=isTest?(session.gradedBy==='server'
+    ?`<div class="muted" style="font-size:.8rem;margin-top:6px">✅ Graded by the accurate Hebrew model (ivrit.ai Whisper)</div>
+      ${session.serverTranscript?`<details style="margin-top:6px;text-align:right"><summary class="muted" style="font-size:.78rem;cursor:pointer;text-align:left">What the model heard (for review)</summary><div class="hebtxt" dir="rtl" style="font-size:1rem;margin-top:6px">${esc(session.serverTranscript)}</div></details>`:''}`
+    :(session.serverErr?`<div class="notice" style="border-left-color:var(--warn);background:var(--warn-bg);text-align:left">⚠️ Couldn't reach the accurate grader (${esc(session.serverErr)}) — graded with the browser's recognition instead.</div>`:'')):'';
   const mistakes=session.words.map((w,i)=>({w,i})).filter(x=>x.w.state!==ST.OK);
   const mHtml=mistakes.length?mistakes.map(({w,i})=>{
     let heardHtml='<span class="muted">— not heard —</span>';
@@ -959,6 +1083,7 @@ function vResults(){
       </div>
     </div>
     ${isTest&&!passed?`<p class="muted">You need ${S.settings.masteryPct}% to master this bracha — a little more practice and you're there! 💪</p>`:''}
+    ${gradedHtml}
     ${flagged?`<div class="notice" style="border-left-color:var(--warn);background:var(--warn-bg);text-align:left">⚑ <b>Flagged for teacher review.</b> The computer isn't fully sure about this read${flagReasons&&flagReasons.length?' ('+esc(flagReasons.join('; '))+')':''} — your teacher will listen and give the final grade.</div>`:''}
     ${audioHtml}
   </div>
@@ -1000,6 +1125,13 @@ function vTeacher(){
     <p class="muted" style="font-size:.8rem">Turn this on to walk through every bracha's practice and test screens yourself. Leave it off on student devices.</p>
   </div>
   <div class="card">
+    <h3>🎯 Accurate grading (beta)</h3>
+    <label style="display:flex;gap:8px"><input type="checkbox" id="serverGrade" ${S.settings.serverGrade?'checked':''}> <b>Use the accurate Hebrew model for Mastery Tests</b> — sends the recording to a Whisper grading server instead of the browser's guess.</label>
+    <div class="row" style="margin-top:8px"><label style="flex:1">Grading server URL: <input type="text" id="graderUrl" value="${esc(graderURL())}" style="width:100%;font-size:.8rem" placeholder="http://127.0.0.1:8000/transcribe"></label></div>
+    <p class="muted" style="font-size:.8rem">While testing on this computer, keep the default and make sure the local grading server is running. This only changes how the <b>Mastery Test</b> is graded — Practice mode still uses live browser feedback. If the server can't be reached, the test falls back to browser grading automatically.</p>
+    <div class="row"><button class="ghost" id="testGrader">Test connection</button><span class="muted" id="graderStatus" style="font-size:.8rem"></span></div>
+  </div>
+  <div class="card">
     <h3>🎙️ Reference recordings — your voice</h3>
     <p class="muted" style="font-size:.88rem">Record yourself reading each bracha. Students then get a <b>🔊👨‍🏫 button</b> in practice that plays <i>your</i> reading instead of a computer voice. Record here, then <b>Export voice pack</b> and share the file with students (Classroom/Drive) — they load it once via Settings → "Load teacher voice pack."</p>
     <div class="tblwrap"><table><tbody id="refRows"></tbody></table></div>
@@ -1033,6 +1165,21 @@ function vTeacher(){
 function bindTeacher(){
   let rows=[];
   document.getElementById('unlockAll').addEventListener('change',e=>{S.settings.unlockAll=e.target.checked;saveStore();});
+
+  /* --- accurate server grading (beta) --- */
+  const sg=document.getElementById('serverGrade');
+  if(sg)sg.addEventListener('change',e=>{S.settings.serverGrade=e.target.checked;saveStore();});
+  const gu=document.getElementById('graderUrl');
+  if(gu)gu.addEventListener('change',e=>{const v=e.target.value.trim();if(v)localStorage.setItem('se-grader-url',v);else localStorage.removeItem('se-grader-url');});
+  const tg=document.getElementById('testGrader');
+  if(tg)tg.addEventListener('click',async()=>{
+    const st=document.getElementById('graderStatus');st.textContent='Checking…';
+    try{
+      const base=graderURL().replace(/\/transcribe\/?$/,'/');
+      const r=await fetch(base,{method:'GET'});const j=await r.json();
+      st.textContent=r.ok?('✅ Connected — model ready ('+(j.model||'')+')'):('⚠️ Server responded '+r.status);
+    }catch(e){st.textContent='⚠️ Could not reach the server. Is it running?';}
+  });
 
   /* --- reference recording studio --- */
   const refRows=document.getElementById('refRows');

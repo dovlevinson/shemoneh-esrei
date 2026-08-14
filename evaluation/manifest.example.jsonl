@@ -1,0 +1,2 @@
+{"attempt_id":"cal-001","speaker_id":"student-cal-a","split":"calibration","bracha":1,"audio_path":"private/audio/cal-001.webm","human_pass":true,"model_score":96,"review_required":false,"teacher_notes":"example only"}
+{"attempt_id":"test-001","speaker_id":"student-test-a","split":"test","bracha":1,"audio_path":"private/audio/test-001.webm","human_pass":false,"model_score":72,"review_required":true,"teacher_notes":"example only"}

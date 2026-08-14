@@ -999,9 +999,12 @@ async function endSession(){
     }catch(e){session.serverErr=e.message||String(e);/* graceful fall back to browser grading */}
   }
   // final scoring: server transcript → boundary-agnostic scorer; browser → live-token aligner
+  // Grade the SAME token set the live view showed. Chrome often has not finalized the last
+  // phrase (or several) when the student hits "I'm done"; those tokens live in session.interim.
+  // Grading committed-only silently threw them away, so a correct read came back as skipped.
   const {st,skips}=(session.gradedBy==='server')
     ? scoreServer(session.serverTranscript,session.words,S.settings.ashk)
-    : alignTokens(session.committed,session.words,S.settings.ashk);
+    : alignTokens(session.committed.concat(session.interim),session.words,S.settings.ashk);
   for(let i=0;i<session.words.length;i++){
     const a=st[i],w=session.words[i];
     w.state=a?a.state:ST.BAD;w.score=a?a.score:0;w.heard=a?a.heard:null;

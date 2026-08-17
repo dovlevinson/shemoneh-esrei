@@ -15,7 +15,26 @@ from typing import Iterable, Sequence
 FINALS = str.maketrans({"ך": "כ", "ם": "מ", "ן": "נ", "ף": "פ", "ץ": "צ"})
 HEBREW_LETTERS = re.compile(r"[^א-ת]")
 DIVINE_TARGETS = {"יהוה", "אדני"}
-DIVINE_FORMS = {"יהוה", "אדני", "אדוני", "השמ", "אדושמ", "יי"}
+DIVINE_FORMS = {"יהוה", "אדני", "אדוני", "השמ", "אדושמ", "יי", "ה"}
+
+# Whisper normally writes unpointed Hebrew in modern plene spelling, while
+# stripping the points from a siddur often produces defective spelling.  Those
+# are writing-system differences, not evidence that the reader pronounced a
+# different word.  Generate only variants licensed by vowel marks in the
+# expected pointed word instead of globally deleting every vav and yod, which
+# would create unsafe matches between genuinely different Hebrew words.
+HIRIQ = "ִ"
+TSERE = "ֵ"
+HOLAM = "ֹ"
+HOLAM_HASER = "ֺ"
+QUBUTS = "ֻ"
+OPTIONAL_MATRES = {
+    HIRIQ: "י",
+    TSERE: "י",
+    HOLAM: "ו",
+    HOLAM_HASER: "ו",
+    QUBUTS: "ו",
+}
 
 OK_THRESHOLD = 1.0
 ALMOST_THRESHOLD = 0.55
@@ -28,6 +47,36 @@ def normalize_word(value: str | None) -> str:
     text = HEBREW_LETTERS.sub("", value or "").translate(FINALS)
     # Common religious spelling used by Hebrew ASR for Elohim-family words.
     return re.sub(r"אלו?ק", "אלה", text)
+
+
+def expected_spelling_variants(value: str | None) -> set[str]:
+    """Return safe defective/plene spellings licensed by the pointed target.
+
+    The base form is always retained.  Optional matres are added only where the
+    target itself supplies a matching vowel point.  The expansion is bounded to
+    keep pathological input from producing an exponential number of variants.
+    """
+
+    text = value or ""
+    units: list[tuple[str, list[str]]] = []
+    for char in text:
+        if "א" <= char <= "ת":
+            units.append((FINALS.get(ord(char), char), []))
+        elif units:
+            units[-1][1].append(char)
+
+    variants = [""]
+    for index, (letter, marks) in enumerate(units):
+        choices = [letter]
+        next_letter = units[index + 1][0] if index + 1 < len(units) else None
+        for mark, mater in OPTIONAL_MATRES.items():
+            if mark in marks and letter != mater and next_letter != mater:
+                choices.append(letter + mater)
+        variants = [prefix + choice for prefix in variants for choice in choices][:64]
+
+    normalized = {normalize_word(variant) for variant in variants if variant}
+    normalized.add(normalize_word(text))
+    return {variant for variant in normalized if variant}
 
 
 def tokenize_transcript(transcript: str | None) -> list[str]:
@@ -68,12 +117,18 @@ def word_similarity(heard: str | None, expected: str | None) -> float:
         return 1.0 if heard_norm in DIVINE_FORMS else 0.0
     if not heard_norm or not expected_norm:
         return 0.0
-    if heard_norm == expected_norm:
+    expected_variants = expected_spelling_variants(expected)
+    if heard_norm in expected_variants:
         return 1.0
-    if min(len(heard_norm), len(expected_norm)) <= 2:
+    if min(len(heard_norm), min(map(len, expected_variants))) <= 2:
         return 0.0
-    distance = levenshtein(heard_norm, expected_norm)
-    return max(0.0, 1.0 - distance / max(len(heard_norm), len(expected_norm)))
+    return max(
+        max(
+            0.0,
+            1.0 - levenshtein(heard_norm, variant) / max(len(heard_norm), len(variant)),
+        )
+        for variant in expected_variants
+    )
 
 
 @dataclass(frozen=True)

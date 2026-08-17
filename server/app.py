@@ -20,7 +20,7 @@ from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
-from starlette.responses import JSONResponse
+from starlette.responses import FileResponse, JSONResponse
 
 from .scoring import normalize_word, score_transcript
 from .signing import sign_result, verify_result
@@ -32,6 +32,7 @@ MAX_UPLOAD_BYTES = int(os.getenv("KRIAH_MAX_UPLOAD_BYTES", str(15 * 1024 * 1024)
 MAX_AUDIO_SECONDS = float(os.getenv("KRIAH_MAX_AUDIO_SECONDS", "180"))
 RATE_LIMIT_PER_MINUTE = int(os.getenv("KRIAH_RATE_LIMIT_PER_MINUTE", "10"))
 ALLOWED_SUFFIXES = {".webm", ".wav", ".mp3", ".m4a", ".mp4", ".ogg"}
+FRONTEND_PATH = Path(__file__).resolve().parents[1] / "index.html"
 
 
 class VerifyRequest(BaseModel):
@@ -120,7 +121,6 @@ def create_app(transcriber=None) -> FastAPI:
                 )
         return await call_next(request)
 
-    @app.get("/")
     @app.get("/health")
     def health():
         return {
@@ -132,6 +132,12 @@ def create_app(transcriber=None) -> FastAPI:
             "capabilities": ["transcription", "word-order-analysis"],
             "limitations": ["does not grade nikud", "results require teacher review"],
         }
+
+    @app.get("/", include_in_schema=False)
+    def frontend():
+        if not FRONTEND_PATH.is_file():
+            raise HTTPException(status_code=404, detail="frontend is unavailable")
+        return FileResponse(FRONTEND_PATH, media_type="text/html")
 
     async def run_transcription(audio: UploadFile, language: str):
         if language != "he":

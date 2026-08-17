@@ -4,8 +4,11 @@ This branch turns the single-file prototype into a testable pilot. It keeps the
 instant browser practice experience, adds a structured Hebrew transcription API,
 and removes the unsupported claim that the software can grade nikud.
 
-The current system is a reading aid, not an autonomous kriah assessor. A teacher
-must make any instructional grade or mastery decision.
+The current system is a word-and-order reading pilot, not yet a complete kriah
+assessor. The finished target is selective review: clear attempts should pass
+automatically, clear errors should prompt an automatic retry, and only ambiguous
+attempts should require teacher review. Automatic nikud decisions remain blocked
+until the phoneme layer passes the evaluation gates.
 
 ## What is implemented
 
@@ -29,6 +32,14 @@ Teacher and student recordings are intentionally absent from this public branch.
 - It does not provide a validated mastery score.
 - It does not store recordings or provide a teacher dashboard.
 - It does not authenticate students or teachers.
+
+## Nikud and selective review
+
+The pointed text tells a future acoustic scorer which sounds are expected, but
+Whisper itself returns unpointed Hebrew. The current server therefore cannot
+infer whether the reader used the correct vowel from its transcript. See
+[`NIKUD.md`](NIKUD.md) for the planned phoneme layer and the distinction between
+one-time calibration review and ongoing selective review.
 
 Whisper returns unvocalized Hebrew, so vowel-only differences are outside the
 available evidence. The selected [ivrit.ai model card](https://huggingface.co/ivrit-ai/whisper-large-v3-turbo-ct2)

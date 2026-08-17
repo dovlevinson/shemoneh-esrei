@@ -1,0 +1,13 @@
+{
+  "name": "Kriah Reading Coach free test",
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.11-bookworm",
+  "postCreateCommand": "pip install -r server/requirements.txt",
+  "postAttachCommand": "bash .devcontainer/start.sh",
+  "forwardPorts": [8000],
+  "portsAttributes": {
+    "8000": {
+      "label": "Kriah Reading Coach",
+      "onAutoForward": "openBrowser"
+    }
+  }
+}

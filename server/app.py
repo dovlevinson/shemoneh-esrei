@@ -20,7 +20,7 @@ from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
-from starlette.responses import FileResponse, JSONResponse
+from starlette.responses import HTMLResponse, JSONResponse
 
 from .scoring import normalize_word, score_transcript
 from .signing import sign_result, verify_result
@@ -137,7 +137,15 @@ def create_app(transcriber=None) -> FastAPI:
     def frontend():
         if not FRONTEND_PATH.is_file():
             raise HTTPException(status_code=404, detail="frontend is unavailable")
-        return FileResponse(FRONTEND_PATH, media_type="text/html")
+        html = FRONTEND_PATH.read_text(encoding="utf-8")
+        codespaces_bootstrap = """<script>
+if (location.hostname.endsWith('.app.github.dev')) {
+  localStorage.setItem('se-grader-url', new URL('/analyze-reading', location.origin).href);
+}
+</script>
+"""
+        html = html.replace('<div id="app"></div>', codespaces_bootstrap + '<div id="app"></div>', 1)
+        return HTMLResponse(html)
 
     async def run_transcription(audio: UploadFile, language: str):
         if language != "he":

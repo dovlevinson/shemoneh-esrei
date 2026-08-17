@@ -32,6 +32,12 @@ class FakeTranscriber:
 
 
 class AppTests(unittest.TestCase):
+    def test_root_serves_the_browser_app(self):
+        client = TestClient(create_app(FakeTranscriber()))
+        response = client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Shemoneh Esrei", response.text)
+
     def test_health_describes_limitations(self):
         client = TestClient(create_app(FakeTranscriber()))
         response = client.get("/health")

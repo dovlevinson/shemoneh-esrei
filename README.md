@@ -55,9 +55,23 @@ phoneme scorer needs tight time boundaries, use and validate a dedicated
 alignment system. [WhisperX](https://github.com/m-bain/whisperX) documents this
 as a separate alignment stage.
 
+## Free browser test with GitHub Codespaces
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/dovlevinson/shemoneh-esrei/tree/codex/kriah-rebuild?quickstart=1)
+
+The Codespaces configuration installs the pinned server dependencies, starts the
+analysis service, and opens the application on its forwarded HTTPS address. The
+first Recorded Check downloads and loads the speech model, so it can take much
+longer than later attempts. Stop the codespace after testing so it no longer uses
+included compute time.
+
+This is a developer smoke test, not evidence that the model grades children or
+nikud accurately. Use only consented adult test recordings until the privacy and
+evaluation gates below are complete.
+
 ## Run locally
 
-Backend:
+The server now hosts both the browser application and analysis API:
 
 ```bash
 python -m venv .venv
@@ -66,15 +80,8 @@ pip install -r server/requirements-dev.txt
 uvicorn server.app:app --host 127.0.0.1 --port 8000
 ```
 
-Frontend, in a second terminal:
-
-```bash
-python -m http.server 8080
-```
-
-Open `http://127.0.0.1:8080` in Chrome. In Teacher, enable recorded-reading
-analysis and confirm the default endpoint is
-`http://127.0.0.1:8000/analyze-reading`.
+Open `http://127.0.0.1:8000` in Chrome. In Teacher, enable recorded-reading
+analysis and use Test connection to confirm the server is available.
 
 The first server request downloads and loads the speech model, so it will be
 slower than later requests.

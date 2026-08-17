@@ -545,14 +545,34 @@ function b64ToBlob(b64,type){const bin=atob(b64);const u=new Uint8Array(bin.leng
    now and a cloud host later, without a rebuild:
        localStorage.setItem('se-grader-url','https://your-host/transcribe')  */
 function graderURL(){return localStorage.getItem('se-grader-url')||'http://127.0.0.1:8000/transcribe';}
+// Same server, different endpoint. /transcribe returns Whisper's text, which is
+// UNVOCALIZED — barukh/barakh/berekh are identical to it. /grade runs the phoneme
+// layer too and reports which specific nikud was misread.
+function vowelURL(){return graderURL().replace(/\/transcribe\/?$/,'/grade');}
+async function gradeVowels(blob,brachaNo){
+  const fd=new FormData();
+  fd.append('audio',blob,'reading.webm');
+  fd.append('bracha',String(brachaNo));
+  const ctrl=new AbortController();
+  const to=setTimeout(()=>ctrl.abort(),180000);   // two models on CPU is slow
+  let r;
+  try{r=await fetch(vowelURL(),{method:'POST',body:fd,signal:ctrl.signal});}
+  catch(e){throw new Error(e.name==='AbortError'?'the vowel grader timed out':'could not reach the vowel grader');}
+  finally{clearTimeout(to);}
+  let j=null;try{j=await r.json();}catch(_){}
+  if(!r.ok||!j||j.error)throw new Error((j&&j.error)?j.error:('vowel grader returned '+r.status));
+  return j;
+}
 async function gradeWithServer(blob,words){
   const fd=new FormData();
   fd.append('audio',blob,'reading.webm');
   fd.append('language','he');
-  // The KITZ trick: bias Whisper toward the exact tefillah text we expect (with nikud).
-  // The Name is primed as הַשֵּׁם — the plain word we tell students to say — so the model
-  // hears a clean word there instead of guessing at a mumbled Name.
-  fd.append('prompt',words.map(w=>isDivineTarget(w.norm)?'הַשֵּׁם':w.display).join(' '));
+  // NO prompt. This used to send the expected tefillah text WITH nikud ("the KITZ
+  // trick"), which backfired: priming with vocalized Hebrew pushes Whisper to emit
+  // vocalized Hebrew, which it is bad at, and the consonants degrade along with it
+  // (בָרָךְ for בָּרוּךְ, הָה for the Name — seen in a real 94% test read). Since norm()
+  // strips the points anyway, the nikud bought us nothing and cost us letters.
+  // Matches the validated settings in server/combined_score.py.
   const ctrl=new AbortController();
   const to=setTimeout(()=>ctrl.abort(),120000);
   let r;
@@ -627,7 +647,7 @@ function loadStore(){
   try{return JSON.parse(localStorage.getItem(LSK))||{};}catch(_){return{};}
 }
 function saveStore(){localStorage.setItem(LSK,JSON.stringify(S));}
-const DEFAULTS={winter:false,ayt:false,rc:false,chanukah:false,purim:false,ashk:false,masteryPct:90,tsize:2.0,showTrans:false,showTrouble:false,unlockAll:false,tts:false,voiceURI:'',serverGrade:false};
+const DEFAULTS={winter:false,ayt:false,rc:false,chanukah:false,purim:false,ashk:false,masteryPct:90,tsize:2.0,showTrans:false,showTrouble:false,unlockAll:false,tts:false,voiceURI:'',serverGrade:false,vowelGrade:false};
 const S=Object.assign({
   profile:null,
   progress:{},
@@ -998,6 +1018,17 @@ async function endSession(){
       session.gradedBy='server';
     }catch(e){session.serverErr=e.message||String(e);/* graceful fall back to browser grading */}
   }
+  // Vowel layer. Independent of the word score above: it does not change the
+  // percentage, it adds per-sound feedback ("Check the tzeirei"). Kept separate
+  // and non-scoring on purpose — it is validated on ONE adult voice and has not
+  // been shown to transfer to a child's, so it must not fail anybody yet.
+  session.vowels=null;session.vowelErr=null;
+  if(isTest&&S.settings.vowelGrade&&session.audioBlob){
+    const gv=document.getElementById('interim');
+    if(gv)gv.innerHTML='⏳ Checking your vowels… (this one takes a while)';
+    try{session.vowels=await gradeVowels(session.audioBlob,session.bIdx+1);}
+    catch(e){session.vowelErr=e.message||String(e);}
+  }
   // final scoring: server transcript → boundary-agnostic scorer; browser → live-token aligner
   // Grade the SAME token set the live view showed. Chrome often has not finalized the last
   // phrase (or several) when the student hits "I'm done"; those tokens live in session.interim.
@@ -1049,6 +1080,22 @@ function vResults(){
     ?`<div class="muted" style="font-size:.8rem;margin-top:6px">✅ Graded by the accurate Hebrew model (ivrit.ai Whisper)</div>
       ${session.serverTranscript?`<details style="margin-top:6px;text-align:right"><summary class="muted" style="font-size:.78rem;cursor:pointer;text-align:left">What the model heard (for review)</summary><div class="hebtxt" dir="rtl" style="font-size:1rem;margin-top:6px">${esc(session.serverTranscript)}</div></details>`:''}`
     :(session.serverErr?`<div class="notice" style="border-left-color:var(--warn);background:var(--warn-bg);text-align:left">⚠️ Couldn't reach the accurate grader (${esc(session.serverErr)}) — graded with the browser's recognition instead.</div>`:'')):'';
+  // Vowel feedback panel — separate from the score, because it is diagnostic only.
+  let vowelHtml='';
+  if(isTest&&S.settings.vowelGrade){
+    if(session.vowelErr){
+      vowelHtml=`<div class="notice" style="border-left-color:var(--warn);background:var(--warn-bg);text-align:left">⚠️ Vowel check unavailable (${esc(session.vowelErr)}).</div>`;
+    }else if(session.vowels&&session.vowels.words){
+      const flagged=session.vowels.words.filter(w=>w.message);
+      vowelHtml=`<div class="card" style="text-align:left">
+        <h3>נִקּוּד — vowel check <span class="muted" style="font-weight:400;font-size:.75rem">(beta — does not affect your score)</span></h3>
+        ${flagged.length?`<ul style="margin:6px 0 0;padding-inline-start:18px">${
+          flagged.map(w=>`<li style="margin:4px 0"><span class="hebtxt" dir="rtl" style="font-size:1.15rem">${esc(w.word||'')}</span> — ${esc(w.message)}</li>`).join('')
+        }</ul>`:`<p class="muted" style="margin:6px 0 0">Every vowel came through clearly. 🎯</p>`}
+        <p class="muted" style="font-size:.72rem;margin-top:10px">${esc(session.vowels.caveat||'')}</p>
+      </div>`;
+    }
+  }
   const mistakes=session.words.map((w,i)=>({w,i})).filter(x=>x.w.state!==ST.OK);
   const mHtml=mistakes.length?mistakes.map(({w,i})=>{
     let heardHtml='<span class="muted">— not heard —</span>';
@@ -1091,6 +1138,7 @@ function vResults(){
     ${audioHtml}
   </div>
   <div class="card"><h3>Words to work on (${mistakes.length})</h3>${mHtml}</div>
+  ${vowelHtml}
   <div class="card">${codeHtml}
     <div class="row" style="margin-top:10px">
       <button class="primary" data-mode="${session.mode}" id="again">🔁 Try again</button>
@@ -1130,6 +1178,8 @@ function vTeacher(){
   <div class="card">
     <h3>🎯 Accurate grading (beta)</h3>
     <label style="display:flex;gap:8px"><input type="checkbox" id="serverGrade" ${S.settings.serverGrade?'checked':''}> <b>Use the accurate Hebrew model for Mastery Tests</b> — sends the recording to a Whisper grading server instead of the browser's guess.</label>
+    <label style="display:flex;gap:8px;margin-top:8px"><input type="checkbox" id="vowelGrade" ${S.settings.vowelGrade?'checked':''}> <b>Also check the nikud (very beta)</b> — reports which vowel was misread. Does NOT affect the score.</label>
+    <p class="muted" style="font-size:.78rem;margin-top:4px">Whisper writes Hebrew without nikud, so it cannot tell בָּרוּךְ from בָּרַךְ. This runs a second, phoneme-level model that can. It is slow (up to a minute), needs the same server running, and is calibrated on one adult voice — so treat it as diagnostic, not as a grade.</p>
     <div class="row" style="margin-top:8px"><label style="flex:1">Grading server URL: <input type="text" id="graderUrl" value="${esc(graderURL())}" style="width:100%;font-size:.8rem" placeholder="http://127.0.0.1:8000/transcribe"></label></div>
     <p class="muted" style="font-size:.8rem">While testing on this computer, keep the default and make sure the local grading server is running. This only changes how the <b>Mastery Test</b> is graded — Practice mode still uses live browser feedback. If the server can't be reached, the test falls back to browser grading automatically.</p>
     <div class="row"><button class="ghost" id="testGrader">Test connection</button><span class="muted" id="graderStatus" style="font-size:.8rem"></span></div>
@@ -1172,6 +1222,8 @@ function bindTeacher(){
   /* --- accurate server grading (beta) --- */
   const sg=document.getElementById('serverGrade');
   if(sg)sg.addEventListener('change',e=>{S.settings.serverGrade=e.target.checked;saveStore();});
+  const vg=document.getElementById('vowelGrade');
+  if(vg)vg.addEventListener('change',e=>{S.settings.vowelGrade=e.target.checked;saveStore();});
   const gu=document.getElementById('graderUrl');
   if(gu)gu.addEventListener('change',e=>{const v=e.target.value.trim();if(v)localStorage.setItem('se-grader-url',v);else localStorage.removeItem('se-grader-url');});
   const tg=document.getElementById('testGrader');

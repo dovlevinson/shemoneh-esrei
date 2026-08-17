@@ -965,7 +965,16 @@ async function endSession(){
     ? Math.max(0,Math.min(100,Number(session.serverResult.estimated_accuracy)||0))
     : finalScore();
   const stats=sessionStats();
-  const wpm=durMs>=5000?Math.round(stats.ok/(durMs/60000)):0;
+  // WPM is a pace measurement, not a count of only the words the recognizer
+  // matched exactly.  The previous formula understated pace whenever ASR made
+  // a spelling or recognition error (37 exact matches in 41 seconds became 54
+  // "WPM" even though the 48-word reading was about 70 WPM).
+  const rateSeconds=(session.gradedBy==='server'&&Number(session.serverResult.duration)>0)
+    ?Number(session.serverResult.duration):durMs/1000;
+  const spokenWordCount=(session.gradedBy==='server'&&Array.isArray(session.serverResult.transcript_words))
+    ?session.serverResult.transcript_words.length
+    :session.committed.concat(session.interim).filter(Boolean).length;
+  const wpm=rateSeconds>=5?Math.round(spokenWordCount/(rateSeconds/60)):0;
   // Confidence flag: the computer can't hear every letter distinction, so surface the reads it's unsure
   // about for the teacher to review rather than pretending the auto-grade is final.
   const warnRatio=stats.total?stats.warn/stats.total:0;
@@ -980,7 +989,11 @@ async function endSession(){
     flagReasons.push(session.serverErr?'server analysis unavailable':'browser-only estimate');
   }
   const flagged=isTest&&flagReasons.length>0;
-  const progressEligible=!(isTest&&S.settings.serverGrade&&session.gradedBy!=='server');
+  // A clean word/order analysis may clear automatically.  An uncertain server
+  // result is routed for selective review and cannot silently unlock progress.
+  const progressEligible=!(isTest&&S.settings.serverGrade&&(
+    session.gradedBy!=='server'||session.serverResult.review_required
+  ));
   let newlyMastered=false;
   if(isTest){
     const p=S.progress[session.bIdx]||{mastered:false,best:0,attempts:0};
@@ -990,7 +1003,7 @@ async function endSession(){
     S.progress[session.bIdx]=p;
     const missed=session.words.map((w,i)=>w.state===ST.BAD?i:-1).filter(i=>i>=0);
     const partial=session.words.map((w,i)=>w.state===ST.WARN?i:-1).filter(i=>i>=0);
-    session.resultCode=encodeResult({v:2,n:S.profile.name,c:S.profile.cls,b:session.bIdx+1,bn:DATA.brachot[session.bIdx].he,d:p.lastDate,a:score,w:wpm,dur:Math.round(durMs/1000),m:missed,p:partial,tw:session.words.length,fl:flagged?1:0,fr:[...new Set(flagReasons)],g:session.gradedBy==='server'?1:0,tr:(session.serverTranscript||'').slice(0,400),aid:session.serverResult?session.serverResult.attempt_id:null,rt:session.serverResult?session.serverResult.result_token:null});
+    session.resultCode=encodeResult({v:2,n:S.profile.name,c:S.profile.cls,b:session.bIdx+1,bn:DATA.brachot[session.bIdx].he,d:p.lastDate,a:score,w:wpm,dur:Math.round(rateSeconds),m:missed,p:partial,tw:session.words.length,fl:flagged?1:0,fr:[...new Set(flagReasons)],g:session.gradedBy==='server'?1:0,ns:0,tr:(session.serverTranscript||'').slice(0,400),aid:session.serverResult?session.serverResult.attempt_id:null,rt:session.serverResult?session.serverResult.result_token:null});
     S.history.unshift({b:session.bIdx,a:score,d:p.lastDate,f:flagged?1:0});S.history=S.history.slice(0,50);
   }
   saveStore();
@@ -1006,7 +1019,7 @@ function vResults(){
   const passed=progressEligible&&score>=S.settings.masteryPct;
   const b=DATA.brachot[session.bIdx];
   const gradedHtml=isTest?(session.gradedBy==='server'
-    ?`<div class="muted" style="font-size:.8rem;margin-top:6px">Recorded-reading estimate from the Hebrew speech model</div>
+    ?`<div class="muted" style="font-size:.8rem;margin-top:6px">Automatic word-and-order analysis from the Hebrew speech model</div>
       ${session.serverTranscript?`<details style="margin-top:6px;text-align:right"><summary class="muted" style="font-size:.78rem;cursor:pointer;text-align:left">What the model heard (for review)</summary><div class="hebtxt" dir="rtl" style="font-size:1rem;margin-top:6px">${esc(session.serverTranscript)}</div></details>`:''}`
     :(session.serverErr?`<div class="notice" style="border-left-color:var(--warn);background:var(--warn-bg);text-align:left">⚠️ Server analysis was unavailable (${esc(session.serverErr)}). The browser estimate is shown for practice only and cannot complete this checkpoint while server analysis is enabled.</div>`:`<div class="muted" style="font-size:.8rem;margin-top:6px">Browser speech-recognition estimate. Teacher review is required.</div>`)):'';
   const mistakes=session.words.map((w,i)=>({w,i})).filter(x=>x.w.state!==ST.OK);
@@ -1023,21 +1036,23 @@ function vResults(){
       <span class="heard muted">${heardHtml}</span>
       <span class="why">💡 ${esc(why)}</span>
     </div>`;
-  }).join(''):'<p class="center" style="font-size:1.2rem">No word-level issues were found by this model. Teacher review may still catch pronunciation or nikud issues.</p>';
+  }).join(''):'<p class="center" style="font-size:1.2rem">No word-or-order issues were found by this model.</p>';
   const audioHtml=session.audioBlob?`
     <div class="row" style="margin-top:8px">
       <audio controls src="${URL.createObjectURL(session.audioBlob)}" style="flex:1"></audio>
       <button id="dlAudio">⬇️ Download recording</button>
     </div>`:'';
   const codeHtml=(isTest&&session.resultCode)?`
-    <h3>Send to your teacher</h3>
-    <p class="muted" style="font-size:.85rem">Copy the result code and paste it into the Google Classroom assignment (together with your recording file):</p>
+    <h3>${flagged?'Send this attempt for review':'Submit this result'}</h3>
+    <p class="muted" style="font-size:.85rem">${flagged
+      ?'Copy the result code and attach the recording so the teacher can review this uncertain attempt.'
+      :'Copy the result code. A recording is not required for this clean word-and-order result, but nikud is still outside the current pilot.'}</p>
     <textarea rows="3" readonly id="rcode" style="font-size:.75rem">${session.resultCode}</textarea>
     <div class="row"><button class="primary" id="copyCode">📋 Copy code</button><span id="copied" class="muted"></span></div>`:'';
   return `<div class="card center">
     ${newlyMastered?`<div style="font-size:2.4rem">⭐</div><h1>Practice checkpoint complete!</h1><p class="muted"><span class="heb">${esc(b.he)}</span> - the next bracha is now unlocked for practice.</p>`:`<h1 class="heb">${esc(b.he)}</h1>`}
     <div class="scorewrap" style="justify-content:center">
-      <div class="bigscore ${passed?'pass':'fail'}">${score}%</div>
+      <div><div class="bigscore ${passed?'pass':'fail'}">${score}%</div><div class="muted" style="font-size:.76rem">word/order match</div></div>
       <div class="statgrid" style="flex:1;min-width:260px">
         <div class="stat"><b>${stats.ok}</b><span>likely matches</span></div>
         <div class="stat"><b>${stats.warn}</b><span>uncertain</span></div>
@@ -1045,9 +1060,10 @@ function vResults(){
         <div class="stat"><b>${wpm||'-'}</b><span>words per minute</span></div>
       </div>
     </div>
+    ${session.gradedBy==='server'?`<div class="notice" style="border-left-color:var(--gold);background:var(--gold-bg);text-align:left"><b>Nikud and vowel sounds: not evaluated yet.</b> Whisper writes Hebrew without nekudot. A separate validated phoneme layer is required before this becomes a full kriah assessment.</div>`:''}
     ${isTest&&!passed&&progressEligible?`<p class="muted">The practice checkpoint is ${S.settings.masteryPct}%. Keep practicing and try another recorded check.</p>`:''}
     ${gradedHtml}
-    ${flagged?`<div class="notice" style="border-left-color:var(--warn);background:var(--warn-bg);text-align:left">⚑ <b>Teacher review needed.</b> The computer is not fully sure about this read${flagReasons&&flagReasons.length?' ('+esc(flagReasons.join('; '))+')':''}. Your teacher gives the final grade.</div>`:''}
+    ${flagged?`<div class="notice" style="border-left-color:var(--warn);background:var(--warn-bg);text-align:left">⚑ <b>This attempt needs selective review.</b> The computer is not confident enough to decide automatically${flagReasons&&flagReasons.length?' ('+esc(flagReasons.join('; '))+')':''}.</div>`:''}
     ${audioHtml}
   </div>
   <div class="card"><h3>Words to work on (${mistakes.length})</h3>${mHtml}</div>
@@ -1090,7 +1106,7 @@ function vTeacher(){
   <div class="card">
     <h3>🎯 Recorded-reading analysis (pilot)</h3>
     <label style="display:flex;gap:8px"><input type="checkbox" id="serverGrade" ${S.settings.serverGrade?'checked':''}> <b>Use the Hebrew speech server for Recorded Checks</b>. The recording is sent for transcription and word-order analysis.</label>
-    <p class="muted" style="font-size:.78rem;margin-top:4px">The speech model outputs Hebrew without nikud. It can flag missing, extra, or different words, but it cannot reliably tell בָּרוּךְ from בָּרַךְ. Results are advisory and need teacher review.</p>
+    <p class="muted" style="font-size:.78rem;margin-top:4px">The current pilot automatically clears clean word-and-order matches and routes uncertain attempts for selective review. It cannot yet tell בָּרוּךְ from בָּרַךְ because Whisper outputs Hebrew without nikud.</p>
     <div class="row" style="margin-top:8px"><label style="flex:1">Analysis server URL: <input type="text" id="graderUrl" value="${esc(graderURL())}" style="width:100%;font-size:.8rem" placeholder="http://127.0.0.1:8000/analyze-reading"></label></div>
     <p class="muted" style="font-size:.8rem">Practice still uses live browser feedback. If server analysis is enabled but unavailable, the browser estimate remains visible but cannot complete that checkpoint.</p>
     <div class="row"><button class="ghost" id="testGrader">Test connection</button><span class="muted" id="graderStatus" style="font-size:.8rem"></span></div>
@@ -1106,7 +1122,7 @@ function vTeacher(){
   </div>
   <div class="card">
     <h3>Collect results</h3>
-    <p class="muted" style="font-size:.88rem">Students submit a result code from the Recorded Check through Google Classroom. Paste one code per line to build a review table. Codes are transport helpers, not proof of a grade.</p>
+    <p class="muted" style="font-size:.88rem">Students submit a result code from the Recorded Check through Google Classroom. Paste one code per line to build a results table. Listen only to recordings marked for selective review. Codes are transport helpers, not proof of a grade.</p>
     <textarea rows="6" id="codes" placeholder="SET1.eyJ2IjoxLC4uLg==&#10;SET1.eyJ2IjoxLC4uLg=="></textarea>
     <div class="row" style="margin-top:8px"><button class="primary" id="parseCodes">Build table</button><button class="ghost" id="csvBtn" style="display:none">⬇️ Download CSV for Google Sheets</button></div>
     <div class="tblwrap" id="tbl"></div>
@@ -1119,10 +1135,10 @@ function vTeacher(){
   <div class="card">
     <h3>What this tool can and cannot do</h3>
     <ul class="muted" style="font-size:.88rem;line-height:1.7">
-      <li>✅ Gives immediate practice feedback and highlights likely word omissions, additions, and substitutions.</li>
+      <li>✅ Automatically clears clean word-and-order matches and highlights likely omissions, additions, and substitutions.</li>
       <li>⚠️ The percentage is a model estimate, not a validated reading grade.</li>
-      <li>⚠️ Unvocalized Hebrew transcription cannot reliably grade nikud or subtle pronunciation differences.</li>
-      <li>⚠️ Keep the recording with the student's submission so a teacher can review it.</li>
+      <li>⚠️ Nikud and vowel sounds are not evaluated until a validated phoneme layer is added.</li>
+      <li>⚠️ Keep recordings only for attempts routed to selective review during the pilot.</li>
       <li>💡 Run a speaker-disjoint pilot and choose thresholds from measured false-pass and false-flag rates before classroom rollout.</li>
     </ul>
   </div>`;

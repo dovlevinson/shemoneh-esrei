@@ -5,6 +5,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from server.app import create_app
+from server.pronunciation import PronunciationUnavailable
 from server.transcriber import Transcript, TranscriptWord
 
 
@@ -21,9 +22,13 @@ class FakeTranscriber:
     def transcribe(self, path, language="he"):
         self.last_path = path
         self.saw_existing_file = os.path.exists(path)
+        timestamped = [
+            TranscriptWord(word, index * 0.5, (index + 1) * 0.5, 0.9)
+            for index, word in enumerate(self.text.split())
+        ]
         return Transcript(
             transcript=self.text,
-            words=[TranscriptWord("אתה", 0.0, 0.5, 0.9)],
+            words=timestamped,
             language=language,
             duration=self.duration,
             inference_seconds=0.01,
@@ -64,9 +69,75 @@ class AppTests(unittest.TestCase):
         self.assertEqual(body["status"], "advisory_pass")
         self.assertEqual(body["routing"], "automatic_word_clear")
         self.assertEqual(body["assessment_scope"]["nikud_and_vowels"], "not_evaluated")
+        self.assertEqual(body["pronunciation"]["status"], "disabled")
         self.assertTrue(body["result_token"].startswith("SET2."))
         self.assertTrue(fake.saw_existing_file)
         self.assertFalse(os.path.exists(fake.last_path))
+
+    def test_shadow_evidence_is_returned_but_cannot_change_routing(self):
+        class FakePronunciationAssessor:
+            mode = "shadow"
+            model_id = "fake-phoneme-model"
+            loaded = True
+
+            def __init__(self):
+                self.saw_existing_file = False
+                self.last_path = None
+
+            def assess(self, **kwargs):
+                self.last_path = kwargs["path"]
+                self.saw_existing_file = os.path.exists(kwargs["path"])
+                return {
+                    "mode": "shadow",
+                    "status": "evidence_available",
+                    "affects_routing": False,
+                    "calibration_state": "uncalibrated",
+                    "summary": {"words_measured": 2},
+                    "words": [],
+                }
+
+        assessor = FakePronunciationAssessor()
+        client = TestClient(create_app(FakeTranscriber(), assessor))
+        health = client.get("/health").json()
+        self.assertIn("shadow-pronunciation-evidence", health["capabilities"])
+        self.assertFalse(health["pronunciation"]["affects_routing"])
+        response = client.post(
+            "/analyze-reading",
+            files={"audio": ("reading.webm", b"audio", "audio/webm")},
+            data={"expected_words": '["אַתָּה", "קָדוֹשׁ"]'},
+        )
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["status"], "advisory_pass")
+        self.assertEqual(body["routing"], "automatic_word_clear")
+        self.assertFalse(body["pronunciation"]["affects_routing"])
+        self.assertEqual(
+            body["assessment_scope"]["nikud_and_vowels"],
+            "experimental_shadow_evidence",
+        )
+        self.assertTrue(assessor.saw_existing_file)
+        self.assertFalse(os.path.exists(assessor.last_path))
+
+    def test_shadow_failure_does_not_fail_word_analysis(self):
+        class FailingPronunciationAssessor:
+            mode = "shadow"
+            model_id = "missing-model"
+            loaded = False
+
+            def assess(self, **_kwargs):
+                raise PronunciationUnavailable("not installed")
+
+        client = TestClient(create_app(FakeTranscriber(), FailingPronunciationAssessor()))
+        response = client.post(
+            "/analyze-reading",
+            files={"audio": ("reading.webm", b"audio", "audio/webm")},
+            data={"expected_words": '["אַתָּה", "קָדוֹשׁ"]'},
+        )
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["status"], "advisory_pass")
+        self.assertEqual(body["pronunciation"]["status"], "unavailable")
+        self.assertEqual(body["assessment_scope"]["nikud_and_vowels"], "not_evaluated")
 
     def test_expected_words_are_required_json(self):
         client = TestClient(create_app(FakeTranscriber()))

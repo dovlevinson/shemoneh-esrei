@@ -1,6 +1,7 @@
 """HTTP API for advisory Hebrew reading analysis.
 
-The service does not store uploaded audio and does not claim to grade nikud.
+The service does not store uploaded audio.  Optional pronunciation measurements
+run only in shadow mode and never affect routing or student progression.
 """
 
 from __future__ import annotations
@@ -22,6 +23,11 @@ from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 from starlette.responses import HTMLResponse, JSONResponse
 
+from .pronunciation import (
+    PronunciationUnavailable,
+    configured_pronunciation_assessor,
+    disabled_pronunciation_result,
+)
 from .scoring import normalize_word, score_transcript
 from .signing import sign_result, verify_result
 from .transcriber import FasterWhisperTranscriber
@@ -98,10 +104,15 @@ async def _save_upload(audio: UploadFile) -> tuple[str, int]:
         handle.close()
 
 
-def create_app(transcriber=None) -> FastAPI:
+def create_app(transcriber=None, pronunciation_assessor=None) -> FastAPI:
     speech = transcriber or FasterWhisperTranscriber()
+    pronunciation = (
+        pronunciation_assessor
+        if pronunciation_assessor is not None
+        else configured_pronunciation_assessor()
+    )
     limiter = SlidingWindowLimiter(RATE_LIMIT_PER_MINUTE)
-    app = FastAPI(title="Kriah Trainer advisory analysis", version="0.1.0")
+    app = FastAPI(title="Kriah Trainer advisory analysis", version="0.2.0")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=_origins(),
@@ -123,17 +134,33 @@ def create_app(transcriber=None) -> FastAPI:
 
     @app.get("/health")
     def health():
+        pronunciation_mode = getattr(pronunciation, "mode", "off")
+        capabilities = ["transcription", "word-order-analysis"]
+        limitations = ["uncertain word results require selective review"]
+        if pronunciation_mode == "shadow":
+            capabilities.append("shadow-pronunciation-evidence")
+            limitations.extend(
+                [
+                    "pronunciation evidence is uncalibrated",
+                    "pronunciation evidence does not affect routing",
+                ]
+            )
+        else:
+            limitations.append("does not yet grade nikud")
         return {
             "status": "ok",
             "service": "kriah-advisory-analysis",
             "model": getattr(speech, "model_id", "injected-test-model"),
             "model_loaded": bool(getattr(speech, "loaded", False)),
             "signing_configured": bool(os.getenv("KRIAH_RESULT_SECRET")),
-            "capabilities": ["transcription", "word-order-analysis"],
-            "limitations": [
-                "does not yet grade nikud",
-                "uncertain word results require selective review",
-            ],
+            "capabilities": capabilities,
+            "limitations": limitations,
+            "pronunciation": {
+                "mode": pronunciation_mode,
+                "model": getattr(pronunciation, "model_id", None),
+                "model_loaded": bool(getattr(pronunciation, "loaded", False)),
+                "affects_routing": False,
+            },
         }
 
     @app.get("/", include_in_schema=False)
@@ -150,10 +177,9 @@ if (location.hostname.endsWith('.app.github.dev')) {
         html = html.replace('<div id="app"></div>', codespaces_bootstrap + '<div id="app"></div>', 1)
         return HTMLResponse(html)
 
-    async def run_transcription(audio: UploadFile, language: str):
+    async def transcribe_path(path: str, language: str):
         if language != "he":
             raise HTTPException(status_code=422, detail="only Hebrew analysis is supported")
-        path, _size = await _save_upload(audio)
         try:
             result = await run_in_threadpool(speech.transcribe, path, language)
             if result.duration > MAX_AUDIO_SECONDS:
@@ -164,6 +190,11 @@ if (location.hostname.endsWith('.app.github.dev')) {
         except Exception:
             LOGGER.exception("speech transcription failed")
             raise HTTPException(status_code=503, detail="speech analysis is temporarily unavailable")
+
+    async def run_transcription(audio: UploadFile, language: str):
+        path, _size = await _save_upload(audio)
+        try:
+            return await transcribe_path(path, language)
         finally:
             try:
                 os.unlink(path)
@@ -190,8 +221,43 @@ if (location.hostname.endsWith('.app.github.dev')) {
         if attempt_id is not None and len(attempt_id) > 100:
             raise HTTPException(status_code=422, detail="attempt_id is too long")
         expected = _expected_words(expected_words)
-        transcript = await run_transcription(audio, language)
-        analysis = score_transcript(expected, transcript.transcript)
+        path, _size = await _save_upload(audio)
+        try:
+            transcript = await transcribe_path(path, language)
+            analysis = score_transcript(expected, transcript.transcript)
+            pronunciation_result = disabled_pronunciation_result()
+            if pronunciation is not None:
+                try:
+                    pronunciation_result = await run_in_threadpool(
+                        pronunciation.assess,
+                        path=path,
+                        expected_words=expected,
+                        alignment_rows=analysis["words"],
+                        transcript_words=transcript.words,
+                        transcript_duration=transcript.duration,
+                    )
+                except PronunciationUnavailable:
+                    LOGGER.warning("shadow pronunciation evidence is unavailable")
+                    pronunciation_result = {
+                        "mode": "shadow",
+                        "status": "unavailable",
+                        "affects_routing": False,
+                        "calibration_state": "uncalibrated",
+                    }
+                except Exception:
+                    LOGGER.exception("shadow pronunciation analysis failed")
+                    pronunciation_result = {
+                        "mode": "shadow",
+                        "status": "failed",
+                        "affects_routing": False,
+                        "calibration_state": "uncalibrated",
+                    }
+        finally:
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
+
         average_probability = None
         probabilities = [
             word.probability for word in transcript.words if word.probability is not None
@@ -202,6 +268,9 @@ if (location.hostname.endsWith('.app.github.dev')) {
                 analysis["review_required"] = True
                 analysis["review_reasons"].append("speech-model confidence is low")
 
+        pronunciation_evidence_available = (
+            pronunciation_result.get("status") == "evidence_available"
+        )
         result = {
             "version": 2,
             "attempt_id": attempt_id or str(uuid4()),
@@ -214,8 +283,16 @@ if (location.hostname.endsWith('.app.github.dev')) {
             ),
             "assessment_scope": {
                 "word_identity_and_order": "evaluated",
-                "nikud_and_vowels": "not_evaluated",
-                "phoneme_pronunciation": "not_evaluated",
+                "nikud_and_vowels": (
+                    "experimental_shadow_evidence"
+                    if pronunciation_evidence_available
+                    else "not_evaluated"
+                ),
+                "phoneme_pronunciation": (
+                    "experimental_shadow_evidence"
+                    if pronunciation_evidence_available
+                    else "not_evaluated"
+                ),
             },
             "transcript": transcript.transcript,
             "transcript_words": [asdict(word) for word in transcript.words],
@@ -223,9 +300,11 @@ if (location.hostname.endsWith('.app.github.dev')) {
             "inference_seconds": transcript.inference_seconds,
             "model": transcript.model,
             "average_word_probability": average_probability,
+            "pronunciation": pronunciation_result,
             "caveat": (
-                "This result evaluates word identity and order only. "
-                "Nikud, vowels, and phoneme pronunciation were not evaluated."
+                "Routing evaluates word identity and order only. "
+                "Any pronunciation measurements are uncalibrated shadow evidence "
+                "and cannot change this result."
             ),
             **analysis,
         }

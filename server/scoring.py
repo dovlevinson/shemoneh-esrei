@@ -135,6 +135,7 @@ def word_similarity(heard: str | None, expected: str | None) -> float:
 class AlignmentRow:
     operation: str
     expected_index: int | None
+    heard_index: int | None
     expected: str | None
     heard: str | None
     similarity: float
@@ -197,6 +198,7 @@ def align_words(expected_words: Sequence[str], heard_words: Sequence[str]) -> li
                 AlignmentRow(
                     operation=_operation(similarity),
                     expected_index=row - 1,
+                    heard_index=column - 1,
                     expected=expected[row - 1],
                     heard=heard[column - 1],
                     similarity=round(similarity, 4),
@@ -204,10 +206,12 @@ def align_words(expected_words: Sequence[str], heard_words: Sequence[str]) -> li
             )
         elif action == "missing":
             aligned.append(
-                AlignmentRow("missing", row - 1, expected[row - 1], None, 0.0)
+                AlignmentRow("missing", row - 1, None, expected[row - 1], None, 0.0)
             )
         else:
-            aligned.append(AlignmentRow("extra", None, None, heard[column - 1], 0.0))
+            aligned.append(
+                AlignmentRow("extra", None, column - 1, None, heard[column - 1], 0.0)
+            )
         row, column = previous_row, previous_column
 
     aligned.reverse()
@@ -243,7 +247,13 @@ def summarize_alignment(rows: Iterable[AlignmentRow]) -> dict:
 
 
 def score_transcript(expected_words: Sequence[str], transcript: str) -> dict:
-    rows = align_words(expected_words, tokenize_transcript(transcript))
+    return score_heard_words(expected_words, tokenize_transcript(transcript))
+
+
+def score_heard_words(expected_words: Sequence[str], heard_words: Sequence[str]) -> dict:
+    """Score timestamp-bearing ASR words while preserving their source indexes."""
+
+    rows = align_words(expected_words, heard_words)
     return {
         "words": [row.to_dict() for row in rows],
         **summarize_alignment(rows),

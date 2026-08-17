@@ -16,9 +16,20 @@ account, region, privacy terms, budget, and rollback owner first.
 | `KRIAH_MAX_UPLOAD_BYTES` | No | 15728640 | Per-upload byte limit |
 | `KRIAH_MAX_AUDIO_SECONDS` | No | 180 | Model-reported duration limit |
 | `KRIAH_RATE_LIMIT_PER_MINUTE` | No | 10 | Single-process safety limit |
+| `KRIAH_PRONUNCIATION_MODE` | No | `off` | `off` or non-authoritative `shadow` evidence |
+| `KRIAH_PRONUNCIATION_MODEL` | No | Meta multilingual phoneme model | Shadow acoustic model ID |
+| `KRIAH_PRONUNCIATION_MODEL_REVISION` | No | Pinned commit | Reproducible shadow model revision |
+| `KRIAH_PRONUNCIATION_DEVICE` | No | `cpu` | Shadow model device |
+| `KRIAH_PRONUNCIATION_PROFILE` | No | `mixed` | `mixed`, `sephardi`, or `ashkenazi` |
+| `KRIAH_DIVINE_NAME_POLICY` | No | `both` | `both`, `hashem`, or `adonai` |
 
 Generate a secret with a password manager or platform secret generator. Do not
 place it in git or the static frontend.
+
+The default container and Codespaces build do not install the optional shadow
+model stack. Do not enable `KRIAH_PRONUNCIATION_MODE=shadow` in a deployment
+until `server/requirements-pronunciation.txt` is installed and memory, storage,
+startup time, and real-audio behavior are measured there.
 
 ## Container smoke test
 

@@ -11,7 +11,7 @@ policy has not yet been determined to apply.
 | Name, class, progress | Browser local storage | Until browser data is cleared |
 | Teacher reference clips | Browser IndexedDB | Until deleted or browser data is cleared |
 | Recorded Check audio | Browser memory | Until the page/session is replaced; user can download it |
-| Server upload | Temporary server file | Deleted immediately after transcription attempt |
+| Server upload | Temporary server file | Deleted immediately after the analysis attempt, including optional shadow processing |
 | Transcript and analysis | Returned to browser | May enter local result code and browser state |
 
 The analysis API does not request student name or class. It has no database and

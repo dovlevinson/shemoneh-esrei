@@ -4,11 +4,11 @@ This branch turns the single-file prototype into a testable pilot. It keeps the
 instant browser practice experience, adds a structured Hebrew transcription API,
 and removes the unsupported claim that the software can grade nikud.
 
-The current system is a word-and-order reading pilot, not yet a complete kriah
-assessor. The finished target is selective review: clear attempts should pass
-automatically, clear errors should prompt an automatic retry, and only ambiguous
-attempts should require teacher review. Automatic nikud decisions remain blocked
-until the phoneme layer passes the evaluation gates.
+The current authoritative result is still a word-and-order reading pilot, not a
+complete kriah assessor. An optional shadow layer now collects nikud-aware CTC
+acoustic evidence without changing a score, pass, retry, or review decision.
+Automatic pronunciation decisions remain blocked until that evidence passes the
+evaluation gates.
 
 ## What is implemented
 
@@ -19,6 +19,10 @@ until the phoneme layer passes the evaluation gates.
   alignment with explicit missing, extra, different, and uncertain operations
 - `server/transcriber.py`: lazy `faster-whisper` adapter using the ivrit.ai Hebrew
   model without an expected-text prompt
+- `server/hebrew_g2p.py`: pointed-Hebrew pronunciation map with explicit mixed,
+  Sephardi, and Ashkenazi alternatives
+- `server/pronunciation.py`: optional, lazy CTC Viterbi evidence inside ASR word
+  windows; permanently non-authoritative while configured as shadow mode
 - `evaluation/metrics.py`: speaker-disjoint pilot metrics, including false-pass
   and false-flag rates
 - `tests/`: unit, API, tamper-detection, evaluation, and browser-script checks
@@ -27,26 +31,27 @@ Teacher and student recordings are intentionally absent from this public branch.
 
 ## What it does not do
 
-- It does not grade nikud.
+- It does not make pass/fail decisions about nikud.
 - It does not establish that a child's pronunciation is correct.
 - It does not provide a validated mastery score.
 - It does not store recordings or provide a teacher dashboard.
 - It does not authenticate students or teachers.
 
-## Nikud and selective review
+## Nikud shadow mode and selective review
 
-The pointed text tells a future acoustic scorer which sounds are expected, but
-Whisper itself returns unpointed Hebrew. The current server therefore cannot
-infer whether the reader used the correct vowel from its transcript. See
-[`NIKUD.md`](NIKUD.md) for the planned phoneme layer and the distinction between
-one-time calibration review and ongoing selective review.
+The pointed text is now converted into expected sound slots. When shadow mode is
+enabled, a separate multilingual phoneme model measures evidence for those slots
+inside each ASR-located word window. The server returns the raw evidence marked
+`uncalibrated`, while routing continues to use only word identity and order. See
+[`NIKUD.md`](NIKUD.md) for the evidence contract and remaining limitations.
 
-Whisper returns unvocalized Hebrew, so vowel-only differences are outside the
-available evidence. The selected [ivrit.ai model card](https://huggingface.co/ivrit-ai/whisper-large-v3-turbo-ct2)
-also does not establish accuracy for child or liturgical speech. Research on
-child pronunciation assessment reports wider child score distributions and
-weaker GOP behavior than adult settings, which is why the older one-speaker
-phoneme comparison is quarantined as research rather than shipped as a grade:
+Whisper returns unvocalized Hebrew, so vowel-only differences remain outside the
+word transcript. The shadow model is Meta's multilingual
+[`wav2vec2-lv-60-espeak-cv-ft`](https://huggingface.co/facebook/wav2vec2-lv-60-espeak-cv-ft),
+whose model card describes phoneme recognition but does not validate Hebrew
+child liturgical assessment. Research reports weaker pronunciation-score
+discrimination for child speech than adult speech, so the older one-speaker
+comparison is not treated as a grade:
 [Cao et al., Interspeech 2023](https://www.isca-archive.org/interspeech_2023/cao23_interspeech.pdf).
 
 ## Architecture
@@ -57,8 +62,9 @@ flowchart TD
     B --> C["Ephemeral audio upload"]
     C --> D["Hebrew transcription"]
     D --> E["Conservative word alignment"]
-    E --> F["Advisory estimate"]
-    F --> G["Teacher reviews recording"]
+    E --> F["Word-only routing"]
+    D --> G["Optional shadow evidence"]
+    G --> H["Research report only"]
 ```
 
 Native ASR word timestamps are not treated as forced alignment. If a later
@@ -96,6 +102,30 @@ analysis and use Test connection to confirm the server is available.
 
 The first server request downloads and loads the speech model, so it will be
 slower than later requests.
+
+### Enable experimental pronunciation evidence
+
+The normal Codespaces setup intentionally does not install the additional large
+model stack. To run the research layer in cloud storage without changing the
+student result:
+
+```bash
+pip install -r server/requirements-pronunciation.txt
+KRIAH_PRONUNCIATION_MODE=shadow \
+  uvicorn server.app:app --host 0.0.0.0 --port 8000
+```
+
+The API health response must show `shadow-pronunciation-evidence`. Every
+pronunciation response also states `affects_routing: false`.
+
+For a local JSON research report using a consented adult recording:
+
+```bash
+KRIAH_PRONUNCIATION_MODE=shadow \
+  python -m research.pronunciation_report --bracha 4 /private/reading.webm
+```
+
+Do not place recordings or generated reports inside this public repository.
 
 ## Run checks
 

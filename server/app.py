@@ -39,6 +39,7 @@ MAX_AUDIO_SECONDS = float(os.getenv("KRIAH_MAX_AUDIO_SECONDS", "180"))
 RATE_LIMIT_PER_MINUTE = int(os.getenv("KRIAH_RATE_LIMIT_PER_MINUTE", "10"))
 ALLOWED_SUFFIXES = {".webm", ".wav", ".mp3", ".m4a", ".mp4", ".ogg"}
 FRONTEND_PATH = Path(__file__).resolve().parents[1] / "index.html"
+PILOT_PATH = Path(__file__).resolve().parents[1] / "pilot.html"
 
 
 class VerifyRequest(BaseModel):
@@ -163,7 +164,7 @@ def create_app(transcriber=None, pronunciation_assessor=None) -> FastAPI:
             },
         }
 
-    @app.get("/", include_in_schema=False)
+    @app.get("/coach", include_in_schema=False)
     def frontend():
         if not FRONTEND_PATH.is_file():
             raise HTTPException(status_code=404, detail="frontend is unavailable")
@@ -174,8 +175,23 @@ if (location.hostname.endsWith('.app.github.dev')) {
 }
 </script>
 """
-        html = html.replace('<div id="app"></div>', codespaces_bootstrap + '<div id="app"></div>', 1)
+        pilot_link = """<div style="max-width:860px;margin:12px auto 0;padding:0 14px">
+  <a href="/" style="display:block;text-align:center;padding:12px 16px;border-radius:12px;background:#2456a6;color:white;text-decoration:none;font:600 16px/1.3 system-ui,sans-serif">Open the streamlined pilot</a>
+</div>
+"""
+        html = html.replace(
+            '<div id="app"></div>',
+            codespaces_bootstrap + pilot_link + '<div id="app"></div>',
+            1,
+        )
         return HTMLResponse(html)
+
+    @app.get("/", include_in_schema=False)
+    @app.get("/pilot", include_in_schema=False)
+    def pilot_frontend():
+        if not PILOT_PATH.is_file():
+            raise HTTPException(status_code=404, detail="pilot frontend is unavailable")
+        return HTMLResponse(PILOT_PATH.read_text(encoding="utf-8"))
 
     async def transcribe_path(path: str, language: str):
         if language != "he":

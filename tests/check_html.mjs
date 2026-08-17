@@ -1,9 +1,11 @@
 import fs from "node:fs";
 
-const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
-const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(match => match[1]);
-if (scripts.length !== 1) {
-  throw new Error(`expected one inline script, found ${scripts.length}`);
+for (const filename of ["index.html", "pilot.html"]) {
+  const html = fs.readFileSync(new URL(`../${filename}`, import.meta.url), "utf8");
+  const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(match => match[1]);
+  if (scripts.length !== 1) {
+    throw new Error(`${filename}: expected one inline script, found ${scripts.length}`);
+  }
+  new Function(scripts[0]);
+  console.log(`${filename} inline JavaScript parses`);
 }
-new Function(scripts[0]);
-console.log("index.html inline JavaScript parses");

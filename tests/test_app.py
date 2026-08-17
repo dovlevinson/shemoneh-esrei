@@ -37,11 +37,26 @@ class FakeTranscriber:
 
 
 class AppTests(unittest.TestCase):
-    def test_root_serves_the_browser_app(self):
+    def test_root_serves_the_streamlined_pilot(self):
         client = TestClient(create_app(FakeTranscriber()))
         response = client.get("/")
         self.assertEqual(response.status_code, 200)
+        self.assertIn("Fast Kriah Pilot", response.text)
+        self.assertIn('href="/coach"', response.text)
+
+    def test_coach_serves_the_full_browser_app(self):
+        client = TestClient(create_app(FakeTranscriber()))
+        response = client.get("/coach")
+        self.assertEqual(response.status_code, 200)
         self.assertIn("Shemoneh Esrei", response.text)
+        self.assertIn('href="/"', response.text)
+
+    def test_pilot_serves_the_streamlined_test(self):
+        client = TestClient(create_app(FakeTranscriber()))
+        response = client.get("/pilot")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Fast Kriah Pilot", response.text)
+        self.assertIn("/analyze-reading", response.text)
 
     def test_health_describes_limitations(self):
         client = TestClient(create_app(FakeTranscriber()))

@@ -13,6 +13,9 @@ evaluation gates.
 ## What is implemented
 
 - `index.html`: static student and teacher interface
+- `pilot.html`: streamlined record, upload, analyze, and label workflow for the
+  four brachot represented by the supplied adult test recordings, plus custom
+  pointed Hebrew
 - `server/app.py`: FastAPI service with health, transcription, structured
   word-order analysis, and signed-result verification endpoints
 - `server/scoring.py`: dependency-free Hebrew normalization and global word
@@ -28,6 +31,27 @@ evaluation gates.
 - `tests/`: unit, API, tamper-detection, evaluation, and browser-script checks
 
 Teacher and student recordings are intentionally absent from this public branch.
+
+## Fast pilot
+
+After the server starts, the root address opens the fast pilot automatically.
+`/pilot` is an alias, and the full student coach remains available at `/coach`.
+The fast page removes the teacher settings
+and result-code workflow from the first test:
+
+1. Use a pseudonymous reader code.
+2. Choose bracha 1, 2, 3, or 4, or paste custom pointed Hebrew.
+3. Record in the browser or upload an existing audio file.
+4. Review the word-and-order result.
+5. Attach one human label.
+
+Nothing is stored automatically. A labeled sample can be downloaded as one JSON
+file containing the human label, model response, and base64-encoded audio. Keep
+those files in an approved private location. The page also exports a lightweight
+JSONL list of the current browser session's labels without audio.
+
+The label does not alter the model result. Nikud and pronunciation remain shadow
+evidence only when the optional model is enabled.
 
 ## What it does not do
 
@@ -81,6 +105,8 @@ analysis service, and opens the application on its forwarded HTTPS address. The
 first Recorded Check downloads and loads the speech model, so it can take much
 longer than later attempts. Stop the codespace after testing so it no longer uses
 included compute time.
+
+The forwarded Codespaces address opens the streamlined pilot automatically.
 
 This is a developer smoke test, not evidence that the model grades children or
 nikud accurately. Use only consented adult test recordings until the privacy and

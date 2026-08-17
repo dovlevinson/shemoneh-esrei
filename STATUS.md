@@ -30,6 +30,9 @@ Updated 2026-08-17.
   The evidence is explicitly uncalibrated and cannot affect routing.
 - Added an offline JSON research-report command and kept the large phoneme model
   dependencies out of the default Codespaces installation.
+- Added a single-page fast pilot that supports live recording or file upload,
+  same-origin analysis, a human calibration label, and an optional self-contained
+  sample download without automatic audio storage.
 
 ## Verified locally
 

@@ -130,7 +130,10 @@ def create_app(transcriber=None) -> FastAPI:
             "model_loaded": bool(getattr(speech, "loaded", False)),
             "signing_configured": bool(os.getenv("KRIAH_RESULT_SECRET")),
             "capabilities": ["transcription", "word-order-analysis"],
-            "limitations": ["does not grade nikud", "results require teacher review"],
+            "limitations": [
+                "does not yet grade nikud",
+                "uncertain word results require selective review",
+            ],
         }
 
     @app.get("/", include_in_schema=False)
@@ -204,13 +207,26 @@ if (location.hostname.endsWith('.app.github.dev')) {
             "attempt_id": attempt_id or str(uuid4()),
             "bracha": bracha,
             "status": "review_required" if analysis["review_required"] else "advisory_pass",
+            "routing": (
+                "selective_review"
+                if analysis["review_required"]
+                else "automatic_word_clear"
+            ),
+            "assessment_scope": {
+                "word_identity_and_order": "evaluated",
+                "nikud_and_vowels": "not_evaluated",
+                "phoneme_pronunciation": "not_evaluated",
+            },
             "transcript": transcript.transcript,
             "transcript_words": [asdict(word) for word in transcript.words],
             "duration": transcript.duration,
             "inference_seconds": transcript.inference_seconds,
             "model": transcript.model,
             "average_word_probability": average_probability,
-            "caveat": "Advisory consonant/word analysis only. Nikud is not graded.",
+            "caveat": (
+                "This result evaluates word identity and order only. "
+                "Nikud, vowels, and phoneme pronunciation were not evaluated."
+            ),
             **analysis,
         }
         secret = os.getenv("KRIAH_RESULT_SECRET")

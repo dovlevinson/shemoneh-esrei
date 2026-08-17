@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-08-14.
+Updated 2026-08-17.
 
 ## Completed on the rebuild branch
 
@@ -17,6 +17,13 @@ Updated 2026-08-14.
 - Added pilot metrics with a check for speaker leakage between calibration and
   test sets.
 - Kept all supplied audio outside the public repository.
+- Fixed false penalties caused by pointed defective spelling versus Whisper's
+  unpointed plene spelling, using only variants licensed by the target's vowel
+  marks rather than globally deleting vav and yod.
+- Fixed WPM so it measures recognized words over recording duration instead of
+  counting only exact string matches.
+- Made selective review the explicit product target and exposed that nikud,
+  vowel, and phoneme evidence are not evaluated by the current server.
 
 ## Verified locally
 

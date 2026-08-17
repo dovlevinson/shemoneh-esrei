@@ -42,7 +42,7 @@ class AppTests(unittest.TestCase):
         client = TestClient(create_app(FakeTranscriber()))
         response = client.get("/health")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("does not grade nikud", response.json()["limitations"])
+        self.assertIn("does not yet grade nikud", response.json()["limitations"])
 
     def test_exact_recorded_reading(self):
         fake = FakeTranscriber()
@@ -62,6 +62,8 @@ class AppTests(unittest.TestCase):
         body = response.json()
         self.assertEqual(body["estimated_accuracy"], 100)
         self.assertEqual(body["status"], "advisory_pass")
+        self.assertEqual(body["routing"], "automatic_word_clear")
+        self.assertEqual(body["assessment_scope"]["nikud_and_vowels"], "not_evaluated")
         self.assertTrue(body["result_token"].startswith("SET2."))
         self.assertTrue(fake.saw_existing_file)
         self.assertFalse(os.path.exists(fake.last_path))

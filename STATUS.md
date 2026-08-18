@@ -33,6 +33,11 @@ Updated 2026-08-17.
 - Added a single-page fast pilot that supports live recording or file upload,
   same-origin analysis, a human calibration label, and an optional self-contained
   sample download without automatic audio storage.
+- Added a default Codespaces nikud evidence lab with automatic pronunciation-model
+  setup, model-readiness status, per-vowel evidence, exact slot labels, paired
+  recording comparison, and downloadable labeled packages.
+- Moved long analysis into in-memory background jobs so Codespaces forwarding does
+  not need to hold one request open for the full CPU inference run.
 
 ## Verified locally
 
@@ -60,8 +65,8 @@ still need verification in the target environment.
 - No production backend has been deployed.
 - No child-speech validation set has been collected or teacher-labeled.
 - No nikud or phoneme measurement is permitted to make a student decision.
-- Real-model shadow reports on the supplied adult recordings still require the
-  optional model installation and an explicit research run.
+- The Codespaces lab now installs and runs the shadow model, but its displayed
+  measurements remain uncalibrated and cannot make a student decision.
 - No school privacy, retention, or vendor review has been approved.
 - No student authentication, roster sync, durable result storage, or teacher
   dashboard exists.

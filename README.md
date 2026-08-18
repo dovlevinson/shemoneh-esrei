@@ -5,15 +5,18 @@ instant browser practice experience, adds a structured Hebrew transcription API,
 and removes the unsupported claim that the software can grade nikud.
 
 The current authoritative result is still a word-and-order reading pilot, not a
-complete kriah assessor. An optional shadow layer now collects nikud-aware CTC
-acoustic evidence without changing a score, pass, retry, or review decision.
+complete kriah assessor. The Codespaces test now runs a nikud evidence lab that
+collects and displays nikud-aware CTC acoustic evidence without changing a
+score, pass, retry, or review decision.
 Automatic pronunciation decisions remain blocked until that evidence passes the
 evaluation gates.
 
 ## What is implemented
 
 - `index.html`: static student and teacher interface
-- `pilot.html`: streamlined record, upload, analyze, and label workflow for the
+- `nikud.html`: default Codespaces lab with per-vowel evidence, human slot labels,
+  and paired-recording comparison
+- `pilot.html`: streamlined word-only record, upload, analyze, and label workflow for the
   four brachot represented by the supplied adult test recordings, plus custom
   pointed Hebrew
 - `server/app.py`: FastAPI service with health, transcription, structured
@@ -32,10 +35,30 @@ evaluation gates.
 
 Teacher and student recordings are intentionally absent from this public branch.
 
-## Fast pilot
+## Nikud evidence lab
 
-After the server starts, the root address opens the fast pilot automatically.
-`/pilot` is an alias, and the full student coach remains available at `/coach`.
+The root address opens the nikud evidence lab. Codespaces installs and starts
+both the Hebrew speech model and the optional pronunciation model. The page
+waits until both are loaded before enabling analysis, then submits background
+jobs so a long CPU analysis is not tied to one forwarded HTTP request.
+
+For each mapped vowel slot, the lab displays:
+
+- the expected nekudah and accepted sound;
+- peak acoustic evidence for the expected sound;
+- whether the expected sound or another modeled phone had stronger evidence;
+- the strongest competing modeled phone;
+- a human label for whether the vowel was actually correct, wrong, or uncertain.
+
+Reading B can be analyzed against the same text and compared with Reading A at
+shared vowel slots. The intended first paired test is the supplied known-correct
+and known-mistake bracha-4 recordings. Neither the single-reading display nor
+the paired deltas are a validated grade.
+
+## Word-only pilot
+
+After the server starts, `/pilot` and `/word-pilot` open the fast word-only pilot,
+and the full student coach remains available at `/coach`.
 The fast page removes the teacher settings
 and result-code workflow from the first test:
 
@@ -131,9 +154,8 @@ slower than later requests.
 
 ### Enable experimental pronunciation evidence
 
-The normal Codespaces setup intentionally does not install the additional large
-model stack. To run the research layer in cloud storage without changing the
-student result:
+Codespaces installs and enables the additional model stack automatically. To run
+the same research layer outside Codespaces without changing the student result:
 
 ```bash
 pip install -r server/requirements-pronunciation.txt

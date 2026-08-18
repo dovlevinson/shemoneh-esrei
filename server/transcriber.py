@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
 import os
+import threading
 import time
-
+from dataclasses import asdict, dataclass
 
 DEFAULT_MODEL = "ivrit-ai/whisper-large-v3-turbo-ct2"
 
@@ -41,6 +41,7 @@ class FasterWhisperTranscriber:
             "KRIAH_COMPUTE_TYPE", "int8" if self.device == "cpu" else "float16"
         )
         self._model = None
+        self._load_lock = threading.Lock()
 
     @property
     def loaded(self) -> bool:
@@ -48,14 +49,21 @@ class FasterWhisperTranscriber:
 
     def _get_model(self):
         if self._model is None:
-            from faster_whisper import WhisperModel
+            with self._load_lock:
+                if self._model is None:
+                    from faster_whisper import WhisperModel
 
-            self._model = WhisperModel(
-                self.model_id,
-                device=self.device,
-                compute_type=self.compute_type,
-            )
+                    self._model = WhisperModel(
+                        self.model_id,
+                        device=self.device,
+                        compute_type=self.compute_type,
+                    )
         return self._model
+
+    def load(self) -> None:
+        """Download and load the model outside a user analysis request."""
+
+        self._get_model()
 
     def transcribe(self, path: str, language: str = "he") -> Transcript:
         started = time.monotonic()
@@ -93,4 +101,3 @@ class FasterWhisperTranscriber:
             inference_seconds=round(time.monotonic() - started, 3),
             model=self.model_id,
         )
-

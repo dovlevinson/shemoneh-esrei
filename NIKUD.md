@@ -22,6 +22,13 @@ transcript, so word matching cannot distinguish readings such as `בָּרוּך
 4. The measurements are returned as uncalibrated shadow evidence with
    `affects_routing: false`.
 
+The default Codespaces page now exposes this layer as a nikud evidence lab. It
+shows expected-vowel evidence and the strongest competing modeled phone for each
+measured vowel slot, accepts a human label at the same slot, and can compare two
+recordings of the same text. Long analyses run as polled background jobs to avoid
+forwarded-request timeouts. The lab intentionally does not turn those values
+into correct, incorrect, pass, or fail decisions.
+
 The source text uses U+0592 immediately after selected shevas as a source-specific
 sheva-na marker. The mapper also handles shuruk, holam malei, furtive patah,
 beged-kefet, soft tav alternatives, and separate Hashem/Adonai whole-word

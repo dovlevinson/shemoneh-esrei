@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Kriah Nikud Evidence Lab</title>
+  <style>
+    :root{
+      color-scheme:light dark;
+      --bg:#f4f1e8;--card:#fffdf7;--ink:#25304e;--muted:#66708c;--line:#d9d1bf;
+      --blue:#2456a6;--blue-text:#fff;--green:#187a4b;--green-bg:#e2f2e7;
+      --amber:#8a5200;--amber-bg:#faedd4;--red:#a62f36;--red-bg:#f9e2e3;--purple:#6f43a5;
+    }
+    @media(prefers-color-scheme:dark){:root{
+      --bg:#131828;--card:#1c2336;--ink:#e9e7dd;--muted:#aab2c8;--line:#333d5c;
+      --blue:#7aa7e8;--blue-text:#10203c;--green:#69d39a;--green-bg:#153525;
+      --amber:#efba65;--amber-bg:#3a2d13;--red:#f08a8f;--red-bg:#3d1d20;--purple:#bd91ef;
+    }}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+    main{max-width:980px;margin:auto;padding:18px 14px 70px}
+    h1{font-size:1.7rem;margin:.15rem 0}h2{font-size:1.18rem;margin:.15rem 0 .8rem}h3{margin:.1rem 0;font-size:1.05rem}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:17px;margin:13px 0;box-shadow:0 2px 12px #00000012}
+    .muted{color:var(--muted)}.small{font-size:.82rem}.hidden{display:none!important}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.spread{justify-content:space-between}.grow{flex:1}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+    label{display:block;font-weight:650;font-size:.9rem}
+    input,select,textarea,button{font:inherit}
+    input,select,textarea{width:100%;margin-top:5px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
+    textarea{min-height:100px;resize:vertical;direction:rtl;font:1.25rem/1.8 "Times New Roman",serif}
+    button,.button{border:0;border-radius:11px;padding:11px 16px;background:#ece7da;color:#25304e;cursor:pointer;text-decoration:none;display:inline-block;text-align:center}
+    button.primary{background:var(--blue);color:var(--blue-text);font-weight:750}button.danger{background:var(--red);color:#fff}
+    button:disabled{opacity:.45;cursor:not-allowed}.button.small-button{padding:7px 10px;font-size:.82rem}
+    .reading{direction:rtl;text-align:right;font:1.6rem/2 "Times New Roman","Noto Serif Hebrew",serif;padding:13px;border-radius:12px;background:color-mix(in srgb,var(--blue) 8%,var(--card))}
+    .status{padding:11px 13px;border-radius:11px;background:var(--amber-bg);color:var(--amber);font-weight:650}
+    .status.ok{background:var(--green-bg);color:var(--green)}.status.bad{background:var(--red-bg);color:var(--red)}
+    .warning{border-left:5px solid var(--amber);background:var(--amber-bg);color:var(--amber)}
+    .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:12px 0}
+    .metric{padding:10px;border-radius:10px;background:color-mix(in srgb,var(--ink) 6%,var(--card));text-align:center}.metric b{display:block;font-size:1.3rem}.metric span{font-size:.76rem;color:var(--muted)}
+    .word-card{border:1px solid var(--line);border-radius:13px;margin:10px 0;overflow:hidden}.word-head{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 12px;background:color-mix(in srgb,var(--blue) 7%,var(--card))}.heb{direction:rtl;font:1.35rem "Times New Roman",serif}
+    .slot{display:grid;grid-template-columns:minmax(130px,1.3fr) minmax(110px,1fr) minmax(115px,1fr) minmax(210px,1.6fr);gap:8px;align-items:center;padding:10px 12px;border-top:1px solid var(--line)}
+    .slot-title b{display:block}.evidence{font-variant-numeric:tabular-nums}.favored{color:var(--green);font-weight:750}.competing{color:var(--red);font-weight:750}.neutral{color:var(--amber);font-weight:750}
+    .slot-labels{display:flex;gap:5px;flex-wrap:wrap}.slot-labels button{padding:6px 8px;font-size:.72rem;border:1px solid var(--line);background:var(--card);color:var(--ink)}.slot-labels button.chosen{outline:2px solid var(--blue);background:color-mix(in srgb,var(--blue) 14%,var(--card))}
+    audio{width:100%;margin-top:10px}.progress{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:9px}.progress>div{height:100%;width:35%;background:var(--blue);animation:move 1.4s linear infinite}@keyframes move{from{transform:translateX(-110%)}to{transform:translateX(310%)}}
+    table{width:100%;border-collapse:collapse;font-size:.86rem}th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left}th{color:var(--muted);font-size:.75rem}td.heb{font-size:1.05rem;text-align:right}
+    details summary{cursor:pointer;font-weight:650}.links a{margin-left:7px}.pill{display:inline-block;padding:3px 8px;border-radius:99px;background:color-mix(in srgb,var(--purple) 14%,var(--card));color:var(--purple);font-size:.72rem;font-weight:750}
+    @media(max-width:760px){.slot{grid-template-columns:1fr 1fr}.slot-labels{grid-column:1/-1}.row>button,.row>.button{flex:1}.reading{font-size:1.35rem}table{display:block;overflow:auto}}
+  </style>
+</head>
+<body>
+<main>
+  <div class="row spread">
+    <div><h1>Kriah Nikud Evidence Lab</h1><div class="muted">See what the sound model finds for each vowel.</div></div>
+    <div class="links"><a class="button small-button" href="/word-pilot">Word-only pilot</a><a class="button small-button" href="/coach">Full coach</a></div>
+  </div>
+
+  <div id="serverStatus" class="status">Preparing the speech and nikud models in the Codespace...</div>
+
+  <section class="card warning">
+    <b>This is a real nikud experiment, but it is not yet a student grade.</b>
+    <div class="small">The model now measures every mapped vowel and shows whether its acoustic evidence favored the expected sound or another sound. These measurements still require comparison with known human labels.</div>
+  </section>
+
+  <section class="card">
+    <h2>1. Choose the reading</h2>
+    <div class="grid">
+      <label>Reader code, not a name
+        <input id="speakerId" value="adult-1" maxlength="40" autocomplete="off">
+      </label>
+      <label>Pronunciation tradition
+        <select id="tradition">
+          <option value="mixed">Mixed or not yet specified</option>
+          <option value="ashkenazi">Ashkenazi</option>
+          <option value="sephardi">Sephardi or Israeli</option>
+        </select>
+      </label>
+      <label>Passage
+        <select id="passage"></select>
+      </label>
+    </div>
+    <label id="customWrap" class="hidden" style="margin-top:12px">Custom pointed Hebrew
+      <textarea id="customText" placeholder="Paste the exact pointed Hebrew here"></textarea>
+    </label>
+    <div id="reading" class="reading" lang="he"></div>
+    <div id="wordCount" class="muted small"></div>
+  </section>
+
+  <section class="card">
+    <h2>2. Reading A</h2>
+    <div class="grid">
+      <label>What you know about this recording
+        <select id="truthA">
+          <option value="unknown">Not labeled yet</option>
+          <option value="known_acceptable">Known acceptable reading</option>
+          <option value="known_nikud_errors">Known nikud mistakes</option>
+          <option value="known_other_errors">Known other mistakes</option>
+        </select>
+      </label>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button id="record" class="primary">Start recording</button>
+      <button id="stop" class="danger" disabled>Stop</button>
+      <label class="button">Choose Reading A file
+        <input id="fileA" type="file" accept="audio/*,.webm,.m4a,.mp3,.wav,.ogg,.mp4" style="display:none">
+      </label>
+      <button id="analyzeA" class="primary" disabled>Analyze nikud</button>
+    </div>
+    <div id="statusA" class="muted" style="margin-top:9px">Choose a recording or record one here.</div>
+    <div id="progressA" class="progress hidden"><div></div></div>
+    <audio id="audioA" controls class="hidden"></audio>
+  </section>
+
+  <section id="resultsA" class="card hidden">
+    <h2>3. Nikud evidence for Reading A</h2>
+    <div id="wordSummary" class="summary"></div>
+    <details>
+      <summary>What the word model heard</summary>
+      <div id="transcript" class="reading" style="font-size:1.2rem;margin-top:8px"></div>
+    </details>
+    <div id="nikudScope" class="status" style="margin-top:12px"></div>
+    <p class="muted small">“Expected stronger” means the acoustic model favored the expected sound at that aligned moment. It does not yet mean the pronunciation was definitely correct.</p>
+    <div id="vowelEvidence"></div>
+    <div class="row" style="margin-top:12px">
+      <button id="downloadA" class="primary">Download labeled Reading A</button>
+    </div>
+  </section>
+
+  <section id="compareCard" class="card hidden">
+    <h2>4. Optional comparison with Reading B</h2>
+    <p class="muted">Use this for the known-correct and known-mistake recordings of the same passage.</p>
+    <div class="grid">
+      <label>What you know about Reading B
+        <select id="truthB">
+          <option value="unknown">Not labeled yet</option>
+          <option value="known_acceptable">Known acceptable reading</option>
+          <option value="known_nikud_errors">Known nikud mistakes</option>
+          <option value="known_other_errors">Known other mistakes</option>
+        </select>
+      </label>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <label class="button">Choose Reading B file
+        <input id="fileB" type="file" accept="audio/*,.webm,.m4a,.mp3,.wav,.ogg,.mp4" style="display:none">
+      </label>
+      <button id="analyzeB" class="primary" disabled>Compare nikud evidence</button>
+    </div>
+    <div id="statusB" class="muted" style="margin-top:9px">No comparison recording selected.</div>
+    <div id="progressB" class="progress hidden"><div></div></div>
+    <audio id="audioB" controls class="hidden"></audio>
+    <div id="comparison" class="hidden" style="margin-top:16px">
+      <div class="status">This table shows change from Reading A to Reading B. It is evidence, not a pass or fail decision.</div>
+      <div style="overflow:auto;margin-top:10px"><table>
+        <thead><tr><th>Word</th><th>Nekudah</th><th>A evidence</th><th>B evidence</th><th>A margin</th><th>B margin</th><th>Change B minus A</th></tr></thead>
+        <tbody id="comparisonRows"></tbody>
+      </table></div>
+      <div class="row" style="margin-top:12px"><button id="downloadPair" class="primary">Download comparison package</button></div>
+    </div>
+  </section>
+</main>
+
+<script>
+"use strict";
+
+const PASSAGES=[
+  {id:"1",name:"1. אָבוֹת",english:"Avot",text:"אֲדֹנָי שְׂפָתַי תִּפְתָּח וּפִי יַגִּיד תְּהִלָּתֶֽךָ: בָּרוּךְ אַתָּה יְהֹוָה אֱלֹהֵֽינוּ וֵאלֹהֵי אֲבוֹתֵֽינוּ אֱלֹהֵי אַבְרָהָם אֱלֹהֵי יִצְחָק וֵאלֹהֵי יַעֲקֹב הָאֵל הַגָּדוֹל הַגִּבּוֹר וְהַנּוֹרָא אֵל עֶלְיוֹן גּוֹמֵל חֲסָדִים טוֹבִים וְקוֹנֵה הַכֹּל וְזוֹכֵר חַסְדֵי אָבוֹת וּמֵבִיא גוֹאֵל לִבְנֵי בְנֵיהֶם לְמַֽעַן שְׁמוֹ בְּאַהֲבָה: מֶֽלֶךְ עוֹזֵר וּמוֹשִֽׁיעַ וּמָגֵן: בָּרוּךְ אַתָּה יְהֹוָה מָגֵן אַבְרָהָם:"},
+  {id:"2",name:"2. גְּבוּרוֹת",english:"Gevurot",text:"אַתָּה גִבּוֹר לְעוֹלָם אֲדֹנָי מְחַיֵּה מֵתִים אַתָּה רַב לְהוֹשִֽׁיעַ: מְכַלְכֵּל חַיִּים בְּחֶֽסֶד מְחַיֵּה מֵתִים בְּרַחֲמִים רַבִּים סוֹמֵךְ נוֹפְ֒לִים וְרוֹפֵא חוֹלִים וּמַתִּיר אֲסוּרִים וּמְקַיֵּם אֱמוּנָתוֹ לִישֵׁנֵי עָפָר, מִי כָמֽוֹךָ בַּֽעַל גְּבוּרוֹת וּמִי דּֽוֹמֶה לָּךְ מֶֽלֶךְ מֵמִית וּמְחַיֵּה וּמַצְמִֽיחַ יְשׁוּעָה: וְנֶאֱמָן אַתָּה לְהַחֲיוֹת מֵתִים: בָּרוּךְ אַתָּה יְהֹוָה מְחַיֵּה הַמֵּתִים:"},
+  {id:"3",name:"3. קְדוּשַּׁת הַשֵּׁם",english:"Atah Kadosh",text:"אַתָּה קָדוֹשׁ וְשִׁמְךָ קָדוֹשׁ וּקְדוֹשִׁים בְּכָל־יוֹם יְהַלְ֒לֽוּךָ סֶּֽלָה."},
+  {id:"4",name:"4. דַּעַת",english:"Atah Chonen",text:"אַתָּה חוֹנֵן לְאָדָם דַּֽעַת וּמְלַמֵּד לֶאֱנוֹשׁ בִּינָה: חָנֵּֽנוּ מֵאִתְּ֒ךָ דֵּעָה בִּינָה וְהַשְׂכֵּל: בָּרוּךְ אַתָּה יְהֹוָה חוֹנֵן הַדָּֽעַת:"},
+  {id:"custom",name:"Custom pointed Hebrew",english:"Custom",text:""}
+];
+
+const $=id=>document.getElementById(id);
+let analysisReady=false,stream=null,recorder=null,chunks=[];
+let blobA=null,nameA="reading-a.webm",resultA=null,attemptA=null;
+let blobB=null,nameB="reading-b.webm",resultB=null,attemptB=null;
+const slotLabels={};
+
+function escapeHtml(value){return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function passage(){return PASSAGES.find(item=>item.id===$("passage").value)||PASSAGES[3];}
+function currentText(){return passage().id==="custom"?$("customText").value.trim():passage().text;}
+function words(){return currentText().split(/\s+/).flatMap(token=>token.split("־")).filter(token=>/[א-ת]/.test(token));}
+function renderPassage(){const custom=passage().id==="custom";$("customWrap").classList.toggle("hidden",!custom);$("reading").textContent=currentText()||"הטקסט יופיע כאן";$("wordCount").textContent=`${words().length} words`;}
+function setStatus(id,message,bad=false){$(id).textContent=message;$(id).style.color=bad?"var(--red)":"var(--muted)";}
+function updateButtons(){$("analyzeA").disabled=!analysisReady||!blobA||!words().length;$("analyzeB").disabled=!analysisReady||!blobB||!resultA;}
+
+async function checkHealth(){
+  try{
+    const response=await fetch("/health",{cache:"no-store"});
+    if(!response.ok)throw new Error(`HTTP ${response.status}`);
+    const health=await response.json();
+    analysisReady=Boolean(health.nikud_lab_ready);
+    const prep=health.model_preparation||{};
+    if(analysisReady){$("serverStatus").className="status ok";$("serverStatus").textContent="Ready. Speech and nikud evidence models are loaded.";}
+    else if(health.pronunciation?.mode!=="shadow"){$("serverStatus").className="status bad";$("serverStatus").textContent="Nikud evidence is not enabled in this Codespace. Rebuild it from the latest branch.";}
+    else if(prep.speech==="failed"||prep.pronunciation==="failed"){$("serverStatus").className="status bad";$("serverStatus").textContent="A model failed to prepare. Open the Codespace log before testing.";}
+    else{$("serverStatus").className="status";$("serverStatus").textContent=`Preparing models in cloud storage. Speech: ${prep.speech||"waiting"}. Nikud: ${prep.pronunciation||"waiting"}.`;setTimeout(checkHealth,3000);}
+  }catch(error){analysisReady=false;$("serverStatus").className="status bad";$("serverStatus").textContent=`Server unavailable: ${error.message}`;setTimeout(checkHealth,4000);}
+  updateButtons();
+}
+
+function setAudio(which,blob,name){
+  const player=$(which==="A"?"audioA":"audioB");
+  if(player.src)URL.revokeObjectURL(player.src);
+  player.src=URL.createObjectURL(blob);player.classList.remove("hidden");
+  if(which==="A"){blobA=blob;nameA=name||"reading-a.webm";setStatus("statusA",`Reading A selected (${Math.max(1,Math.round(blob.size/1024))} KB).`);}else{blobB=blob;nameB=name||"reading-b.webm";setStatus("statusB",`Reading B selected (${Math.max(1,Math.round(blob.size/1024))} KB).`);}
+  updateButtons();
+}
+
+async function startRecording(){
+  try{stream=await navigator.mediaDevices.getUserMedia({audio:true});chunks=[];const options=MediaRecorder.isTypeSupported("audio/webm;codecs=opus")?{mimeType:"audio/webm;codecs=opus"}:{};recorder=new MediaRecorder(stream,options);recorder.ondataavailable=event=>{if(event.data.size)chunks.push(event.data)};recorder.start(500);$("record").disabled=true;$("stop").disabled=false;setStatus("statusA","Recording now. Read the entire selected passage.");}
+  catch(error){setStatus("statusA",`Microphone could not start: ${error.message}`,true);}
+}
+async function stopRecording(){
+  if(!recorder||recorder.state==="inactive")return;
+  const stopped=new Promise(resolve=>{recorder.onstop=resolve});recorder.stop();await stopped;stream?.getTracks().forEach(track=>track.stop());stream=null;$("record").disabled=false;$("stop").disabled=true;setAudio("A",new Blob(chunks,{type:recorder.mimeType||"audio/webm"}),"live-reading-a.webm");
+}
+
+function formFor(blob,name,attempt){
+  const form=new FormData();form.append("audio",blob,name);form.append("language","he");form.append("expected_words",JSON.stringify(words()));form.append("bracha",passage().id);form.append("attempt_id",attempt);form.append("pronunciation_profile",$("tradition").value);return form;
+}
+async function createJob(blob,name,attempt,statusId){
+  const response=await fetch("/analysis-jobs",{method:"POST",body:formFor(blob,name,attempt)});let body=null;try{body=await response.json()}catch(_error){}if(!response.ok)throw new Error(body?.detail||`Server error ${response.status}`);
+  const started=Date.now();
+  for(;;){
+    await new Promise(resolve=>setTimeout(resolve,1500));
+    const poll=await fetch(`/analysis-jobs/${encodeURIComponent(body.job_id)}`,{cache:"no-store"});const job=await poll.json();
+    if(!poll.ok)throw new Error(job?.detail||`Status error ${poll.status}`);
+    if(job.status==="completed")return job.result;
+    if(job.status==="failed")throw new Error(job.error||"Analysis failed");
+    const seconds=Math.round((Date.now()-started)/1000);setStatus(statusId,`Analyzing speech and vowel evidence in the cloud (${seconds}s). Keep this page open.`);
+    if(Date.now()-started>900000)throw new Error("Analysis did not finish within 15 minutes");
+  }
+}
+
+async function analyzeA(){
+  if(!blobA)return;attemptA=crypto.randomUUID?crypto.randomUUID():`a-${Date.now()}`;$("progressA").classList.remove("hidden");$("analyzeA").disabled=true;setStatus("statusA","Uploading Reading A and starting analysis.");
+  try{resultA=await createJob(blobA,nameA,attemptA,"statusA");renderA(resultA);setStatus("statusA","Reading A analysis complete.");$("compareCard").classList.remove("hidden");}
+  catch(error){setStatus("statusA",`Analysis failed: ${error.message}`,true);}
+  finally{$("progressA").classList.add("hidden");updateButtons();}
+}
+async function analyzeB(){
+  if(!blobB||!resultA)return;attemptB=crypto.randomUUID?crypto.randomUUID():`b-${Date.now()}`;$("progressB").classList.remove("hidden");$("analyzeB").disabled=true;setStatus("statusB","Uploading Reading B and starting comparison analysis.");
+  try{resultB=await createJob(blobB,nameB,attemptB,"statusB");renderComparison();setStatus("statusB","Reading B analysis complete.");}
+  catch(error){setStatus("statusB",`Analysis failed: ${error.message}`,true);}
+  finally{$("progressB").classList.add("hidden");updateButtons();}
+}
+
+function evidenceClass(margin){return margin>0?"favored":margin<0?"competing":"neutral";}
+function evidenceLabel(margin){return margin>0?"Expected stronger":margin<0?"Another sound stronger":"Evidence tied";}
+function pct(value){return value==null?"n/a":`${(Number(value)*100).toFixed(1)}%`;}
+function margin(value){const number=Number(value);return Number.isFinite(number)?`${number>=0?"+":""}${number.toFixed(2)}`:"n/a";}
+function renderA(result){
+  $("resultsA").classList.remove("hidden");$("transcript").textContent=result.transcript||"No transcript returned";
+  const pronunciation=result.pronunciation||{},summary=pronunciation.summary||{},counts=result.counts||{};
+  $("wordSummary").innerHTML=[[`${Number(result.estimated_accuracy)||0}%`,"Word and order match"],[summary.words_measured??0,"Words with sound evidence"],[counts.missing??0,"Missing words"],[`${Number(pronunciation.inference_seconds||0).toFixed(1)}s`,"Nikud model time"]].map(([value,label])=>`<div class="metric"><b>${escapeHtml(value)}</b><span>${escapeHtml(label)}</span></div>`).join("");
+  if(pronunciation.status!=="evidence_available"){$("nikudScope").className="status bad";$("nikudScope").textContent=`Nikud evidence was not available (${pronunciation.status||"unknown"}).`;$("vowelEvidence").innerHTML="";return;}
+  $("nikudScope").className="status";$("nikudScope").textContent=`Experimental vowel evidence collected using the ${pronunciation.pronunciation_profile||"mixed"} profile. It did not change the word result.`;
+  $("vowelEvidence").innerHTML=(pronunciation.words||[]).map(word=>{
+    if(word.status!=="measured_uncalibrated")return `<div class="word-card"><div class="word-head"><span class="heb">${escapeHtml(word.word)}</span><span class="muted small">Not measured: ${escapeHtml(word.status)}</span></div></div>`;
+    const slots=(word.slots||[]).map((slot,index)=>({...slot,index})).filter(slot=>slot.kind==="vowel");
+    const rows=slots.length?slots.map(slot=>{
+      const key=`${word.expected_index}:${slot.index}`,m=Number(slot.peak_competitor_margin||0),chosen=slotLabels[key]?.label;
+      return `<div class="slot"><div class="slot-title"><b>${escapeHtml(slot.source)}</b><span class="heb">${escapeHtml(slot.symbol)}</span> expected sound ${escapeHtml((slot.allowed||[]).join(" / "))}</div><div class="evidence"><b>${pct(slot.peak_expected_probability)}</b><div class="small muted">peak model evidence</div></div><div><span class="${evidenceClass(m)}">${evidenceLabel(m)}</span><div class="small">margin ${margin(m)}; competitor ${escapeHtml(slot.strongest_competing_phone||"n/a")}</div></div><div class="slot-labels" data-key="${key}" data-word="${escapeHtml(word.word)}" data-source="${escapeHtml(slot.source)}"><button data-label="human_correct" class="${chosen==="human_correct"?"chosen":""}">Teacher: correct</button><button data-label="human_wrong_vowel" class="${chosen==="human_wrong_vowel"?"chosen":""}">Teacher: wrong vowel</button><button data-label="human_uncertain" class="${chosen==="human_uncertain"?"chosen":""}">Unsure</button></div></div>`;
+    }).join(""):`<div class="slot"><div>No mapped vowel slots for this word.</div></div>`;
+    return `<div class="word-card"><div class="word-head"><span class="heb">${escapeHtml(word.word)}</span><span class="small">heard: <span class="heb">${escapeHtml(word.heard||"-")}</span> <span class="pill">${escapeHtml(word.word_alignment)}</span></span></div>${rows}</div>`;
+  }).join("");
+  $("resultsA").scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+function flattenVowels(result){const mapped=new Map();for(const word of result?.pronunciation?.words||[]){if(word.status!=="measured_uncalibrated")continue;(word.slots||[]).forEach((slot,index)=>{if(slot.kind==="vowel")mapped.set(`${word.expected_index}:${index}`,{word:word.word,index:word.expected_index,slotIndex:index,...slot});});}return mapped;}
+function renderComparison(){
+  const a=flattenVowels(resultA),b=flattenVowels(resultB),rows=[];
+  for(const [key,left] of a){const right=b.get(key);if(!right)continue;rows.push({left,right,delta:Number(right.peak_competitor_margin)-Number(left.peak_competitor_margin)});}
+  rows.sort((x,y)=>x.delta-y.delta);
+  $("comparisonRows").innerHTML=rows.map(({left,right,delta})=>`<tr><td class="heb">${escapeHtml(left.word)}</td><td>${escapeHtml(left.source)}</td><td>${pct(left.peak_expected_probability)}</td><td>${pct(right.peak_expected_probability)}</td><td>${margin(left.peak_competitor_margin)}</td><td>${margin(right.peak_competitor_margin)}</td><td class="${evidenceClass(delta)}">${margin(delta)}</td></tr>`).join("")||`<tr><td colspan="7">No shared vowel slots could be compared.</td></tr>`;
+  $("comparison").classList.remove("hidden");$("comparison").scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+function blobBase64(blob){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(",")[1]);reader.onerror=()=>reject(reader.error);reader.readAsDataURL(blob);});}
+function downloadBlob(blob,filename){const url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+async function sample(which){const isA=which==="A",blob=isA?blobA:blobB;return {schema_version:"kriah-nikud-lab-v1",created_at:new Date().toISOString(),speaker_id:$("speakerId").value.trim(),pronunciation_tradition:$("tradition").value,passage:{id:passage().id,name:passage().name,text:currentText(),expected_words:words()},reading_label:isA?$("truthA").value:$("truthB").value,slot_labels:isA?slotLabels:{},analysis:isA?resultA:resultB,audio:{filename:isA?nameA:nameB,mime_type:blob.type||"application/octet-stream",size_bytes:blob.size,base64:await blobBase64(blob)}};}
+async function downloadA(){if(!resultA||!blobA)return;downloadBlob(new Blob([JSON.stringify(await sample("A"),null,2)],{type:"application/json"}),`kriah-nikud-${attemptA}.json`);}
+async function downloadPair(){if(!resultA||!resultB||!blobA||!blobB)return;const payload={schema_version:"kriah-nikud-pair-v1",created_at:new Date().toISOString(),reading_a:await sample("A"),reading_b:await sample("B")};downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}),`kriah-nikud-pair-${attemptA}.json`);}
+
+$("passage").innerHTML=PASSAGES.map(item=>`<option value="${item.id}" ${item.id==="4"?"selected":""}>${item.name} (${item.english})</option>`).join("");
+$("passage").addEventListener("change",renderPassage);$("customText").addEventListener("input",renderPassage);$("tradition").addEventListener("change",()=>{resultA=null;resultB=null;$("resultsA").classList.add("hidden");$("compareCard").classList.add("hidden");});
+$("record").addEventListener("click",startRecording);$("stop").addEventListener("click",stopRecording);
+$("fileA").addEventListener("change",event=>{const file=event.target.files?.[0];if(file)setAudio("A",file,file.name);});$("fileB").addEventListener("change",event=>{const file=event.target.files?.[0];if(file)setAudio("B",file,file.name);});
+$("analyzeA").addEventListener("click",analyzeA);$("analyzeB").addEventListener("click",analyzeB);$("downloadA").addEventListener("click",downloadA);$("downloadPair").addEventListener("click",downloadPair);
+$("vowelEvidence").addEventListener("click",event=>{const button=event.target.closest("button[data-label]");if(!button)return;const group=button.closest(".slot-labels"),key=group.dataset.key;slotLabels[key]={label:button.dataset.label,word:group.dataset.word,source:group.dataset.source};group.querySelectorAll("button").forEach(item=>item.classList.toggle("chosen",item===button));});
+window.addEventListener("beforeunload",()=>stream?.getTracks().forEach(track=>track.stop()));
+renderPassage();checkHealth();
+</script>
+</body>
+</html>

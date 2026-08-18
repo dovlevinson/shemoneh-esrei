@@ -10,11 +10,11 @@ from __future__ import annotations
 
 import math
 import os
+import threading
 import time
-from typing import Sequence
+from collections.abc import Sequence
 
 from .hebrew_g2p import collapse_model_phone, pronunciation_variants
-
 
 DEFAULT_MODEL = "facebook/wav2vec2-lv-60-espeak-cv-ft"
 DEFAULT_MODEL_REVISION = "c43348bbaa5a77692c8e7bf3409d683474fdf2a4"
@@ -112,6 +112,7 @@ class CtcPronunciationAssessor:
         self.divine_policy = os.getenv("KRIAH_DIVINE_NAME_POLICY", "both")
         self.padding_seconds = float(os.getenv("KRIAH_PRONUNCIATION_WORD_PADDING", "0.20"))
         self._resources = None
+        self._load_lock = threading.Lock()
 
     @property
     def loaded(self) -> bool:
@@ -120,57 +121,74 @@ class CtcPronunciationAssessor:
     def _load(self):
         if self._resources is not None:
             return self._resources
-        try:
-            import torch
-            from transformers import AutoFeatureExtractor, AutoModelForCTC, AutoTokenizer
-        except ModuleNotFoundError as exc:
-            raise PronunciationUnavailable(
-                "optional pronunciation dependencies are not installed"
-            ) from exc
+        with self._load_lock:
+            if self._resources is not None:
+                return self._resources
+            try:
+                import torch
+                from transformers import (
+                    AutoFeatureExtractor,
+                    AutoModelForCTC,
+                    AutoTokenizer,
+                )
+            except ModuleNotFoundError as exc:
+                raise PronunciationUnavailable(
+                    "optional pronunciation dependencies are not installed"
+                ) from exc
 
-        tokenizer = AutoTokenizer.from_pretrained(
-            self.model_id,
-            revision=self.revision,
-            do_phonemize=False,
-        )
-        feature_extractor = AutoFeatureExtractor.from_pretrained(
-            self.model_id,
-            revision=self.revision,
-        )
-        model = AutoModelForCTC.from_pretrained(
-            self.model_id,
-            revision=self.revision,
-        ).to(self.device)
-        model.eval()
+            tokenizer = AutoTokenizer.from_pretrained(
+                self.model_id,
+                revision=self.revision,
+                do_phonemize=False,
+            )
+            feature_extractor = AutoFeatureExtractor.from_pretrained(
+                self.model_id,
+                revision=self.revision,
+            )
+            model = AutoModelForCTC.from_pretrained(
+                self.model_id,
+                revision=self.revision,
+            ).to(self.device)
+            model.eval()
 
-        special_ids = set(getattr(tokenizer, "all_special_ids", []))
-        blank_id = getattr(model.config, "pad_token_id", None)
-        if blank_id is None:
-            blank_id = tokenizer.pad_token_id
-        if blank_id is None:
-            raise PronunciationUnavailable("CTC model does not declare a blank token")
+            special_ids = set(getattr(tokenizer, "all_special_ids", []))
+            blank_id = getattr(model.config, "pad_token_id", None)
+            if blank_id is None:
+                blank_id = tokenizer.pad_token_id
+            if blank_id is None:
+                raise PronunciationUnavailable("CTC model does not declare a blank token")
 
-        buckets: dict[str, list[int]] = {}
-        for symbol, token_id in tokenizer.get_vocab().items():
-            if token_id in special_ids or token_id == blank_id:
-                continue
-            collapsed = collapse_model_phone(symbol)
-            if collapsed:
-                buckets.setdefault(collapsed, []).append(token_id)
-        if not buckets:
-            raise PronunciationUnavailable("CTC vocabulary produced no supported phone buckets")
+            buckets: dict[str, list[int]] = {}
+            phone_by_id: dict[int, str] = {}
+            for symbol, token_id in tokenizer.get_vocab().items():
+                if token_id in special_ids or token_id == blank_id:
+                    continue
+                collapsed = collapse_model_phone(symbol)
+                if collapsed:
+                    buckets.setdefault(collapsed, []).append(token_id)
+                    phone_by_id[token_id] = collapsed
+            if not buckets:
+                raise PronunciationUnavailable(
+                    "CTC vocabulary produced no supported phone buckets"
+                )
 
-        phone_ids = sorted({token_id for ids in buckets.values() for token_id in ids})
-        self._resources = {
-            "torch": torch,
-            "tokenizer": tokenizer,
-            "feature_extractor": feature_extractor,
-            "model": model,
-            "blank_id": int(blank_id),
-            "buckets": buckets,
-            "phone_ids": phone_ids,
-        }
+            phone_ids = sorted({token_id for ids in buckets.values() for token_id in ids})
+            self._resources = {
+                "torch": torch,
+                "tokenizer": tokenizer,
+                "feature_extractor": feature_extractor,
+                "model": model,
+                "blank_id": int(blank_id),
+                "buckets": buckets,
+                "phone_ids": phone_ids,
+                "phone_by_id": phone_by_id,
+            }
         return self._resources
+
+    def load(self) -> None:
+        """Download and load the model outside a user analysis request."""
+
+        self._load()
 
     @staticmethod
     def _load_audio(path: str, sampling_rate: int):
@@ -250,9 +268,15 @@ class CtcPronunciationAssessor:
             peak = max(assigned_frames, key=lambda frame: float(slot_scores[frame, index]))
             expected_log = float(slot_scores[peak, index])
             competitor_ids = sorted(phone_ids.difference(allowed_ids[index]))
-            competitor_log = (
-                float(logpost[peak, competitor_ids].max()) if competitor_ids else expected_log
-            )
+            strongest_competing_phone = None
+            if competitor_ids:
+                competitor_values = logpost[peak, competitor_ids]
+                competitor_position = int(np.argmax(competitor_values))
+                competitor_id = competitor_ids[competitor_position]
+                competitor_log = float(competitor_values[competitor_position])
+                strongest_competing_phone = resources["phone_by_id"].get(competitor_id)
+            else:
+                competitor_log = expected_log
             absolute_start = frame_offset + min(assigned_frames)
             absolute_end = frame_offset + max(assigned_frames) + 1
             evidence.append(
@@ -265,6 +289,7 @@ class CtcPronunciationAssessor:
                         float(np.mean(slot_scores[assigned_frames, index])), 4
                     ),
                     "peak_competitor_margin": round(expected_log - competitor_log, 4),
+                    "strongest_competing_phone": strongest_competing_phone,
                 }
             )
 
@@ -286,6 +311,7 @@ class CtcPronunciationAssessor:
         alignment_rows: Sequence[dict],
         transcript_words: Sequence,
         transcript_duration: float,
+        profile: str | None = None,
     ) -> dict:
         import numpy as np
 
@@ -296,6 +322,7 @@ class CtcPronunciationAssessor:
             raise PronunciationUnavailable("model returned no timed acoustic frames")
         frame_seconds = duration / len(logpost)
 
+        requested_profile = profile or self.profile
         results = []
         all_probabilities: list[float] = []
         for row in alignment_rows:
@@ -321,11 +348,11 @@ class CtcPronunciationAssessor:
             heard_word = transcript_words[heard_index]
             start = max(0.0, float(heard_word.start) - self.padding_seconds)
             end = min(duration, float(heard_word.end) + self.padding_seconds)
-            first_frame = max(0, int(math.floor(start / frame_seconds)))
-            last_frame = min(len(logpost), int(math.ceil(end / frame_seconds)))
+            first_frame = max(0, math.floor(start / frame_seconds))
+            last_frame = min(len(logpost), math.ceil(end / frame_seconds))
             variants = pronunciation_variants(
                 expected_words[expected_index],
-                profile=self.profile,
+                profile=requested_profile,
                 divine_policy=self.divine_policy,
             )
             if not variants or not variants[0].slots:
@@ -375,7 +402,7 @@ class CtcPronunciationAssessor:
             "method": "word-windowed-ctc-viterbi-posterior",
             "model": self.model_id,
             "model_revision": self.revision,
-            "pronunciation_profile": self.profile,
+            "pronunciation_profile": requested_profile,
             "divine_name_policy": self.divine_policy,
             "inference_seconds": round(time.monotonic() - started, 3),
             "summary": {

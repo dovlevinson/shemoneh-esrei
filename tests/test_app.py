@@ -1,4 +1,5 @@
 import os
+import time
 import unittest
 from unittest.mock import patch
 
@@ -37,12 +38,18 @@ class FakeTranscriber:
 
 
 class AppTests(unittest.TestCase):
-    def test_root_serves_the_streamlined_pilot(self):
+    def test_root_serves_the_nikud_lab(self):
         client = TestClient(create_app(FakeTranscriber()))
         response = client.get("/")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("Fast Kriah Pilot", response.text)
+        self.assertIn("Kriah Nikud Evidence Lab", response.text)
         self.assertIn('href="/coach"', response.text)
+
+    def test_nikud_alias_serves_the_lab(self):
+        client = TestClient(create_app(FakeTranscriber()))
+        response = client.get("/nikud")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("/analysis-jobs", response.text)
 
     def test_coach_serves_the_full_browser_app(self):
         client = TestClient(create_app(FakeTranscriber()))
@@ -98,10 +105,12 @@ class AppTests(unittest.TestCase):
             def __init__(self):
                 self.saw_existing_file = False
                 self.last_path = None
+                self.last_profile = None
 
             def assess(self, **kwargs):
                 self.last_path = kwargs["path"]
                 self.saw_existing_file = os.path.exists(kwargs["path"])
+                self.last_profile = kwargs.get("profile")
                 return {
                     "mode": "shadow",
                     "status": "evidence_available",
@@ -119,7 +128,10 @@ class AppTests(unittest.TestCase):
         response = client.post(
             "/analyze-reading",
             files={"audio": ("reading.webm", b"audio", "audio/webm")},
-            data={"expected_words": '["אַתָּה", "קָדוֹשׁ"]'},
+            data={
+                "expected_words": '["אַתָּה", "קָדוֹשׁ"]',
+                "pronunciation_profile": "ashkenazi",
+            },
         )
         self.assertEqual(response.status_code, 200)
         body = response.json()
@@ -131,7 +143,60 @@ class AppTests(unittest.TestCase):
             "experimental_shadow_evidence",
         )
         self.assertTrue(assessor.saw_existing_file)
+        self.assertEqual(assessor.last_profile, "ashkenazi")
         self.assertFalse(os.path.exists(assessor.last_path))
+
+    def test_background_job_returns_completed_analysis(self):
+        class FakePronunciationAssessor:
+            mode = "shadow"
+            model_id = "fake-phoneme-model"
+            loaded = True
+
+            def assess(self, **kwargs):
+                return {
+                    "mode": "shadow",
+                    "status": "evidence_available",
+                    "affects_routing": False,
+                    "calibration_state": "uncalibrated",
+                    "pronunciation_profile": kwargs["profile"],
+                    "summary": {"words_measured": 2},
+                    "words": [],
+                }
+
+        client = TestClient(create_app(FakeTranscriber(), FakePronunciationAssessor()))
+        created = client.post(
+            "/analysis-jobs",
+            files={"audio": ("reading.webm", b"audio", "audio/webm")},
+            data={
+                "expected_words": '["אַתָּה", "קָדוֹשׁ"]',
+                "pronunciation_profile": "sephardi",
+            },
+        )
+        self.assertEqual(created.status_code, 202)
+        job_id = created.json()["job_id"]
+        body = None
+        for _ in range(50):
+            body = client.get(f"/analysis-jobs/{job_id}").json()
+            if body["status"] in {"completed", "failed"}:
+                break
+            time.sleep(0.01)
+        self.assertEqual(body["status"], "completed")
+        self.assertEqual(
+            body["result"]["pronunciation"]["pronunciation_profile"],
+            "sephardi",
+        )
+
+    def test_rejects_unknown_pronunciation_profile(self):
+        client = TestClient(create_app(FakeTranscriber()))
+        response = client.post(
+            "/analysis-jobs",
+            files={"audio": ("reading.webm", b"audio", "audio/webm")},
+            data={
+                "expected_words": '["אַתָּה", "קָדוֹשׁ"]',
+                "pronunciation_profile": "unknown",
+            },
+        )
+        self.assertEqual(response.status_code, 422)
 
     def test_shadow_failure_does_not_fail_word_analysis(self):
         class FailingPronunciationAssessor:

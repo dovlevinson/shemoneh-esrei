@@ -3,8 +3,12 @@ set -euo pipefail
 
 log_file="${TMPDIR:-/tmp}/kriah-reading-coach.log"
 
-if curl --fail --silent http://127.0.0.1:8000/health >/dev/null 2>&1; then
+health="$(curl --fail --silent http://127.0.0.1:8000/health 2>/dev/null || true)"
+if [[ "${health}" == *'"mode":"shadow"'* ]]; then
   exit 0
+fi
+if [[ -n "${health}" ]]; then
+  pkill -f "python -m uvicorn server.app:app" 2>/dev/null || true
 fi
 
 nohup python -m uvicorn server.app:app --host 0.0.0.0 --port 8000 >"${log_file}" 2>&1 &

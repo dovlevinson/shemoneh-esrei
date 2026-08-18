@@ -1,8 +1,13 @@
 {
   "name": "Kriah Reading Coach free test",
   "image": "mcr.microsoft.com/devcontainers/python:1-3.11-bookworm",
-  "postCreateCommand": "pip install -r server/requirements.txt",
+  "postCreateCommand": "pip install -r server/requirements-pronunciation.txt",
   "postAttachCommand": "bash .devcontainer/start.sh",
+  "containerEnv": {
+    "KRIAH_PRONUNCIATION_MODE": "shadow",
+    "KRIAH_PRELOAD_MODELS": "1",
+    "TOKENIZERS_PARALLELISM": "false"
+  },
   "forwardPorts": [8000],
   "portsAttributes": {
     "8000": {

@@ -4,11 +4,11 @@ set -euo pipefail
 log_file="${TMPDIR:-/tmp}/kriah-reading-coach.log"
 
 announce_ready() {
-  printf '\\nKriah Reading Coach is ready.\\n'
-  printf 'Open the Nikud testing page: http://127.0.0.1:8000/\\n'
+  printf '\nKriah Reading Coach is ready.\n'
+  printf 'Open the Nikud testing page: http://127.0.0.1:8000/\n'
 
   if [[ -n "${CODESPACE_NAME:-}" && -n "${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-}" ]]; then
-    printf 'Codespaces browser link: https://%s-8000.%s/\\n' \\
+    printf 'Codespaces browser link: https://%s-8000.%s/\n' \
       "${CODESPACE_NAME}" "${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
   fi
 }

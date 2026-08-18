@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-08-17.
+Updated 2026-08-18.
 
 ## Completed on the rebuild branch
 
@@ -38,6 +38,13 @@ Updated 2026-08-17.
   recording comparison, and downloadable labeled packages.
 - Moved long analysis into in-memory background jobs so Codespaces forwarding does
   not need to hold one request open for the full CPU inference run.
+- Added three controlled, fully pointed master readings covering every supported
+  written vowel source, all five core vowel sounds, and major consonant contrasts.
+- Added browser recording for Reading B, exact Reading B vowel labels, bulk
+  correct labeling, and export of both readings' labels.
+- Added a conservative, non-authoritative reference-comparison endpoint that
+  reports vowel-only means, strong candidate changes, context-sensitive sheva,
+  and labeled catches, misses, and false alarms.
 
 ## Verified locally
 
@@ -55,6 +62,11 @@ Updated 2026-08-17.
   deltas of -7.1108, -8.4812, and -6.5449. Other slots also moved substantially,
   so these adult paired results support further calibration research, not an
   automatic grading threshold.
+- The initial conservative paired rule independently flags those same three
+  tzeirei changes in the supplied user-exported comparison. Its vowel-only means
+  are 0.755751 for the correct reading and 0.701499 for the mistake reading.
+  This does not establish performance on the fourth reported planted error,
+  different speakers, or child recordings.
 
 The API integration tests are included but require the development dependencies.
 Actual ASR accuracy, model startup, container behavior, and microphone behavior

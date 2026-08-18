@@ -71,6 +71,65 @@ class AppTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("does not yet grade nikud", response.json()["limitations"])
 
+    def test_calibration_suite_exposes_all_master_readings(self):
+        client = TestClient(create_app(FakeTranscriber()))
+        response = client.get("/calibration-suite?pronunciation_profile=sephardi")
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["pronunciation_profile"], "sephardi")
+        self.assertEqual(len(body["readings"]), 3)
+        self.assertTrue(body["coverage"]["all_required_vowel_sources_covered"])
+
+    def test_calibration_suite_rejects_unknown_profile(self):
+        client = TestClient(create_app(FakeTranscriber()))
+        response = client.get("/calibration-suite?pronunciation_profile=unknown")
+        self.assertEqual(response.status_code, 422)
+
+    def test_comparison_rejects_readings_without_vowel_evidence(self):
+        client = TestClient(create_app(FakeTranscriber()))
+        response = client.post(
+            "/compare-readings",
+            json={"reference": {"bracha": "4"}, "candidate": {"bracha": "4"}},
+        )
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("pronunciation evidence", response.json()["detail"])
+
+    def test_comparison_returns_non_authoritative_vowel_candidates(self):
+        def evidence(probability, margin):
+            return {
+                "bracha": "cal-core",
+                "requested_pronunciation_profile": "mixed",
+                "pronunciation": {
+                    "status": "evidence_available",
+                    "words": [
+                        {
+                            "expected_index": 0,
+                            "word": "חוֹנֵן",
+                            "status": "measured_uncalibrated",
+                            "slots": [
+                                {
+                                    "kind": "vowel",
+                                    "source": "צירי",
+                                    "allowed": ["e"],
+                                    "peak_expected_probability": probability,
+                                    "peak_competitor_margin": margin,
+                                }
+                            ],
+                        }
+                    ],
+                },
+            }
+
+        client = TestClient(create_app(FakeTranscriber()))
+        response = client.post(
+            "/compare-readings",
+            json={"reference": evidence(0.8, 3), "candidate": evidence(0.03, -4)},
+        )
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertFalse(body["authoritative"])
+        self.assertEqual(body["summary"]["strong_candidates"], 1)
+
     def test_exact_recorded_reading(self):
         fake = FakeTranscriber()
         with patch.dict(os.environ, {"KRIAH_RESULT_SECRET": "test-secret"}):

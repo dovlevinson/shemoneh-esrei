@@ -7,5 +7,12 @@ for (const filename of ["index.html", "pilot.html", "nikud.html"]) {
     throw new Error(`${filename}: expected one inline script, found ${scripts.length}`);
   }
   new Function(scripts[0]);
+  if (filename === "nikud.html") {
+    for (const marker of ["/calibration-suite", "/compare-readings", "slotLabelsB", "recordB", "false_alarms"]) {
+      if (!html.includes(marker)) {
+        throw new Error(`${filename}: missing required calibration feature ${marker}`);
+      }
+    }
+  }
   console.log(`${filename} inline JavaScript parses`);
 }

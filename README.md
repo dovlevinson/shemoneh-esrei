@@ -14,8 +14,8 @@ evaluation gates.
 ## What is implemented
 
 - `index.html`: static student and teacher interface
-- `nikud.html`: default Codespaces lab with per-vowel evidence, human slot labels,
-  and paired-recording comparison
+- `nikud.html`: default Codespaces lab with three controlled master readings,
+  per-vowel evidence, labels for both readings, and paired-reference comparisons
 - `pilot.html`: streamlined word-only record, upload, analyze, and label workflow for the
   four brachot represented by the supplied adult test recordings, plus custom
   pointed Hebrew
@@ -27,6 +27,8 @@ evaluation gates.
   model without an expected-text prompt
 - `server/hebrew_g2p.py`: pointed-Hebrew pronunciation map with explicit mixed,
   Sephardi, and Ashkenazi alternatives
+- `server/calibration.py`: master-reading coverage and conservative,
+  non-authoritative vowel-only comparison rules
 - `server/pronunciation.py`: optional, lazy CTC Viterbi evidence inside ASR word
   windows; permanently non-authoritative while configured as shadow mode
 - `evaluation/metrics.py`: speaker-disjoint pilot metrics, including false-pass
@@ -50,10 +52,24 @@ For each mapped vowel slot, the lab displays:
 - the strongest competing modeled phone;
 - a human label for whether the vowel was actually correct, wrong, or uncertain.
 
-Reading B can be analyzed against the same text and compared with Reading A at
-shared vowel slots. The intended first paired test is the supplied known-correct
-and known-mistake bracha-4 recordings. Neither the single-reading display nor
-the paired deltas are a validated grade.
+The passage menu starts with three short, pointed master readings:
+
+1. Everyday vowel sounds in familiar words.
+2. Reduced vowels, kamatz katan, sounded and silent sheva, and special cases.
+3. Hebrew consonants and commonly confused sound contrasts.
+
+Together they exercise every vowel category currently supported by the
+pointed-Hebrew mapper. Record Reading A correctly, then record Reading B directly
+in the browser. First compare a second correct take to measure natural
+variation. Next compare a reading with deliberately changed vowels. Mark all
+Reading B vowels correct, change the planted mistakes to wrong, and inspect
+catches, false alarms, and misses.
+
+The lab compares only shared vowel slots and reports separate vowel-only means.
+Large reference-to-candidate drops are shown as research candidates, not grades.
+Sounded sheva is explicitly context-sensitive. One master reading does not
+replace clean references for each real bracha or validation on different
+speakers and children.
 
 ## Word-only pilot
 

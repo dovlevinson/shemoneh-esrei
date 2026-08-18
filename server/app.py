@@ -25,6 +25,7 @@ from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 from starlette.responses import HTMLResponse, JSONResponse
 
+from .calibration import calibration_suite, compare_vowel_evidence
 from .hebrew_g2p import VALID_PROFILES
 from .pronunciation import (
     PronunciationUnavailable,
@@ -49,6 +50,11 @@ MAX_JOBS = int(os.getenv("KRIAH_MAX_JOBS", "25"))
 
 class VerifyRequest(BaseModel):
     token: str
+
+
+class CompareReadingsRequest(BaseModel):
+    reference: dict
+    candidate: dict
 
 
 class SlidingWindowLimiter:
@@ -231,6 +237,23 @@ def create_app(transcriber=None, pronunciation_assessor=None) -> FastAPI:
                 "affects_routing": False,
             },
         }
+
+    @app.get("/calibration-suite")
+    def get_calibration_suite(pronunciation_profile: str = "mixed"):
+        try:
+            return calibration_suite(pronunciation_profile)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.post("/compare-readings")
+    def compare_readings(payload: CompareReadingsRequest):
+        try:
+            return compare_vowel_evidence(payload.reference, payload.candidate)
+        except (KeyError, TypeError, ValueError) as exc:
+            raise HTTPException(
+                status_code=422,
+                detail=f"readings cannot be compared: {exc}",
+            ) from exc
 
     @app.get("/coach", include_in_schema=False)
     def frontend():

@@ -29,6 +29,30 @@ recordings of the same text. Long analyses run as polled background jobs to avoi
 forwarded-request timeouts. The lab intentionally does not turn those values
 into correct, incorrect, pass, or fail decisions.
 
+## Controlled master-reading calibration
+
+The lab also supplies three short, pointed master readings with ordinary Hebrew
+words. Together they cover all 14 written vowel sources currently emitted by the
+mapper, the five core vowel sounds, and representative consonant contrasts. The
+special-cases section includes sounded sheva, silent sheva, kamatz katan,
+reduced vowels, and furtive patach. A silent sheva has no audible vowel slot and
+therefore cannot itself be scored as an audible vowel.
+
+The recommended sequence is:
+
+1. Record a correct reference take for one master section.
+2. Record a second correct take and check for false alarms from natural variation.
+3. Record another take with one or more known, deliberate vowel changes.
+4. Label the Reading B vowel positions and inspect catches, misses, and false alarms.
+5. Repeat across other speakers, traditions, recording conditions, and actual brachot.
+
+The comparison endpoint uses only matched vowel slots, not consonant evidence.
+Its initial strong-candidate research rule requires a competitor-margin drop of
+at least five points, a negative candidate margin, and expected-vowel evidence
+at or below 20%. Sounded sheva is separated as context-sensitive. These numbers
+were selected from an adult example and are not validated decision thresholds.
+They cannot change a student's routing or grade.
+
 The source text uses U+0592 immediately after selected shevas as a source-specific
 sheva-na marker. The mapper also handles shuruk, holam malei, furtive patah,
 beged-kefet, soft tav alternatives, and separate Hashem/Adonai whole-word

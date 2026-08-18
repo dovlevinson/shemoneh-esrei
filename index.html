@@ -1,5 +1,5 @@
 <meta charset="utf-8">
-<title>Shemoneh Esrei Master — Reading Trainer</title>
+<title>Shemoneh Esrei Reading Coach</title>
 <style>
 /* ============ tokens ============ */
 :root{
@@ -182,8 +182,8 @@ function ratio(a,b){
   const d=lev(a,b);
   return 1-d/Math.max(a.length,b.length);
 }
-const DIVINE=new Set(['השמ','אדני','אדוני','אדושמ','אדנוי','יהוה']); // final letters already folded by norm() — bare 'ה' removed so the divine slot can't trivially pass
-function isDivineTarget(n){return n==='יהוה'||n==='אדני';} // both spellings of the Name in the text (יְהֹוָה and the opening אֲדֹנָי) — students read both as "Hashem"
+const DIVINE=new Set(['השמ','אדני','אדוני','אדושמ','אדנוי','יהוה']); // final letters already folded by norm() - bare 'ה' removed so the divine slot can't trivially pass
+function isDivineTarget(n){return n==='יהוה'||n==='אדני';} // both spellings of the Name in the text (יְהֹוָה and the opening אֲדֹנָי) - students read both as "Hashem"
 const MATRES=new Set(['א','ה','ו','י']);
 function singleEdit(a,b){ // if a->b is one edit, return {type:'sub'|'ins'|'del', ca, cb}
   const la=a.length,lb=b.length;
@@ -260,7 +260,7 @@ function alignTokens(tokens,words,ashk){
     if(!t)continue;
 
     // Anti-wedge: if we've failed to match the current word several times running, the recognizer
-    // probably just can't hear it (common with liturgical Hebrew) — mark it uncertain and move on,
+    // probably just can't hear it (common with liturgical Hebrew) - mark it uncertain and move on,
     // so the cursor never gets permanently stuck. One word at a time, so this is never a line-leap.
     if(streak>=STUCK_LIMIT){
       st[c]={state:ST.BAD,score:0,heard:null};skips++;c++;prev=null;streak=0;
@@ -271,7 +271,7 @@ function alignTokens(tokens,words,ashk){
     const curS=simWords(t,words[c].norm,ashk);
     // (2) Merge: one spoken token covering the current word + the next one.
     const mS=(c+1<words.length)?simWords(t,words[c].norm+words[c+1].norm,ashk):0;
-    // (3) Best match among the next few words — only as far ahead as we're allowed to skip.
+    // (3) Best match among the next few words - only as far ahead as we're allowed to skip.
     const skipEnd=Math.min(c+MAX_SKIP+1,words.length);
     let best=-1,bs=0;
     for(let i=c+1;i<skipEnd;i++){const s=simWords(t,words[i].norm,ashk);if(s>bs){bs=s;best=i;}}
@@ -282,12 +282,12 @@ function alignTokens(tokens,words,ashk){
       st[c+1]={state:ST.WARN,score:mS,heard:raw}; // 2nd word not independently verified → "almost", not full credit
       c+=2;prev=null;streak=0;continue;
     }
-    // Prefer reading the current word if it's acceptable — do NOT jump ahead when the current word matched.
+    // Prefer reading the current word if it's acceptable - do NOT jump ahead when the current word matched.
     if(curS>=TH_WARN){
       st[c]={state:stateFor(curS),score:curS,heard:raw};
       c++;prev=null;streak=0;continue;
     }
-    // Current word wasn't matched, but a word just ahead was heard — the student read past it.
+    // Current word wasn't matched, but a word just ahead was heard - the student read past it.
     // Bounded by MAX_SKIP so a stray word can never leap a whole line.
     if(best>c&&bs>=TH_WARN&&best-c<=MAX_SKIP){
       for(let k=c;k<best;k++){st[k]={state:ST.BAD,score:0,heard:null};skips++;}
@@ -313,68 +313,6 @@ function alignScore(tokens,words,ashk){ // used to pick the best ASR alternative
   return mass-0.5*(r.skips||0); // penalize auto-skipped gaps so a jump-ahead alternative can't win on raw mass
 }
 
-/* ---- server-transcript scorer (used ONLY for accurate/server grading) ----
-   Whisper gives us the WHOLE transcript at once, but its word boundaries for
-   short/liturgical words (and Hashem's Name) don't line up with the tefillah.
-   So instead of the streaming greedy aligner, do an OPTIMAL global word
-   alignment that treats boundaries as suggestions: every expected word can be
-   read by one token (match), be split across two tokens (merge), share a token
-   with its neighbor (split), be omitted (skip), or a stray token can be ignored
-   (insertion) — whichever combination best explains the reading. Divine-name
-   matching is extra-lenient here because the model transcribes the Name every
-   which way (ה' , יי , אדני , השם , or a bare fragment). */
-function divineCanon(n){return DIVINE.has(n)?'יהוה':n;}
-function simServer(tn,wnorm,ashk){
-  if(isDivineTarget(wnorm)){
-    // Students are told to read the Name as the plain word "Hashem" (הַשֵּׁם). Accept that,
-    // and still accept a clearly-said "Adonai" (habit). Clear forms are already canonicalized
-    // to יהוה by divineCanon before we get here. We deliberately do NOT accept a bare ה or a
-    // breathy heh-run (הה/ההה) — that mush can't tell a real Name from a mumble or a skip, so
-    // it now scores 0 and gets flagged for the teacher instead of a false pass.
-    if(tn==='יהוה')return 1;
-    if(/^(יהוה?|יי|אדנ[יו]?|אדונ[יי]?|אדוש[מ]?|השמ)$/.test(tn))return 0.9; // clear Hashem/Adonai attempt (not a bare ה / heh-run)
-    return 0;
-  }
-  return simWords(tn,wnorm,ashk);
-}
-function scoreServer(rawTranscript,words,ashk){
-  const toks=[];
-  // Students read the Name as the plain word "Hashem", which the model transcribes cleanly.
-  // We still canonicalize a written ה' / ה׳ (how the model often renders a clearly-said
-  // "Adonai") to the Name and isolate it. We deliberately DROPPED the old "run of hehs -> Name"
-  // rule: heh-mush is what the model emits for ANY quiet/mumbled sound in the Name slot, so
-  // crediting it made the Name unfailable. Now mush stays mush and gets flagged, not passed.
-  const cleaned=(rawTranscript||'')
-    .replace(/ה[֑-ׇ]*['׳’]/g,' יהוה ');                 // ה' / ה׳  (a clearly-written Adonai)
-  for(const r of cleaned.split(/\s+/)){
-    if(!r)continue;
-    const n=divineCanon(normTranscript(r));
-    if(n)toks.push({n,raw:r});
-  }
-  const P=words.length,Q=toks.length,INF=1e9,INS=0.35,SKIP=1.0,ME=0.06;
-  const cost=Array.from({length:P+1},()=>new Float64Array(Q+1).fill(INF));
-  const back=Array.from({length:P+1},()=>new Array(Q+1).fill(null));
-  cost[0][0]=0;
-  for(let i=0;i<=P;i++)for(let j=0;j<=Q;j++){
-    const c=cost[i][j]; if(c>=INF)continue;
-    if(j<Q){const nc=c+INS;if(nc<cost[i][j+1]){cost[i][j+1]=nc;back[i][j+1]={op:'ins',pi:i,pj:j};}}          // ignore a stray token
-    if(i<P){const nc=c+SKIP;if(nc<cost[i+1][j]){cost[i+1][j]=nc;back[i+1][j]={op:'skip',pi:i,pj:j};}}          // student omitted this word
-    if(i<P&&j<Q){const s=simServer(toks[j].n,words[i].norm,ashk);const nc=c+(1-s);if(nc<cost[i+1][j+1]){cost[i+1][j+1]=nc;back[i+1][j+1]={op:'m',pi:i,pj:j,s,heard:toks[j].raw};}}                                        // 1 token = 1 word
-    if(i<P&&j+1<Q){const s=simServer(toks[j].n+toks[j+1].n,words[i].norm,ashk);const nc=c+(1-s)+ME;if(nc<cost[i+1][j+2]){cost[i+1][j+2]=nc;back[i+1][j+2]={op:'m2',pi:i,pj:j,s,heard:toks[j].raw+' '+toks[j+1].raw};}}      // word split across 2 tokens
-    if(i+1<P&&j<Q){const s=simServer(toks[j].n,words[i].norm+words[i+1].norm,ashk);const nc=c+(1-s)+ME;if(nc<cost[i+2][j+1]){cost[i+2][j+1]=nc;back[i+2][j+1]={op:'sp',pi:i,pj:j,s,heard:toks[j].raw};}}                       // 1 token = 2 words
-  }
-  const st=new Array(P).fill(null); let skips=0,i=P,j=Q;
-  while(!(i===0&&j===0)){
-    const b=back[i][j]; if(!b)break;
-    if(b.op==='skip'){st[b.pi]={state:ST.BAD,score:0,heard:null};skips++;}
-    else if(b.op==='m'||b.op==='m2'){st[b.pi]={state:stateFor(b.s),score:b.s,heard:b.heard};}
-    else if(b.op==='sp'){const s2=stateFor(b.s);st[b.pi]={state:s2,score:b.s,heard:b.heard};st[b.pi+1]={state:s2,score:b.s,heard:b.heard};} // glued pair: both words get the combined verdict (no auto-"almost")
-    i=b.pi;j=b.pj;
-  }
-  for(let k=0;k<P;k++)if(!st[k]){st[k]={state:ST.BAD,score:0,heard:null};skips++;}
-  return {st,skips};
-}
-
 /* letter-level diff for mistake feedback */
 function letterDiff(exp,heard){
   const a=exp,b=heard;
@@ -391,13 +329,13 @@ function letterDiff(exp,heard){
   return [A,B];
 }
 const CONFUSIONS=[[['ד','ר'],'Did you read a ד (dalet) as a ר (reish), or the other way around? Look for the corner on the dalet.'],
- [['ה','ח'],'ה (hey) vs ח (ches) — check whether the left leg has a gap at the top.'],
- [['ב','כ'],'ב (beis) vs כ (chaf) — the beis has a square corner and a little heel.'],
- [['ו','ז'],'ו (vav) vs ז (zayin) — the zayin has a crown on top.'],
- [['ג','נ'],'ג (gimmel) vs נ (nun) — the gimmel has a little foot.'],
- [['ט','מ'],'ט (tes) vs מ (mem) — check the opening.'],
+ [['ה','ח'],'ה (hey) vs ח (ches) - check whether the left leg has a gap at the top.'],
+ [['ב','כ'],'ב (beis) vs כ (chaf) - the beis has a square corner and a little heel.'],
+ [['ו','ז'],'ו (vav) vs ז (zayin) - the zayin has a crown on top.'],
+ [['ג','נ'],'ג (gimmel) vs נ (nun) - the gimmel has a little foot.'],
+ [['ט','מ'],'ט (tes) vs מ (mem) - check the opening.'],
  [['ע','צ'],'ע (ayin) vs צ (tzadi).'],
- [['ת','ח'],'ת (taf) vs ח (ches) — the taf has a foot on the left leg.']];
+ [['ת','ח'],'ת (taf) vs ח (ches) - the taf has a foot on the left leg.']];
 function classifyMistake(expN,heardN){
   if(!heardN)return 'This word was skipped or not heard.';
   const [A,B]=letterDiff(expN,heardN);
@@ -406,11 +344,11 @@ function classifyMistake(expN,heardN){
     for(const [pair,msg] of CONFUSIONS){
       if((pair[0]===diffsA[0]&&pair[1]===diffsB[0])||(pair[1]===diffsA[0]&&pair[0]===diffsB[0]))return msg;
     }
-    if(fold(diffsA[0])===fold(diffsB[0]))return 'Very close — a letter may not have been pronounced clearly.';
+    if(fold(diffsA[0])===fold(diffsB[0]))return 'Very close - a letter may not have been pronounced clearly.';
     return 'One letter is different: expected "'+diffsA[0]+'" but heard "'+diffsB[0]+'".';
   }
-  if(fold(expN)===fold(heardN))return 'Almost! It sounded very close — make sure to pronounce each letter clearly.';
-  return 'This word sounded different — try reading it slowly, letter by letter.';
+  if(fold(expN)===fold(heardN))return 'Almost! It sounded very close - make sure to pronounce each letter clearly.';
+  return 'This word sounded different - try reading it slowly, letter by letter.';
 }
 
 /* ================= word list builder ================= */
@@ -461,8 +399,8 @@ function micPolicyBlocked(){
   try{return document.featurePolicy&&!document.featurePolicy.allowsFeature('microphone');}catch(_){return false;}
 }
 class Listener{
-  /* onCommit(altsTokenArrays) — a phrase just finalized; several ASR alternatives given.
-     onInterim(tokens)        — live (unfinalized) words; fired continuously for instant feedback.
+  /* onCommit(altsTokenArrays) - a phrase just finalized; several ASR alternatives given.
+     onInterim(tokens)        - live (unfinalized) words; fired continuously for instant feedback.
      onState(state)                                                                              */
   constructor({onCommit,onInterim,onState}){
     this.onCommit=onCommit;this.onInterim=onInterim;this.onState=onState;
@@ -538,41 +476,21 @@ const AudioDB={
 function blobToB64(blob){return new Promise(res=>{const f=new FileReader();f.onload=()=>res(f.result.split(',')[1]);f.readAsDataURL(blob);});}
 function b64ToBlob(b64,type){const bin=atob(b64);const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new Blob([u],{type:type||'audio/webm'});}
 
-/* ---- server grading (Phase 1: local ivrit.ai Whisper) ----
-   In test mode, when server grading is on, we send the recording to a Whisper
-   endpoint and grade the returned transcript instead of the browser's Web
-   Speech guess. Endpoint is overridable so the same code points at localhost
-   now and a cloud host later, without a rebuild:
-       localStorage.setItem('se-grader-url','https://your-host/transcribe')  */
-function graderURL(){return localStorage.getItem('se-grader-url')||'http://127.0.0.1:8000/transcribe';}
-// Same server, different endpoint. /transcribe returns Whisper's text, which is
-// UNVOCALIZED — barukh/barakh/berekh are identical to it. /grade runs the phoneme
-// layer too and reports which specific nikud was misread.
-function vowelURL(){return graderURL().replace(/\/transcribe\/?$/,'/grade');}
-async function gradeVowels(blob,brachaNo){
-  const fd=new FormData();
-  fd.append('audio',blob,'reading.webm');
-  fd.append('bracha',String(brachaNo));
-  const ctrl=new AbortController();
-  const to=setTimeout(()=>ctrl.abort(),180000);   // two models on CPU is slow
-  let r;
-  try{r=await fetch(vowelURL(),{method:'POST',body:fd,signal:ctrl.signal});}
-  catch(e){throw new Error(e.name==='AbortError'?'the vowel grader timed out':'could not reach the vowel grader');}
-  finally{clearTimeout(to);}
-  let j=null;try{j=await r.json();}catch(_){}
-  if(!r.ok||!j||j.error)throw new Error((j&&j.error)?j.error:('vowel grader returned '+r.status));
-  return j;
+/* ---- recorded-reading analysis ----
+   The server transcribes without feeding it the expected prayer, then aligns
+   the unvocalized transcript to the displayed words. It cannot grade nikud. */
+function graderURL(){
+  const configured=localStorage.getItem('se-grader-url')||'http://127.0.0.1:8000/analyze-reading';
+  return configured.replace(/\/(?:transcribe|grade)\/?$/,'/analyze-reading');
 }
-async function gradeWithServer(blob,words){
+function graderHealthURL(){return graderURL().replace(/\/analyze-reading\/?$/,'/health');}
+async function gradeWithServer(blob,words,brachaNo){
   const fd=new FormData();
   fd.append('audio',blob,'reading.webm');
   fd.append('language','he');
-  // NO prompt. This used to send the expected tefillah text WITH nikud ("the KITZ
-  // trick"), which backfired: priming with vocalized Hebrew pushes Whisper to emit
-  // vocalized Hebrew, which it is bad at, and the consonants degrade along with it
-  // (בָרָךְ for בָּרוּךְ, הָה for the Name — seen in a real 94% test read). Since norm()
-  // strips the points anyway, the nikud bought us nothing and cost us letters.
-  // Matches the validated settings in server/combined_score.py.
+  fd.append('expected_words',JSON.stringify(words.map(w=>w.display)));
+  fd.append('bracha',String(brachaNo));
+  if(window.crypto&&crypto.randomUUID)fd.append('attempt_id',crypto.randomUUID());
   const ctrl=new AbortController();
   const to=setTimeout(()=>ctrl.abort(),120000);
   let r;
@@ -580,9 +498,22 @@ async function gradeWithServer(blob,words){
   catch(e){throw new Error(e.name==='AbortError'?'the grading server timed out':'could not reach the grading server');}
   finally{clearTimeout(to);}
   let j=null;try{j=await r.json();}catch(_){}
-  if(!r.ok||!j)throw new Error((j&&j.error)?j.error:('grading server error '+r.status));
-  if(typeof j.transcript!=='string')throw new Error(j.error||'no transcript returned');
-  return j.transcript;
+  if(!r.ok||!j)throw new Error((j&&(j.detail||j.error))?(j.detail||j.error):('analysis server error '+r.status));
+  if(typeof j.transcript!=='string'||!Array.isArray(j.words))throw new Error('invalid analysis response');
+  return j;
+}
+function scoreServerAnalysis(result,words){
+  const st=new Array(words.length).fill(null);let skips=0;
+  const states={ok:ST.OK,almost:ST.WARN,wrong:ST.BAD,missing:ST.BAD};
+  for(const row of result.words||[]){
+    if(row.operation==='extra'){skips++;continue;}
+    if(!Number.isInteger(row.expected_index)||row.expected_index<0||row.expected_index>=words.length)continue;
+    const state=states[row.operation]??ST.BAD;
+    st[row.expected_index]={state,score:Number(row.similarity)||0,heard:row.heard||null};
+    if(row.operation==='missing')skips++;
+  }
+  for(let i=0;i<st.length;i++)if(!st[i]){st[i]={state:ST.BAD,score:0,heard:null};skips++;}
+  return {st,skips};
 }
 /* ---- computer voice (fallback when no teacher recording) ---- */
 function hebVoices(){
@@ -606,28 +537,28 @@ const IN_VIEWER=window!==window.top||/claude\.ai$/.test(location.hostname);
 const MIC_MSG={
   policy:'⚠️ This page\'s host blocks microphone access. Ask your teacher for the downloadable app file (Help tab → Download), then open it in Chrome.',
   denied:IN_VIEWER
-    ?'⚠️ The claude.ai viewer blocks the microphone even when Chrome allows it. Fix: go to Help → "Download the app file", then open the downloaded file in Chrome — the mic works there.'
+    ?'⚠️ The claude.ai viewer blocks the microphone even when Chrome allows it. Fix: go to Help → "Download the app file", then open the downloaded file in Chrome - the mic works there.'
     :'⚠️ Microphone permission was denied. Click the 🔒/🎤 icon in Chrome\'s address bar, allow the microphone, and reload.',
   nomic:'⚠️ No working microphone was found on this device.',
-  unsupported:'⚠️ This browser does not support speech recognition — please use Google Chrome.'
+  unsupported:'⚠️ This browser does not support speech recognition - please use Google Chrome.'
 };
 async function micCheck(){
   const out=[];
-  out.push(SR?'✅ Speech recognition: available':'❌ Speech recognition: NOT available — use Google Chrome');
+  out.push(SR?'✅ Speech recognition: available':'❌ Speech recognition: NOT available - use Google Chrome');
   if(micPolicyBlocked())out.push('❌ Microphone: BLOCKED by this page\'s host (permissions policy). Fix: use the downloadable app file (button below) or ask your school to host the file on its website.');
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){out.push('❌ Microphone API not available in this browser.');return out.join('\n');}
   try{
     const s=await navigator.mediaDevices.getUserMedia({audio:true});
     s.getTracks().forEach(t=>t.stop());
-    out.push('✅ Microphone: working — you\'re all set!');
+    out.push('✅ Microphone: working - you\'re all set!');
   }catch(e){
     const why={NotAllowedError:IN_VIEWER
-        ?'the claude.ai viewer runs this app in a sandbox that cannot receive microphone permission, even when Chrome shows it as Allowed. Fix: click "Download the app file" below and open the downloaded file in Chrome — everything works there, and progress still saves.'
+        ?'the claude.ai viewer runs this app in a sandbox that cannot receive microphone permission, even when Chrome shows it as Allowed. Fix: click "Download the app file" below and open the downloaded file in Chrome - everything works there, and progress still saves.'
         :'permission denied (or blocked by the page host). Click the 🔒/🎤 icon in the address bar and allow the microphone, then reload.',
       NotFoundError:'no microphone found on this device.',
       NotReadableError:'the microphone is being used by another app.',
       SecurityError:'blocked by browser security settings on this page.'}[e.name]||e.message;
-    out.push('❌ Microphone: '+e.name+' — '+why);
+    out.push('❌ Microphone: '+e.name+' - '+why);
   }
   return out.join('\n');
 }
@@ -647,7 +578,7 @@ function loadStore(){
   try{return JSON.parse(localStorage.getItem(LSK))||{};}catch(_){return{};}
 }
 function saveStore(){localStorage.setItem(LSK,JSON.stringify(S));}
-const DEFAULTS={winter:false,ayt:false,rc:false,chanukah:false,purim:false,ashk:false,masteryPct:90,tsize:2.0,showTrans:false,showTrouble:false,unlockAll:false,tts:false,voiceURI:'',serverGrade:false,vowelGrade:false};
+const DEFAULTS={winter:false,ayt:false,rc:false,chanukah:false,purim:false,ashk:false,masteryPct:90,tsize:2.0,showTrans:false,showTrouble:false,unlockAll:false,tts:false,voiceURI:'',serverGrade:false};
 const S=Object.assign({
   profile:null,
   progress:{},
@@ -693,7 +624,7 @@ function header(){
   const tabs=[['home','Brachot'],['teacher','Teacher'],['help','Help']];
   return `<header class="top">
     <div class="brand"><div class="logo">🎤</div><div>
-      <div style="font-weight:800">Shemoneh Esrei Master</div>
+      <div style="font-weight:800">Shemoneh Esrei Reading Coach</div>
       <div class="muted" style="font-size:.78rem">${S.profile?esc(S.profile.name)+(S.profile.cls?' · '+esc(S.profile.cls):''):'Welcome'}</div>
     </div></div>
     <nav class="tabs">${tabs.map(([k,l])=>`<button data-go="${k}" class="${view.name===k?'on':''}">${l}</button>`).join('')}
@@ -705,15 +636,15 @@ function header(){
 function vWelcome(){
   return `<div class="card center" style="margin-top:40px">
     <div style="font-size:3rem">🎤📖</div>
-    <h1>Shemoneh Esrei Master</h1>
-    <p class="muted">Read out loud — the computer checks you word by word.<br>Master a bracha to unlock the next one, until the whole Shemoneh Esrei is yours!</p>
+    <h1>Shemoneh Esrei Reading Coach</h1>
+    <p class="muted">Read out loud and get word-by-word practice feedback.<br>Complete a practice checkpoint to unlock the next bracha.</p>
     <div style="max-width:330px;margin:18px auto;display:grid;gap:10px">
       <input type="text" id="pf-name" placeholder="My name" autocomplete="off">
       <input type="text" id="pf-cls" placeholder="Class (e.g. 5-2)" autocomplete="off">
       <button class="primary" id="pf-go" style="font-size:1.05rem">Let's go! 🚀</button>
     </div>
     <p class="muted" style="font-size:.78rem">Works in Google Chrome with a microphone. Progress is saved on this computer.</p>
-    <p style="margin-top:14px"><a href="#" id="teacherSkip" class="muted" style="font-size:.85rem">I'm a teacher — preview everything →</a></p>
+    <p style="margin-top:14px"><a href="#" id="teacherSkip" class="muted" style="font-size:.85rem">I'm a teacher - preview everything →</a></p>
   </div>`;
 }
 
@@ -733,9 +664,9 @@ function vHome(){
     </div>`;
   }).join('');
   return `<div class="row spread"><h1>My Path</h1><span class="tag">⭐ ${mastered} / ${total} brachot</span></div>
-  ${S.settings.unlockAll?'<div class="notice">👀 Teacher preview is ON — every bracha is unlocked on this device. Turn it off in the Teacher tab.</div>':''}
+  ${S.settings.unlockAll?'<div class="notice">👀 Teacher preview is ON - every bracha is unlocked on this device. Turn it off in the Teacher tab.</div>':''}
   <div class="ladder">${rungs}</div>
-  <div class="card muted" style="font-size:.85rem">Tap a bracha → <b>Practice</b> with the microphone → when you're ready, take the <b>Mastery Test</b>. Score ${S.settings.masteryPct}% or higher to earn a ⭐ and unlock the next bracha!</div>`;
+  <div class="card muted" style="font-size:.85rem">Tap a bracha → <b>Practice</b> with the microphone → when you're ready, take a <b>Recorded Check</b>. A computer estimate of ${S.settings.masteryPct}% or higher earns a practice ⭐ and unlocks the next bracha. Your teacher gives the final grade.</div>`;
 }
 
 /* ---- bracha menu ---- */
@@ -744,12 +675,12 @@ function vBracha(){
   return `<button class="ghost" data-go="home">← Back to path</button>
   <div class="card center">
     <h1 class="heb">${esc(b.he)}</h1>
-    <p class="muted">${esc(b.en)} · Bracha ${i+1} of ${DATA.brachot.length} · ${p&&p.mastered?'⭐ Mastered! ('+p.best+'%)':(p?'Best score: '+p.best+'%':'Not tested yet')}</p>
+    <p class="muted">${esc(b.en)} · Bracha ${i+1} of ${DATA.brachot.length} · ${p&&p.mastered?'⭐ Practice checkpoint complete ('+p.best+'%)':(p?'Best estimate: '+p.best+'%':'Not checked yet')}</p>
     <div class="row" style="justify-content:center;gap:14px;margin-top:14px">
       <button class="primary" style="font-size:1.1rem;padding:14px 26px" data-mode="practice">🎯 Practice</button>
-      <button class="primary" style="font-size:1.1rem;padding:14px 26px;background:var(--gold)" data-mode="test">📝 Mastery Test</button>
+      <button class="primary" style="font-size:1.1rem;padding:14px 26px;background:var(--gold)" data-mode="test">📝 Recorded Check</button>
     </div>
-    <p class="muted" style="font-size:.8rem;margin-top:12px">In Practice, every word colors as you read. In the Test you read to the end and get a score (plus a recording!).</p>
+    <p class="muted" style="font-size:.8rem;margin-top:12px">In Practice, every word colors as you read. In a Recorded Check, you read to the end and get an advisory estimate plus a recording for teacher review.</p>
   </div>`;
 }
 
@@ -804,9 +735,9 @@ function vSession(){
     <h2 style="margin:0"><span class="heb">${esc(b.he)}</span> · ${isTest?'📝 Test':'🎯 Practice'}</h2>
     <span class="tag" id="liveTimer">0:00</span>
   </div>
-  ${isTest?`<div class="notice">📝 <b>Test mode:</b> read the whole bracha out loud, clearly and in order. No hints until the end — good luck!</div>`
-    :`<div class="notice" style="border-left-color:var(--accent);background:var(--cur-bg)">💡 Read at your normal pace — words light up as you go. Stuck on a word? Use <b>Skip ▶</b>. Want to re-read? Tap <b>◀ Back</b> or tap any earlier word to go back to it.</div>`}
-  <div class="notice sayrule">🙏 When you reach <b>Hashem's Name</b> (marked <span class="heb">יְהֹוָה</span>), say the word <b>"Hashem"</b> out loud — not the Name itself.</div>
+  ${isTest?`<div class="notice">📝 <b>Recorded Check:</b> read the whole bracha out loud, clearly and in order. Feedback appears at the end.</div>`
+    :`<div class="notice" style="border-left-color:var(--accent);background:var(--cur-bg)">💡 Read at your normal pace - words light up as you go. Stuck on a word? Use <b>Skip ▶</b>. Want to re-read? Tap <b>◀ Back</b> or tap any earlier word to go back to it.</div>`}
+  <div class="notice sayrule">🙏 When you reach <b>Hashem's Name</b> (marked <span class="heb">יְהֹוָה</span>), say the word <b>"Hashem"</b> out loud - not the Name itself.</div>
   <div class="card"><div class="tefilla heb" style="--tsize:${S.settings.tsize}rem">${phrasesHtml}</div></div>
   <div class="micbar">
     <button class="micbtn" id="micBtn" aria-label="Start microphone">🎤</button>
@@ -977,9 +908,9 @@ function bindSession(){
       };
     }else if(S.settings.tts&&('speechSynthesis' in window)){
       listenBtn.style.display='';
-      listenBtn.title='Listen (computer voice — approximate, always says "Hashem")';
+      listenBtn.title='Listen (computer voice - approximate, always says "Hashem")';
       listenBtn.onclick=()=>{
-        // never let the computer voice attempt Hashem's name — substitute "Hashem"
+        // never let the computer voice attempt Hashem's name - substitute "Hashem"
         const spoken=session.words.map(w=>(w.norm==='יהוה'||w.norm==='אדני')?'הַשֵּׁם':w.display).join(' ');
         speakHebrew(spoken);
       };
@@ -1003,47 +934,47 @@ async function endSession(){
   session.timerI&&clearInterval(session.timerI);
   const durMs=session.startT?Date.now()-session.startT:0;
   const isTest=session.mode==='test';
-  // Stop the recording first — we need the audio for server grading (and playback).
+  // Stop the recording first - we need the audio for server grading (and playback).
   if(session.recorder){session.audioBlob=await session.recorder.stop();}
-  // Decide which transcript to grade. Default: the browser's Web Speech tokens.
-  // In test mode with server grading on, send the recording to the ivrit.ai
-  // Whisper endpoint and grade its (far more accurate) transcript instead.
-  session.gradedBy='browser';session.serverErr=null;session.serverTranscript=null;
+  // The browser path remains useful for practice. When server analysis is
+  // enabled, a failed request must not silently become a passing server check.
+  session.gradedBy='browser';session.serverErr=null;session.serverTranscript=null;session.serverResult=null;
   if(isTest&&S.settings.serverGrade&&session.audioBlob){
     const gv=document.getElementById('interim');
-    if(gv)gv.innerHTML='⏳ Grading your reading with the accurate model… (a few seconds)';
+    if(gv)gv.innerHTML='⏳ Analyzing the recorded reading…';
     const mb=document.getElementById('micBtn');if(mb)mb.disabled=true;
     try{
-      session.serverTranscript=await gradeWithServer(session.audioBlob,session.words);
+      session.serverResult=await gradeWithServer(session.audioBlob,session.words,session.bIdx+1);
+      session.serverTranscript=session.serverResult.transcript;
       session.gradedBy='server';
-    }catch(e){session.serverErr=e.message||String(e);/* graceful fall back to browser grading */}
+    }catch(e){session.serverErr=e.message||String(e);}
   }
-  // Vowel layer. Independent of the word score above: it does not change the
-  // percentage, it adds per-sound feedback ("Check the tzeirei"). Kept separate
-  // and non-scoring on purpose — it is validated on ONE adult voice and has not
-  // been shown to transfer to a child's, so it must not fail anybody yet.
-  session.vowels=null;session.vowelErr=null;
-  if(isTest&&S.settings.vowelGrade&&session.audioBlob){
-    const gv=document.getElementById('interim');
-    if(gv)gv.innerHTML='⏳ Checking your vowels… (this one takes a while)';
-    try{session.vowels=await gradeVowels(session.audioBlob,session.bIdx+1);}
-    catch(e){session.vowelErr=e.message||String(e);}
-  }
-  // final scoring: server transcript → boundary-agnostic scorer; browser → live-token aligner
+  // Final scoring: structured server alignment or the live browser token aligner.
   // Grade the SAME token set the live view showed. Chrome often has not finalized the last
   // phrase (or several) when the student hits "I'm done"; those tokens live in session.interim.
   // Grading committed-only silently threw them away, so a correct read came back as skipped.
   const {st,skips}=(session.gradedBy==='server')
-    ? scoreServer(session.serverTranscript,session.words,S.settings.ashk)
+    ? scoreServerAnalysis(session.serverResult,session.words)
     : alignTokens(session.committed.concat(session.interim),session.words,S.settings.ashk);
   for(let i=0;i<session.words.length;i++){
     const a=st[i],w=session.words[i];
     w.state=a?a.state:ST.BAD;w.score=a?a.score:0;w.heard=a?a.heard:null;
     if(w.state!==ST.OK)S.wordErr[session.bIdx+':'+w.norm]=(S.wordErr[session.bIdx+':'+w.norm]||0)+1;
   }
-  const score=finalScore();
+  const score=session.gradedBy==='server'
+    ? Math.max(0,Math.min(100,Number(session.serverResult.estimated_accuracy)||0))
+    : finalScore();
   const stats=sessionStats();
-  const wpm=durMs>=5000?Math.round(stats.ok/(durMs/60000)):0;
+  // WPM is a pace measurement, not a count of only the words the recognizer
+  // matched exactly.  The previous formula understated pace whenever ASR made
+  // a spelling or recognition error (37 exact matches in 41 seconds became 54
+  // "WPM" even though the 48-word reading was about 70 WPM).
+  const rateSeconds=(session.gradedBy==='server'&&Number(session.serverResult.duration)>0)
+    ?Number(session.serverResult.duration):durMs/1000;
+  const spokenWordCount=(session.gradedBy==='server'&&Array.isArray(session.serverResult.transcript_words))
+    ?session.serverResult.transcript_words.length
+    :session.committed.concat(session.interim).filter(Boolean).length;
+  const wpm=rateSeconds>=5?Math.round(spokenWordCount/(rateSeconds/60)):0;
   // Confidence flag: the computer can't hear every letter distinction, so surface the reads it's unsure
   // about for the teacher to review rather than pretending the auto-grade is final.
   const warnRatio=stats.total?stats.warn/stats.total:0;
@@ -1051,54 +982,49 @@ async function endSession(){
   if(score>=55&&score<S.settings.masteryPct)flagReasons.push('score near the pass line');
   if(stats.warn>=3&&warnRatio>=0.15)flagReasons.push(stats.warn+' "almost" words');
   if((skips||0)>=2)flagReasons.push('several words skipped');
+  if(session.gradedBy==='server'&&session.serverResult.review_required){
+    flagReasons.push(...(session.serverResult.review_reasons||[]));
+  }
+  if(isTest&&session.gradedBy==='browser'){
+    flagReasons.push(session.serverErr?'server analysis unavailable':'browser-only estimate');
+  }
   const flagged=isTest&&flagReasons.length>0;
+  // A clean word/order analysis may clear automatically.  An uncertain server
+  // result is routed for selective review and cannot silently unlock progress.
+  const progressEligible=!(isTest&&S.settings.serverGrade&&(
+    session.gradedBy!=='server'||session.serverResult.review_required
+  ));
   let newlyMastered=false;
   if(isTest){
     const p=S.progress[session.bIdx]||{mastered:false,best:0,attempts:0};
     p.attempts++;p.lastDate=new Date().toISOString().slice(0,10);
     if(score>p.best)p.best=score;
-    if(score>=S.settings.masteryPct&&!p.mastered){p.mastered=true;newlyMastered=true;}
+    if(progressEligible&&score>=S.settings.masteryPct&&!p.mastered){p.mastered=true;newlyMastered=true;}
     S.progress[session.bIdx]=p;
     const missed=session.words.map((w,i)=>w.state===ST.BAD?i:-1).filter(i=>i>=0);
     const partial=session.words.map((w,i)=>w.state===ST.WARN?i:-1).filter(i=>i>=0);
-    session.resultCode=encodeResult({v:1,n:S.profile.name,c:S.profile.cls,b:session.bIdx+1,bn:DATA.brachot[session.bIdx].he,d:p.lastDate,a:score,w:wpm,dur:Math.round(durMs/1000),m:missed,p:partial,tw:session.words.length,fl:flagged?1:0,fr:flagReasons,g:session.gradedBy==='server'?1:0,tr:(session.serverTranscript||'').slice(0,400)});
+    session.resultCode=encodeResult({v:2,n:S.profile.name,c:S.profile.cls,b:session.bIdx+1,bn:DATA.brachot[session.bIdx].he,d:p.lastDate,a:score,w:wpm,dur:Math.round(rateSeconds),m:missed,p:partial,tw:session.words.length,fl:flagged?1:0,fr:[...new Set(flagReasons)],g:session.gradedBy==='server'?1:0,ns:0,tr:(session.serverTranscript||'').slice(0,400),aid:session.serverResult?session.serverResult.attempt_id:null,rt:session.serverResult?session.serverResult.result_token:null});
     S.history.unshift({b:session.bIdx,a:score,d:p.lastDate,f:flagged?1:0});S.history=S.history.slice(0,50);
   }
   saveStore();
-  session.final={score,wpm,durMs,newlyMastered,flagged,flagReasons};
+  session.final={score,wpm,durMs,newlyMastered,flagged,flagReasons:[...new Set(flagReasons)],progressEligible};
   view={name:'results'};
   render();
   if(newlyMastered)confetti();
 }
 function vResults(){
-  const {score,wpm,durMs,newlyMastered,flagged,flagReasons}=session.final;
+  const {score,wpm,durMs,newlyMastered,flagged,flagReasons,progressEligible}=session.final;
   const stats=sessionStats();
   const isTest=session.mode==='test';
-  const passed=score>=S.settings.masteryPct;
+  const passed=progressEligible&&score>=S.settings.masteryPct;
   const b=DATA.brachot[session.bIdx];
   const gradedHtml=isTest?(session.gradedBy==='server'
-    ?`<div class="muted" style="font-size:.8rem;margin-top:6px">✅ Graded by the accurate Hebrew model (ivrit.ai Whisper)</div>
+    ?`<div class="muted" style="font-size:.8rem;margin-top:6px">Automatic word-and-order analysis from the Hebrew speech model</div>
       ${session.serverTranscript?`<details style="margin-top:6px;text-align:right"><summary class="muted" style="font-size:.78rem;cursor:pointer;text-align:left">What the model heard (for review)</summary><div class="hebtxt" dir="rtl" style="font-size:1rem;margin-top:6px">${esc(session.serverTranscript)}</div></details>`:''}`
-    :(session.serverErr?`<div class="notice" style="border-left-color:var(--warn);background:var(--warn-bg);text-align:left">⚠️ Couldn't reach the accurate grader (${esc(session.serverErr)}) — graded with the browser's recognition instead.</div>`:'')):'';
-  // Vowel feedback panel — separate from the score, because it is diagnostic only.
-  let vowelHtml='';
-  if(isTest&&S.settings.vowelGrade){
-    if(session.vowelErr){
-      vowelHtml=`<div class="notice" style="border-left-color:var(--warn);background:var(--warn-bg);text-align:left">⚠️ Vowel check unavailable (${esc(session.vowelErr)}).</div>`;
-    }else if(session.vowels&&session.vowels.words){
-      const flagged=session.vowels.words.filter(w=>w.message);
-      vowelHtml=`<div class="card" style="text-align:left">
-        <h3>נִקּוּד — vowel check <span class="muted" style="font-weight:400;font-size:.75rem">(beta — does not affect your score)</span></h3>
-        ${flagged.length?`<ul style="margin:6px 0 0;padding-inline-start:18px">${
-          flagged.map(w=>`<li style="margin:4px 0"><span class="hebtxt" dir="rtl" style="font-size:1.15rem">${esc(w.word||'')}</span> — ${esc(w.message)}</li>`).join('')
-        }</ul>`:`<p class="muted" style="margin:6px 0 0">Every vowel came through clearly. 🎯</p>`}
-        <p class="muted" style="font-size:.72rem;margin-top:10px">${esc(session.vowels.caveat||'')}</p>
-      </div>`;
-    }
-  }
+    :(session.serverErr?`<div class="notice" style="border-left-color:var(--warn);background:var(--warn-bg);text-align:left">⚠️ Server analysis was unavailable (${esc(session.serverErr)}). The browser estimate is shown for practice only and cannot complete this checkpoint while server analysis is enabled.</div>`:`<div class="muted" style="font-size:.8rem;margin-top:6px">Browser speech-recognition estimate. Teacher review is required.</div>`)):'';
   const mistakes=session.words.map((w,i)=>({w,i})).filter(x=>x.w.state!==ST.OK);
   const mHtml=mistakes.length?mistakes.map(({w,i})=>{
-    let heardHtml='<span class="muted">— not heard —</span>';
+    let heardHtml='<span class="muted">- not heard -</span>';
     const why=classifyMistake(w.norm,w.heard?normTranscript(w.heard):'');
     if(w.heard){
       const [A,B]=letterDiff(w.norm,normTranscript(w.heard));
@@ -1110,35 +1036,37 @@ function vResults(){
       <span class="heard muted">${heardHtml}</span>
       <span class="why">💡 ${esc(why)}</span>
     </div>`;
-  }).join(''):'<p class="center" style="font-size:1.2rem">🎉 Zero mistakes — a perfect read!</p>';
+  }).join(''):'<p class="center" style="font-size:1.2rem">No word-or-order issues were found by this model.</p>';
   const audioHtml=session.audioBlob?`
     <div class="row" style="margin-top:8px">
       <audio controls src="${URL.createObjectURL(session.audioBlob)}" style="flex:1"></audio>
       <button id="dlAudio">⬇️ Download recording</button>
     </div>`:'';
   const codeHtml=(isTest&&session.resultCode)?`
-    <h3>Send to your teacher</h3>
-    <p class="muted" style="font-size:.85rem">Copy the result code and paste it into the Google Classroom assignment (together with your recording file):</p>
+    <h3>${flagged?'Send this attempt for review':'Submit this result'}</h3>
+    <p class="muted" style="font-size:.85rem">${flagged
+      ?'Copy the result code and attach the recording so the teacher can review this uncertain attempt.'
+      :'Copy the result code. A recording is not required for this clean word-and-order result, but nikud is still outside the current pilot.'}</p>
     <textarea rows="3" readonly id="rcode" style="font-size:.75rem">${session.resultCode}</textarea>
     <div class="row"><button class="primary" id="copyCode">📋 Copy code</button><span id="copied" class="muted"></span></div>`:'';
   return `<div class="card center">
-    ${newlyMastered?`<div style="font-size:2.4rem">⭐</div><h1>Bracha mastered!</h1><p class="muted"><span class="heb">${esc(b.he)}</span> — the next bracha is now unlocked 🎉</p>`:`<h1 class="heb">${esc(b.he)}</h1>`}
+    ${newlyMastered?`<div style="font-size:2.4rem">⭐</div><h1>Practice checkpoint complete!</h1><p class="muted"><span class="heb">${esc(b.he)}</span> - the next bracha is now unlocked for practice.</p>`:`<h1 class="heb">${esc(b.he)}</h1>`}
     <div class="scorewrap" style="justify-content:center">
-      <div class="bigscore ${passed?'pass':'fail'}">${score}%</div>
+      <div><div class="bigscore ${passed?'pass':'fail'}">${score}%</div><div class="muted" style="font-size:.76rem">word/order match</div></div>
       <div class="statgrid" style="flex:1;min-width:260px">
-        <div class="stat"><b>${stats.ok}</b><span>correct</span></div>
-        <div class="stat"><b>${stats.warn}</b><span>almost</span></div>
-        <div class="stat"><b>${stats.bad}</b><span>missed/skipped</span></div>
-        <div class="stat"><b>${wpm||'—'}</b><span>words per minute</span></div>
+        <div class="stat"><b>${stats.ok}</b><span>likely matches</span></div>
+        <div class="stat"><b>${stats.warn}</b><span>uncertain</span></div>
+        <div class="stat"><b>${stats.bad}</b><span>different/missing</span></div>
+        <div class="stat"><b>${wpm||'-'}</b><span>words per minute</span></div>
       </div>
     </div>
-    ${isTest&&!passed?`<p class="muted">You need ${S.settings.masteryPct}% to master this bracha — a little more practice and you're there! 💪</p>`:''}
+    ${session.gradedBy==='server'?`<div class="notice" style="border-left-color:var(--gold);background:var(--gold-bg);text-align:left"><b>Nikud and vowel sounds: not evaluated yet.</b> Whisper writes Hebrew without nekudot. A separate validated phoneme layer is required before this becomes a full kriah assessment.</div>`:''}
+    ${isTest&&!passed&&progressEligible?`<p class="muted">The practice checkpoint is ${S.settings.masteryPct}%. Keep practicing and try another recorded check.</p>`:''}
     ${gradedHtml}
-    ${flagged?`<div class="notice" style="border-left-color:var(--warn);background:var(--warn-bg);text-align:left">⚑ <b>Flagged for teacher review.</b> The computer isn't fully sure about this read${flagReasons&&flagReasons.length?' ('+esc(flagReasons.join('; '))+')':''} — your teacher will listen and give the final grade.</div>`:''}
+    ${flagged?`<div class="notice" style="border-left-color:var(--warn);background:var(--warn-bg);text-align:left">⚑ <b>This attempt needs selective review.</b> The computer is not confident enough to decide automatically${flagReasons&&flagReasons.length?' ('+esc(flagReasons.join('; '))+')':''}.</div>`:''}
     ${audioHtml}
   </div>
   <div class="card"><h3>Words to work on (${mistakes.length})</h3>${mHtml}</div>
-  ${vowelHtml}
   <div class="card">${codeHtml}
     <div class="row" style="margin-top:10px">
       <button class="primary" data-mode="${session.mode}" id="again">🔁 Try again</button>
@@ -1172,21 +1100,20 @@ function vTeacher(){
   return `<h1>Teacher Zone</h1>
   <div class="card">
     <h3>👀 Preview all brachot</h3>
-    <label style="display:flex;gap:8px"><input type="checkbox" id="unlockAll" ${S.settings.unlockAll?'checked':''}> <b>Teacher preview</b> — unlock all ${DATA.brachot.length} brachot on this device (no mastery required)</label>
+    <label style="display:flex;gap:8px"><input type="checkbox" id="unlockAll" ${S.settings.unlockAll?'checked':''}> <b>Teacher preview</b>: unlock all ${DATA.brachot.length} brachot on this device.</label>
     <p class="muted" style="font-size:.8rem">Turn this on to walk through every bracha's practice and test screens yourself. Leave it off on student devices.</p>
   </div>
   <div class="card">
-    <h3>🎯 Accurate grading (beta)</h3>
-    <label style="display:flex;gap:8px"><input type="checkbox" id="serverGrade" ${S.settings.serverGrade?'checked':''}> <b>Use the accurate Hebrew model for Mastery Tests</b> — sends the recording to a Whisper grading server instead of the browser's guess.</label>
-    <label style="display:flex;gap:8px;margin-top:8px"><input type="checkbox" id="vowelGrade" ${S.settings.vowelGrade?'checked':''}> <b>Also check the nikud (very beta)</b> — reports which vowel was misread. Does NOT affect the score.</label>
-    <p class="muted" style="font-size:.78rem;margin-top:4px">Whisper writes Hebrew without nikud, so it cannot tell בָּרוּךְ from בָּרַךְ. This runs a second, phoneme-level model that can. It is slow (up to a minute), needs the same server running, and is calibrated on one adult voice — so treat it as diagnostic, not as a grade.</p>
-    <div class="row" style="margin-top:8px"><label style="flex:1">Grading server URL: <input type="text" id="graderUrl" value="${esc(graderURL())}" style="width:100%;font-size:.8rem" placeholder="http://127.0.0.1:8000/transcribe"></label></div>
-    <p class="muted" style="font-size:.8rem">While testing on this computer, keep the default and make sure the local grading server is running. This only changes how the <b>Mastery Test</b> is graded — Practice mode still uses live browser feedback. If the server can't be reached, the test falls back to browser grading automatically.</p>
+    <h3>🎯 Recorded-reading analysis (pilot)</h3>
+    <label style="display:flex;gap:8px"><input type="checkbox" id="serverGrade" ${S.settings.serverGrade?'checked':''}> <b>Use the Hebrew speech server for Recorded Checks</b>. The recording is sent for transcription and word-order analysis.</label>
+    <p class="muted" style="font-size:.78rem;margin-top:4px">The current pilot automatically clears clean word-and-order matches and routes uncertain attempts for selective review. It cannot yet tell בָּרוּךְ from בָּרַךְ because Whisper outputs Hebrew without nikud.</p>
+    <div class="row" style="margin-top:8px"><label style="flex:1">Analysis server URL: <input type="text" id="graderUrl" value="${esc(graderURL())}" style="width:100%;font-size:.8rem" placeholder="http://127.0.0.1:8000/analyze-reading"></label></div>
+    <p class="muted" style="font-size:.8rem">Practice still uses live browser feedback. If server analysis is enabled but unavailable, the browser estimate remains visible but cannot complete that checkpoint.</p>
     <div class="row"><button class="ghost" id="testGrader">Test connection</button><span class="muted" id="graderStatus" style="font-size:.8rem"></span></div>
   </div>
   <div class="card">
-    <h3>🎙️ Reference recordings — your voice</h3>
-    <p class="muted" style="font-size:.88rem">Record yourself reading each bracha. Students then get a <b>🔊👨‍🏫 button</b> in practice that plays <i>your</i> reading instead of a computer voice. Record here, then <b>Export voice pack</b> and share the file with students (Classroom/Drive) — they load it once via Settings → "Load teacher voice pack."</p>
+    <h3>🎙️ Reference recordings - your voice</h3>
+    <p class="muted" style="font-size:.88rem">Record yourself reading each bracha. Students then get a <b>🔊👨‍🏫 button</b> in practice that plays <i>your</i> reading instead of a computer voice. Record here, then <b>Export voice pack</b> and share the file with students (Classroom/Drive) - they load it once via Settings → "Load teacher voice pack."</p>
     <div class="tblwrap"><table><tbody id="refRows"></tbody></table></div>
     <div class="row" style="margin-top:10px">
       <button class="primary" id="expPack">📦 Export voice pack</button>
@@ -1195,23 +1122,24 @@ function vTeacher(){
   </div>
   <div class="card">
     <h3>Collect results</h3>
-    <p class="muted" style="font-size:.88rem">Students submit a "result code" (from their test results screen) through Google Classroom. Paste all the codes here — one per line — and get a table:</p>
+    <p class="muted" style="font-size:.88rem">Students submit a result code from the Recorded Check through Google Classroom. Paste one code per line to build a results table. Listen only to recordings marked for selective review. Codes are transport helpers, not proof of a grade.</p>
     <textarea rows="6" id="codes" placeholder="SET1.eyJ2IjoxLC4uLg==&#10;SET1.eyJ2IjoxLC4uLg=="></textarea>
     <div class="row" style="margin-top:8px"><button class="primary" id="parseCodes">Build table</button><button class="ghost" id="csvBtn" style="display:none">⬇️ Download CSV for Google Sheets</button></div>
     <div class="tblwrap" id="tbl"></div>
   </div>
   <div class="card">
     <h3>Class settings</h3>
-    <div class="row"><label>Mastery threshold: <input type="number" id="thresh" min="50" max="100" value="${S.settings.masteryPct}" style="width:80px">%</label></div>
+    <div class="row"><label>Practice checkpoint threshold: <input type="number" id="thresh" min="50" max="100" value="${S.settings.masteryPct}" style="width:80px">%</label></div>
     <p class="muted" style="font-size:.8rem">Settings are saved on this device only. Adjust them on student devices as needed.</p>
   </div>
   <div class="card">
-    <h3>What this tool can — and can't — do</h3>
+    <h3>What this tool can and cannot do</h3>
     <ul class="muted" style="font-size:.88rem;line-height:1.7">
-      <li>✅ Catches skipped, garbled, or substituted words; gives an accuracy score, reading speed, and points at the exact word.</li>
-      <li>✅ When a different word was heard — shows "expected / heard" with the differing letters highlighted (e.g. a ד/ר mix-up).</li>
-      <li>⚠️ Hebrew speech recognition is trained on modern Israeli Hebrew and can't see nekudos: a vowel mistake that doesn't change the letters (מֶלֶךְ vs מָלַךְ) usually won't be caught. That's why every test keeps a <b>recording</b> — spot-check the students the system flags.</li>
-      <li>💡 Pilot with 5–10 students to calibrate the threshold before rolling out to everyone.</li>
+      <li>✅ Automatically clears clean word-and-order matches and highlights likely omissions, additions, and substitutions.</li>
+      <li>⚠️ The percentage is a model estimate, not a validated reading grade.</li>
+      <li>⚠️ Nikud and vowel sounds are not evaluated until a validated phoneme layer is added.</li>
+      <li>⚠️ Keep recordings only for attempts routed to selective review during the pilot.</li>
+      <li>💡 Run a speaker-disjoint pilot and choose thresholds from measured false-pass and false-flag rates before classroom rollout.</li>
     </ul>
   </div>`;
 }
@@ -1222,17 +1150,14 @@ function bindTeacher(){
   /* --- accurate server grading (beta) --- */
   const sg=document.getElementById('serverGrade');
   if(sg)sg.addEventListener('change',e=>{S.settings.serverGrade=e.target.checked;saveStore();});
-  const vg=document.getElementById('vowelGrade');
-  if(vg)vg.addEventListener('change',e=>{S.settings.vowelGrade=e.target.checked;saveStore();});
   const gu=document.getElementById('graderUrl');
   if(gu)gu.addEventListener('change',e=>{const v=e.target.value.trim();if(v)localStorage.setItem('se-grader-url',v);else localStorage.removeItem('se-grader-url');});
   const tg=document.getElementById('testGrader');
   if(tg)tg.addEventListener('click',async()=>{
     const st=document.getElementById('graderStatus');st.textContent='Checking…';
     try{
-      const base=graderURL().replace(/\/transcribe\/?$/,'/');
-      const r=await fetch(base,{method:'GET'});const j=await r.json();
-      st.textContent=r.ok?('✅ Connected — model ready ('+(j.model||'')+')'):('⚠️ Server responded '+r.status);
+      const r=await fetch(graderHealthURL(),{method:'GET'});const j=await r.json();
+      st.textContent=r.ok?('✅ Connected ('+(j.model||'model configured')+')'):('⚠️ Server responded '+r.status);
     }catch(e){st.textContent='⚠️ Could not reach the server. Is it running?';}
   });
 
@@ -1244,7 +1169,7 @@ function bindTeacher(){
     refRows.innerHTML=DATA.brachot.map((b,i)=>`<tr>
       <td style="width:30px">${i+1}</td>
       <td><span class="heb">${esc(b.he)}</span></td>
-      <td style="width:110px">${have.has(i)?'<span style="color:var(--ok)">● recorded</span>':'<span class="muted">—</span>'}</td>
+      <td style="width:110px">${have.has(i)?'<span style="color:var(--ok)">● recorded</span>':'<span class="muted">-</span>'}</td>
       <td style="width:230px">
         <button data-refrec="${i}">${refRecIdx===i?'⏹ Stop':'🎙️ Record'}</button>
         ${have.has(i)?`<button data-refplay="${i}">▶</button><button data-refdel="${i}" title="Delete">🗑</button>`:''}
@@ -1273,7 +1198,7 @@ function bindTeacher(){
   document.getElementById('expPack').addEventListener('click',async()=>{
     const st=document.getElementById('packStatus');st.textContent='Packing…';
     const keys=await AudioDB.keys().catch(()=>[]);
-    if(!keys.length){st.textContent='No recordings yet — record at least one bracha first.';return;}
+    if(!keys.length){st.textContent='No recordings yet - record at least one bracha first.';return;}
     const clips={};
     for(const k of keys){const b=await AudioDB.get(k);if(b)clips[k]={b64:await blobToB64(b),type:b.type||'audio/webm'};}
     const pack={v:1,kind:'se-voice-pack',teacher:S.profile?S.profile.name:'',date:new Date().toISOString().slice(0,10),clips};
@@ -1287,9 +1212,9 @@ function bindTeacher(){
     rows=lines.map(decodeResult).filter(Boolean);
     const tbl=document.getElementById('tbl');
     if(!rows.length){tbl.innerHTML='<p class="muted">No valid codes found.</p>';return;}
-    rows.sort((a,b)=>(b.fl?1:0)-(a.fl?1:0)); // flagged reads first — those are the ones to listen to
+    rows.sort((a,b)=>(b.fl?1:0)-(a.fl?1:0)); // flagged reads first - those are the ones to listen to
     tbl.innerHTML=`<table><thead><tr><th>Review?</th><th>Name</th><th>Class</th><th>Bracha</th><th>Score</th><th>WPM</th><th>Date</th><th>Errors</th></tr></thead><tbody>${
-      rows.map(r=>`<tr${r.fl?' style="background:var(--warn-bg)"':''}><td title="${esc((r.fr||[]).join('; '))}">${r.fl?'⚑':''}</td><td>${esc(r.n)}</td><td>${esc(r.c)}</td><td>${r.b}. <span class="heb">${esc(r.bn||'')}</span></td><td><b>${r.a}%</b></td><td>${r.w||'—'}</td><td>${esc(r.d)}</td><td>${(r.m||[]).length} missed, ${(r.p||[]).length} almost</td></tr>`).join('')
+      rows.map(r=>`<tr${r.fl?' style="background:var(--warn-bg)"':''}><td title="${esc((r.fr||[]).join('; '))}">${r.fl?'⚑':''}</td><td>${esc(r.n)}</td><td>${esc(r.c)}</td><td>${r.b}. <span class="heb">${esc(r.bn||'')}</span></td><td><b>${r.a}%</b></td><td>${r.w||'-'}</td><td>${esc(r.d)}</td><td>${(r.m||[]).length} missed, ${(r.p||[]).length} almost</td></tr>`).join('')
     }</tbody></table>`;
     document.getElementById('csvBtn').style.display='';
   });
@@ -1308,34 +1233,34 @@ function vHelp(){
   return `<h1>Help</h1>
   <div class="card">
     <h3>🎙️ Microphone check</h3>
-    <p class="muted">If the microphone isn't working, click this first — it will tell you exactly what's wrong:</p>
+    <p class="muted">If the microphone isn't working, click this first - it will tell you exactly what's wrong:</p>
     <div class="row"><button class="primary" id="micCheckBtn">Run mic check</button><button class="ghost" id="dlSelf">⬇️ Download the app file</button></div>
     <div class="micreport" id="micReport" style="display:none"></div>
-    <p class="muted" style="font-size:.8rem;margin-top:8px">If this page's host blocks the microphone: download the app file (button above), keep it anywhere (Drive, desktop), and open it by double-clicking — it runs in Chrome as a local page. Or ask your school to host the file on its website.</p>
+    <p class="muted" style="font-size:.8rem;margin-top:8px">If this page's host blocks the microphone: download the app file (button above), keep it anywhere (Drive, desktop), and open it by double-clicking - it runs in Chrome as a local page. Or ask your school to host the file on its website.</p>
   </div>
   <div class="card">
     <h3>How it works</h3>
     <ol style="line-height:1.9">
       <li>Pick a bracha on your path and click <b>Practice</b>.</li>
       <li>Click 🎤 and allow microphone access.</li>
-      <li>Read out loud, clearly and not too fast — every word colors as you go: <span class="w ok">green = correct</span> · <span class="w warn">orange = almost</span> · <span class="w bad">red = skipped/wrong</span>.</li>
-      <li>When you're ready — take the <b>Mastery Test</b>: read the whole bracha, get a score and a recording, and send your teacher the result code.</li>
-      <li>Score ${S.settings.masteryPct}% or higher → ⭐ and the next bracha unlocks!</li>
+      <li>Read out loud, clearly and not too fast - every word colors as you go: <span class="w ok">green = correct</span> · <span class="w warn">orange = almost</span> · <span class="w bad">red = skipped/wrong</span>.</li>
+      <li>When you are ready, take a <b>Recorded Check</b>. Read the whole bracha, review the computer estimate, and send the recording and result code to your teacher.</li>
+      <li>An estimate of ${S.settings.masteryPct}% or higher earns a practice ⭐ and unlocks the next bracha. Your teacher gives the final grade.</li>
     </ol>
   </div>
   <div class="card">
     <h3>Tips for good recognition</h3>
     <ul style="line-height:1.8" class="muted">
       <li>🤫 Quiet room, microphone about 8–12 inches away.</li>
-      <li>🗣️ Read clearly at a natural pace — don't whisper and don't shout.</li>
+      <li>🗣️ Read clearly at a natural pace - don't whisper and don't shout.</li>
       <li>🌐 Works in <b>Google Chrome</b> (including Chromebooks) with internet.</li>
-      <li>For Hashem's name — just say "Hashem" like you normally would. The app understands.</li>
+      <li>For Hashem's name - just say "Hashem" like you normally would. The app understands.</li>
       <li>If the mic "falls asleep," click the button again.</li>
     </ul>
   </div>
   <div class="card">
     <h3>10-second self-test</h3>
-    <p class="muted">Open the first bracha → Practice → 🎤 → say "Hashem sefatai tiftach." If the first words turn green — everything works!</p>
+    <p class="muted">Open the first bracha → Practice → 🎤 → say "Hashem sefatai tiftach." If the first words turn green - everything works!</p>
   </div>
   <footer class="src">Nusach Ashkenaz · Hebrew text courtesy of Sefaria (Metsudah Siddur, CC-BY) · Phrase divisions &amp; translations: the school's tefillah curriculum</footer>`;
 }
@@ -1355,15 +1280,15 @@ function vSettings(){
   return `<h1>Settings</h1>
   <div class="card toggles">
     <h3>Seasonal additions (nusach)</h3>
-    ${chk('winter','Winter — מַשִּׁיב הָרוּחַ + וְתֵן טַל וּמָטָר')}
-    ${chk('ayt','Aseres Yemei Teshuva — זָכְרֵנוּ, מִי כָמוֹךָ, הַמֶּלֶךְ הַקָּדוֹשׁ…')}
-    ${chk('rc','Rosh Chodesh / Chol Hamoed — יַעֲלֶה וְיָבֹא')}
-    ${chk('chanukah','Chanukah — עַל הַנִּסִּים')}
-    ${chk('purim','Purim — עַל הַנִּסִּים')}
+    ${chk('winter','Winter - מַשִּׁיב הָרוּחַ + וְתֵן טַל וּמָטָר')}
+    ${chk('ayt','Aseres Yemei Teshuva - זָכְרֵנוּ, מִי כָמוֹךָ, הַמֶּלֶךְ הַקָּדוֹשׁ…')}
+    ${chk('rc','Rosh Chodesh / Chol Hamoed - יַעֲלֶה וְיָבֹא')}
+    ${chk('chanukah','Chanukah - עַל הַנִּסִּים')}
+    ${chk('purim','Purim - עַל הַנִּסִּים')}
   </div>
   <div class="card toggles">
     <h3>Reading &amp; matching</h3>
-    ${chk('ashk','Ashkenazi pronunciation','(Shabbos-style havara — more forgiving matching for סוֹף/סוֹס etc.)')}
+    ${chk('ashk','Ashkenazi pronunciation','(Shabbos-style havara - more forgiving matching for סוֹף/סוֹס etc.)')}
     ${chk('showTrans','Show English translation under each phrase')}
     ${chk('showTrouble','Highlight "my tricky words" during practice','(words missed 2+ times)')}
     ${chk('tts','Enable 🔊 computer-voice fallback','(approximate; always says "Hashem", never the shem. Not needed for brachot that have a teacher recording.)')}
@@ -1372,7 +1297,7 @@ function vSettings(){
   </div>
   <div class="card">
     <h3>👨‍🏫 Teacher voice pack</h3>
-    <p class="muted" style="font-size:.85rem">If your teacher shared a <span style="font-family:ui-monospace,monospace">tefillah-voice-pack.json</span> file, load it here — the 🔊👨‍🏫 button in practice will play your teacher's own reading.</p>
+    <p class="muted" style="font-size:.85rem">If your teacher shared a <span style="font-family:ui-monospace,monospace">tefillah-voice-pack.json</span> file, load it here - the 🔊👨‍🏫 button in practice will play your teacher's own reading.</p>
     <div class="row"><input type="file" id="packFile" accept=".json,application/json"><span class="muted" id="packInfo" style="font-size:.8rem"></span></div>
   </div>
   <div class="card">

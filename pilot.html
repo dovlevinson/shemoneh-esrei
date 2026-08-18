@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Fast Kriah Pilot</title>
+  <style>
+    :root{
+      color-scheme:light dark;
+      --bg:#f6f3ea;--card:#fffdf7;--ink:#25304e;--muted:#66708c;--line:#ddd5c2;
+      --blue:#2456a6;--blue-text:#fff;--green:#187a4b;--green-bg:#e2f2e7;
+      --amber:#8a5200;--amber-bg:#faedd4;--red:#aa3037;--red-bg:#f9e2e3;
+    }
+    @media(prefers-color-scheme:dark){:root{
+      --bg:#131828;--card:#1c2336;--ink:#e9e7dd;--muted:#aab2c8;--line:#333d5c;
+      --blue:#7aa7e8;--blue-text:#10203c;--green:#69d39a;--green-bg:#153525;
+      --amber:#efba65;--amber-bg:#3a2d13;--red:#f08a8f;--red-bg:#3d1d20;
+    }}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+    main{max-width:820px;margin:auto;padding:18px 14px 70px}
+    h1{font-size:1.65rem;margin:.2rem 0}h2{font-size:1.15rem;margin:.2rem 0 1rem}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:17px;margin:13px 0;box-shadow:0 2px 12px #00000012}
+    .muted{color:var(--muted);font-size:.9rem}.small{font-size:.8rem}.hidden{display:none!important}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.spread{justify-content:space-between}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+    label{display:block;font-weight:650;font-size:.9rem}
+    input,select,textarea,button{font:inherit}
+    input,select,textarea{width:100%;margin-top:5px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
+    textarea{min-height:105px;resize:vertical;direction:rtl;font:1.25rem/1.8 "Times New Roman",serif}
+    button,.button{border:0;border-radius:11px;padding:11px 16px;background:#ece7da;color:#25304e;cursor:pointer;text-decoration:none;display:inline-block;text-align:center}
+    button.primary{background:var(--blue);color:var(--blue-text);font-weight:750}
+    button.danger{background:var(--red);color:white}button:disabled{opacity:.45;cursor:not-allowed}
+    .reading{direction:rtl;text-align:right;font:1.65rem/2.05 "Times New Roman","Noto Serif Hebrew",serif;padding:14px;border-radius:12px;background:color-mix(in srgb,var(--blue) 8%,var(--card))}
+    .status{padding:10px 12px;border-radius:11px;background:var(--amber-bg);color:var(--amber)}
+    .status.ok{background:var(--green-bg);color:var(--green)}.status.bad{background:var(--red-bg);color:var(--red)}
+    .result-head{padding:15px;border-radius:12px}.result-head.clear{background:var(--green-bg);color:var(--green)}.result-head.retry{background:var(--amber-bg);color:var(--amber)}
+    .score{font-size:2.5rem;font-weight:850;line-height:1}
+    .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:12px 0}.stat{text-align:center;background:color-mix(in srgb,var(--ink) 6%,var(--card));padding:8px 4px;border-radius:9px}.stat b{display:block;font-size:1.2rem}.stat span{font-size:.7rem;color:var(--muted)}
+    .word{display:grid;grid-template-columns:minmax(90px,1fr) minmax(90px,1fr) 90px;gap:8px;padding:8px 4px;border-bottom:1px solid var(--line);align-items:center}.heb{direction:rtl;text-align:right;font:1.15rem "Times New Roman",serif}.op{font-size:.75rem;font-weight:750;text-transform:uppercase}.op.ok{color:var(--green)}.op.almost{color:var(--amber)}.op.wrong,.op.missing,.op.extra{color:var(--red)}
+    .labels{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px}.labels button.chosen{outline:3px solid var(--blue);background:color-mix(in srgb,var(--blue) 18%,var(--card));color:var(--ink)}
+    audio{width:100%;margin-top:10px}.privacy{border-left:4px solid var(--blue)}
+    @media(max-width:600px){.stats{grid-template-columns:repeat(3,1fr)}.word{grid-template-columns:1fr 1fr}.word .op{grid-column:1/-1}.reading{font-size:1.4rem}.row>button{flex:1}}
+  </style>
+</head>
+<body>
+<main>
+  <div class="row spread">
+    <div><h1>Fast Kriah Pilot</h1><div class="muted">One page: choose, record, analyze, label.</div></div>
+    <a class="button" href="/coach">Full coach</a>
+  </div>
+
+  <div id="serverStatus" class="status">Checking the analysis server...</div>
+
+  <section class="card">
+    <h2>1. Identify the test without using a student name</h2>
+    <div class="grid">
+      <label>Reader code
+        <input id="speakerId" value="adult-1" maxlength="40" autocomplete="off">
+      </label>
+      <label>Reader group
+        <select id="readerGroup">
+          <option value="adult">Adult test</option>
+          <option value="elementary">Elementary student</option>
+          <option value="middle-school">Middle-school student</option>
+        </select>
+      </label>
+      <label>Reader's pronunciation tradition
+        <select id="tradition">
+          <option value="mixed">Mixed / not yet specified</option>
+          <option value="ashkenazi">Ashkenazi</option>
+          <option value="sephardi">Sephardi / Israeli</option>
+        </select>
+      </label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>2. Choose what to read</h2>
+    <label>Passage
+      <select id="passage"></select>
+    </label>
+    <label id="customWrap" class="hidden" style="margin-top:12px">Custom pointed Hebrew
+      <textarea id="customText" placeholder="Paste the exact pointed Hebrew here"></textarea>
+    </label>
+    <div id="reading" class="reading" lang="he"></div>
+    <div id="wordCount" class="muted small" style="margin-top:7px"></div>
+  </section>
+
+  <section class="card">
+    <h2>3. Record or upload</h2>
+    <div class="row">
+      <button id="record" class="primary">Start recording</button>
+      <button id="stop" class="danger" disabled>Stop and analyze</button>
+      <label class="button" style="font-weight:400">Choose audio file
+        <input id="file" type="file" accept="audio/*,.webm,.m4a,.mp3,.wav,.ogg,.mp4" style="display:none">
+      </label>
+      <button id="analyze" class="primary" disabled>Analyze selected audio</button>
+    </div>
+    <div id="recordStatus" class="muted" style="margin-top:10px">Nothing has been recorded yet.</div>
+    <audio id="audio" controls class="hidden"></audio>
+    <div class="privacy muted small" style="margin-top:12px;padding:8px 11px">The server uses the audio for this request and deletes its temporary upload. This page keeps the current audio only in memory until you refresh or replace it. Nothing is saved automatically.</div>
+  </section>
+
+  <section id="results" class="card hidden">
+    <h2>4. Computer result</h2>
+    <div id="resultHead" class="result-head"></div>
+    <div id="scope" class="muted" style="margin-top:10px"></div>
+    <details style="margin-top:12px" open>
+      <summary>What the model heard</summary>
+      <div id="transcript" class="reading" style="font-size:1.25rem;margin-top:8px"></div>
+    </details>
+    <div id="stats" class="stats"></div>
+    <details>
+      <summary>Word-by-word comparison</summary>
+      <div id="words" style="margin-top:6px"></div>
+    </details>
+  </section>
+
+  <section id="labelCard" class="card hidden">
+    <h2>5. What actually happened?</h2>
+    <p class="muted">Choose the best primary label. Your label does not change what the computer reported.</p>
+    <div class="labels" id="labels">
+      <button data-label="acceptable">Acceptable reading</button>
+      <button data-label="word_or_order_error">Word or order error</button>
+      <button data-label="vowel_or_nikud_error">Vowel / nikud error</button>
+      <button data-label="other_pronunciation_error">Other sound error</button>
+      <button data-label="unclear">I am not sure</button>
+    </div>
+    <label style="margin-top:12px">Optional note
+      <input id="note" maxlength="200" placeholder="Example: tzeirei read as segol in word 4">
+    </label>
+    <div id="labelSaved" class="muted" style="margin-top:9px"></div>
+    <div class="row" style="margin-top:12px">
+      <button id="download" class="primary" disabled>Download labeled sample</button>
+      <button id="again">Test another recording</button>
+      <button id="exportSession" disabled>Export session labels</button>
+    </div>
+    <p class="muted small">A downloaded sample is one JSON file containing the label, model result, and audio. It may contain sensitive audio, so keep it in an approved private location.</p>
+  </section>
+</main>
+
+<script>
+"use strict";
+
+const PASSAGES = [
+  {
+    id:"1", name:"1. אָבוֹת", english:"Avot",
+    text:"אֲדֹנָי שְׂפָתַי תִּפְתָּח וּפִי יַגִּיד תְּהִלָּתֶֽךָ: בָּרוּךְ אַתָּה יְהֹוָה אֱלֹהֵֽינוּ וֵאלֹהֵי אֲבוֹתֵֽינוּ אֱלֹהֵי אַבְרָהָם אֱלֹהֵי יִצְחָק וֵאלֹהֵי יַעֲקֹב הָאֵל הַגָּדוֹל הַגִּבּוֹר וְהַנּוֹרָא אֵל עֶלְיוֹן גּוֹמֵל חֲסָדִים טוֹבִים וְקוֹנֵה הַכֹּל וְזוֹכֵר חַסְדֵי אָבוֹת וּמֵבִיא גוֹאֵל לִבְנֵי בְנֵיהֶם לְמַֽעַן שְׁמוֹ בְּאַהֲבָה: מֶֽלֶךְ עוֹזֵר וּמוֹשִֽׁיעַ וּמָגֵן: בָּרוּךְ אַתָּה יְהֹוָה מָגֵן אַבְרָהָם:"
+  },
+  {
+    id:"2", name:"2. גְּבוּרוֹת", english:"Gevurot",
+    text:"אַתָּה גִבּוֹר לְעוֹלָם אֲדֹנָי מְחַיֵּה מֵתִים אַתָּה רַב לְהוֹשִֽׁיעַ: מְכַלְכֵּל חַיִּים בְּחֶֽסֶד מְחַיֵּה מֵתִים בְּרַחֲמִים רַבִּים סוֹמֵךְ נוֹפְ֒לִים וְרוֹפֵא חוֹלִים וּמַתִּיר אֲסוּרִים וּמְקַיֵּם אֱמוּנָתוֹ לִישֵׁנֵי עָפָר, מִי כָמֽוֹךָ בַּֽעַל גְּבוּרוֹת וּמִי דּֽוֹמֶה לָּךְ מֶֽלֶךְ מֵמִית וּמְחַיֵּה וּמַצְמִֽיחַ יְשׁוּעָה: וְנֶאֱמָן אַתָּה לְהַחֲיוֹת מֵתִים: בָּרוּךְ אַתָּה יְהֹוָה מְחַיֵּה הַמֵּתִים:"
+  },
+  {
+    id:"3", name:"3. קְדוּשַּׁת הַשֵּׁם", english:"Atah Kadosh",
+    text:"אַתָּה קָדוֹשׁ וְשִׁמְךָ קָדוֹשׁ וּקְדוֹשִׁים בְּכָל־יוֹם יְהַלְ֒לֽוּךָ סֶּֽלָה."
+  },
+  {
+    id:"4", name:"4. דַּעַת", english:"Atah Chonen",
+    text:"אַתָּה חוֹנֵן לְאָדָם דַּֽעַת וּמְלַמֵּד לֶאֱנוֹשׁ בִּינָה: חָנֵּֽנוּ מֵאִתְּ֒ךָ דֵּעָה בִּינָה וְהַשְׂכֵּל: בָּרוּךְ אַתָּה יְהֹוָה חוֹנֵן הַדָּֽעַת:"
+  },
+  {id:"custom",name:"Custom pointed Hebrew",english:"Custom",text:""}
+];
+
+const $=id=>document.getElementById(id);
+let stream=null, recorder=null, chunks=[], audioBlob=null, audioName="reading.webm";
+let currentResult=null, currentLabel=null, currentAttempt=null, currentContext=null;
+const sessionLabels=new Map();
+
+function escapeHtml(value){
+  return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function selectedPassage(){return PASSAGES.find(p=>p.id===$("passage").value)||PASSAGES[0];}
+function currentText(){return selectedPassage().id==="custom"?$("customText").value.trim():selectedPassage().text;}
+function expectedWords(){
+  return currentText().split(/\s+/).flatMap(token=>token.split("־")).filter(token=>/[א-ת]/.test(token));
+}
+function renderPassage(){
+  const custom=selectedPassage().id==="custom";
+  $("customWrap").classList.toggle("hidden",!custom);
+  $("reading").textContent=currentText()||"הטקסט יופיע כאן";
+  $("wordCount").textContent=`${expectedWords().length} words`;
+}
+function setRecordStatus(message,isBad=false){
+  $("recordStatus").textContent=message;
+  $("recordStatus").style.color=isBad?"var(--red)":"var(--muted)";
+}
+function setAudio(blob,name){
+  if($("audio").src)URL.revokeObjectURL($("audio").src);
+  audioBlob=blob;audioName=name||"reading.webm";
+  $("audio").src=URL.createObjectURL(blob);$("audio").classList.remove("hidden");
+  $("analyze").disabled=false;
+  setRecordStatus(`Ready to analyze ${audioName} (${Math.max(1,Math.round(blob.size/1024))} KB).`);
+}
+
+async function checkHealth(){
+  try{
+    const response=await fetch("/health",{cache:"no-store"});
+    if(!response.ok)throw new Error(`HTTP ${response.status}`);
+    const health=await response.json();
+    const pronunciation=health.pronunciation||{};
+    const sound=pronunciation.mode==="shadow"?"Pronunciation shadow evidence is on.":"Nikud grading is not on.";
+    $("serverStatus").className="status ok";
+    $("serverStatus").textContent=`Ready. Hebrew word and order analysis is available. ${sound}`;
+  }catch(error){
+    $("serverStatus").className="status bad";
+    $("serverStatus").textContent=`The analysis server is not ready: ${error.message}. Reload once the Codespace finishes starting.`;
+  }
+}
+
+async function startRecording(){
+  if(!expectedWords().length){setRecordStatus("Choose or enter Hebrew text first.",true);return;}
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    chunks=[];
+    const options=MediaRecorder.isTypeSupported("audio/webm;codecs=opus")?{mimeType:"audio/webm;codecs=opus"}:{};
+    recorder=new MediaRecorder(stream,options);
+    recorder.ondataavailable=event=>{if(event.data.size)chunks.push(event.data)};
+    recorder.start(500);
+    $("record").disabled=true;$("stop").disabled=false;$("analyze").disabled=true;$("file").disabled=true;
+    setRecordStatus("Recording now. Read the entire passage, then press Stop and analyze.");
+  }catch(error){
+    setRecordStatus(`Microphone could not start: ${error.message}. You can upload an audio file instead.`,true);
+  }
+}
+async function stopRecording(){
+  if(!recorder||recorder.state==="inactive")return;
+  const stopped=new Promise(resolve=>{recorder.onstop=resolve});
+  recorder.stop();await stopped;
+  stream?.getTracks().forEach(track=>track.stop());stream=null;
+  const type=recorder.mimeType||"audio/webm";
+  setAudio(new Blob(chunks,{type}),"live-reading.webm");
+  $("record").disabled=false;$("stop").disabled=true;$("file").disabled=false;
+  await analyze();
+}
+
+async function analyze(){
+  if(!audioBlob||!expectedWords().length)return;
+  if(!$("speakerId").value.trim()){
+    setRecordStatus("Enter a pseudonymous reader code before analyzing.",true);return;
+  }
+  $("analyze").disabled=true;$("record").disabled=true;$("file").disabled=true;
+  setRecordStatus("Analyzing. The first request can take longer while the model loads.");
+  currentAttempt=crypto.randomUUID?crypto.randomUUID():`attempt-${Date.now()}`;
+  const passage=selectedPassage();
+  currentContext={
+    speaker_id:$("speakerId").value.trim(),
+    reader_group:$("readerGroup").value,
+    pronunciation_tradition:$("tradition").value,
+    passage:{
+      id:passage.id,name:passage.name,english:passage.english,
+      text:currentText(),expected_words:expectedWords()
+    }
+  };
+  const form=new FormData();
+  form.append("audio",audioBlob,audioName);
+  form.append("language","he");
+  form.append("expected_words",JSON.stringify(currentContext.passage.expected_words));
+  form.append("bracha",currentContext.passage.id);
+  form.append("attempt_id",currentAttempt);
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),180000);
+  try{
+    const response=await fetch("/analyze-reading",{method:"POST",body:form,signal:controller.signal});
+    let body=null;try{body=await response.json()}catch(_error){}
+    if(!response.ok)throw new Error(body?.detail||`Server error ${response.status}`);
+    currentResult=body;currentLabel=null;
+    renderResult(body);
+    setRecordStatus("Analysis complete.");
+  }catch(error){
+    setRecordStatus(error.name==="AbortError"?"Analysis timed out after three minutes.":`Analysis failed: ${error.message}`,true);
+  }finally{
+    clearTimeout(timeout);$("record").disabled=false;$("file").disabled=false;$("analyze").disabled=!audioBlob;
+  }
+}
+
+function renderResult(result){
+  const clear=result.routing==="automatic_word_clear";
+  $("resultHead").className=`result-head ${clear?"clear":"retry"}`;
+  $("resultHead").innerHTML=`<div class="score">${Number(result.estimated_accuracy)||0}%</div><b>${clear?"Words and order look clear":"Please retry this reading"}</b><div class="small">${clear?"No word or order problem was found.":escapeHtml((result.review_reasons||[]).join("; ")||"The model was not confident enough.")}</div>`;
+  const sound=result.pronunciation?.status==="evidence_available"
+    ?"Nikud-aware sound evidence was collected in shadow mode, but it did not affect this result."
+    :"This result evaluates words and order. It does not grade nikud or vowel sounds yet.";
+  $("scope").textContent=sound;
+  $("transcript").textContent=result.transcript||"No transcript returned";
+  const counts=result.counts||{};
+  $("stats").innerHTML=[["ok","Matches"],["almost","Uncertain"],["wrong","Different"],["missing","Missing"],["extra","Extra"]].map(([key,label])=>`<div class="stat"><b>${Number(counts[key])||0}</b><span>${label}</span></div>`).join("");
+  $("words").innerHTML=(result.words||[]).map(row=>`<div class="word"><div class="heb">${escapeHtml(row.expected||"-")}</div><div class="heb">${escapeHtml(row.heard||"-")}</div><div class="op ${escapeHtml(row.operation)}">${escapeHtml(row.operation)}</div></div>`).join("");
+  $("results").classList.remove("hidden");$("labelCard").classList.remove("hidden");
+  $("results").scrollIntoView({behavior:"smooth",block:"start"});
+  document.querySelectorAll("#labels button").forEach(button=>button.classList.remove("chosen"));
+  $("download").disabled=true;$("labelSaved").textContent="";$("note").value="";
+}
+
+function selectLabel(label,button){
+  if(!currentResult)return;
+  currentLabel=label;
+  document.querySelectorAll("#labels button").forEach(item=>item.classList.toggle("chosen",item===button));
+  const summary=sampleMetadata(false);
+  sessionLabels.set(currentAttempt,summary);
+  $("download").disabled=false;$("exportSession").disabled=false;
+  $("labelSaved").textContent="Label attached. Download the sample if you want to keep the audio and result.";
+}
+
+function sampleMetadata(includeAudio){
+  return {
+    schema_version:"kriah-pilot-sample-v1",
+    created_at:new Date().toISOString(),
+    attempt_id:currentAttempt,
+    speaker_id:currentContext.speaker_id,
+    reader_group:currentContext.reader_group,
+    pronunciation_tradition:currentContext.pronunciation_tradition,
+    passage:currentContext.passage,
+    human_label:currentLabel,
+    human_note:$("note").value.trim(),
+    analysis:currentResult,
+    audio:includeAudio?{filename:audioName,mime_type:audioBlob.type||"application/octet-stream",size_bytes:audioBlob.size}:undefined
+  };
+}
+function blobBase64(blob){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(",")[1]);reader.onerror=()=>reject(reader.error);reader.readAsDataURL(blob)})}
+function downloadBlob(blob,filename){const url=URL.createObjectURL(blob);const link=document.createElement("a");link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+async function downloadSample(){
+  if(!currentLabel||!audioBlob)return;
+  const payload=sampleMetadata(true);payload.audio.base64=await blobBase64(audioBlob);
+  const safe=(currentAttempt||"sample").replace(/[^a-zA-Z0-9_-]/g,"");
+  downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}),`kriah-${safe}.json`);
+}
+function exportSession(){
+  const lines=[...sessionLabels.values()].map(value=>JSON.stringify(value)).join("\n")+"\n";
+  downloadBlob(new Blob([lines],{type:"application/x-ndjson"}),`kriah-pilot-labels-${new Date().toISOString().slice(0,10)}.jsonl`);
+}
+function resetAttempt(){
+  currentResult=null;currentLabel=null;currentAttempt=null;currentContext=null;
+  $("results").classList.add("hidden");$("labelCard").classList.add("hidden");
+  $("results").scrollIntoView();
+  setRecordStatus(audioBlob?"The current audio is still selected. Record or choose another file.":"Nothing has been recorded yet.");
+}
+
+$("passage").innerHTML=PASSAGES.map(p=>`<option value="${p.id}">${p.name} (${p.english})</option>`).join("");
+$("passage").addEventListener("change",renderPassage);$("customText").addEventListener("input",renderPassage);
+$("record").addEventListener("click",startRecording);$("stop").addEventListener("click",stopRecording);$("analyze").addEventListener("click",analyze);
+$("file").addEventListener("change",event=>{const file=event.target.files?.[0];if(file)setAudio(file,file.name)});
+document.querySelectorAll("#labels button").forEach(button=>button.addEventListener("click",()=>selectLabel(button.dataset.label,button)));
+$("note").addEventListener("input",()=>{if(currentLabel)sessionLabels.set(currentAttempt,sampleMetadata(false))});
+$("download").addEventListener("click",downloadSample);$("exportSession").addEventListener("click",exportSession);$("again").addEventListener("click",resetAttempt);
+window.addEventListener("beforeunload",()=>stream?.getTracks().forEach(track=>track.stop()));
+renderPassage();checkHealth();
+</script>
+</body>
+</html>

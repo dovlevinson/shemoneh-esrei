@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Kriah Nikud Evidence Lab</title>
+  <style>
+    :root{
+      color-scheme:light dark;
+      --bg:#f4f1e8;--card:#fffdf7;--ink:#25304e;--muted:#66708c;--line:#d9d1bf;
+      --blue:#2456a6;--blue-text:#fff;--green:#187a4b;--green-bg:#e2f2e7;
+      --amber:#8a5200;--amber-bg:#faedd4;--red:#a62f36;--red-bg:#f9e2e3;--purple:#6f43a5;
+    }
+    @media(prefers-color-scheme:dark){:root{
+      --bg:#131828;--card:#1c2336;--ink:#e9e7dd;--muted:#aab2c8;--line:#333d5c;
+      --blue:#7aa7e8;--blue-text:#10203c;--green:#69d39a;--green-bg:#153525;
+      --amber:#efba65;--amber-bg:#3a2d13;--red:#f08a8f;--red-bg:#3d1d20;--purple:#bd91ef;
+    }}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+    main{max-width:980px;margin:auto;padding:18px 14px 70px}
+    h1{font-size:1.7rem;margin:.15rem 0}h2{font-size:1.18rem;margin:.15rem 0 .8rem}h3{margin:.1rem 0;font-size:1.05rem}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:17px;margin:13px 0;box-shadow:0 2px 12px #00000012}
+    .muted{color:var(--muted)}.small{font-size:.82rem}.hidden{display:none!important}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.spread{justify-content:space-between}.grow{flex:1}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+    label{display:block;font-weight:650;font-size:.9rem}
+    input,select,textarea,button{font:inherit}
+    input,select,textarea{width:100%;margin-top:5px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
+    textarea{min-height:100px;resize:vertical;direction:rtl;font:1.25rem/1.8 "Times New Roman",serif}
+    button,.button{border:0;border-radius:11px;padding:11px 16px;background:#ece7da;color:#25304e;cursor:pointer;text-decoration:none;display:inline-block;text-align:center}
+    button.primary{background:var(--blue);color:var(--blue-text);font-weight:750}button.danger{background:var(--red);color:#fff}
+    button:disabled{opacity:.45;cursor:not-allowed}.button.small-button{padding:7px 10px;font-size:.82rem}
+    .reading{direction:rtl;text-align:right;font:1.6rem/2 "Times New Roman","Noto Serif Hebrew",serif;padding:13px;border-radius:12px;background:color-mix(in srgb,var(--blue) 8%,var(--card))}
+    .reading .planned-change{padding:2px 5px;border-radius:7px;background:var(--red-bg);color:var(--red);font-weight:750}
+    .status{padding:11px 13px;border-radius:11px;background:var(--amber-bg);color:var(--amber);font-weight:650}
+    .status.ok{background:var(--green-bg);color:var(--green)}.status.bad{background:var(--red-bg);color:var(--red)}
+    .warning{border-left:5px solid var(--amber);background:var(--amber-bg);color:var(--amber)}
+    .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:12px 0}
+    .metric{padding:10px;border-radius:10px;background:color-mix(in srgb,var(--ink) 6%,var(--card));text-align:center}.metric b{display:block;font-size:1.3rem}.metric span{font-size:.76rem;color:var(--muted)}
+    .word-card{border:1px solid var(--line);border-radius:13px;margin:10px 0;overflow:hidden}.word-head{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 12px;background:color-mix(in srgb,var(--blue) 7%,var(--card))}.heb{direction:rtl;font:1.35rem "Times New Roman",serif}
+    .slot{display:grid;grid-template-columns:minmax(130px,1.3fr) minmax(110px,1fr) minmax(115px,1fr) minmax(210px,1.6fr);gap:8px;align-items:center;padding:10px 12px;border-top:1px solid var(--line)}
+    .slot-title b{display:block}.evidence{font-variant-numeric:tabular-nums}.favored{color:var(--green);font-weight:750}.competing{color:var(--red);font-weight:750}.neutral{color:var(--amber);font-weight:750}
+    .slot-labels{display:flex;gap:5px;flex-wrap:wrap}.slot-labels button{padding:6px 8px;font-size:.72rem;border:1px solid var(--line);background:var(--card);color:var(--ink)}.slot-labels button.chosen{outline:2px solid var(--blue);background:color-mix(in srgb,var(--blue) 14%,var(--card))}
+    audio{width:100%;margin-top:10px}.progress{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:9px}.progress>div{height:100%;width:35%;background:var(--blue);animation:move 1.4s linear infinite}@keyframes move{from{transform:translateX(-110%)}to{transform:translateX(310%)}}
+    table{width:100%;border-collapse:collapse;font-size:.86rem}th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left}th{color:var(--muted);font-size:.75rem}td.heb{font-size:1.05rem;text-align:right}
+    details summary{cursor:pointer;font-weight:650}.links a{margin-left:7px}.pill{display:inline-block;padding:3px 8px;border-radius:99px;background:color-mix(in srgb,var(--purple) 14%,var(--card));color:var(--purple);font-size:.72rem;font-weight:750}
+    @media(max-width:760px){.slot{grid-template-columns:1fr 1fr}.slot-labels{grid-column:1/-1}.row>button,.row>.button{flex:1}.reading{font-size:1.35rem}table{display:block;overflow:auto}}
+  </style>
+</head>
+<body>
+<main>
+  <div class="row spread">
+    <div><h1>Kriah Nikud Evidence Lab</h1><div class="muted">See what the sound model finds for each vowel.</div></div>
+    <div class="links"><a class="button small-button" href="/word-pilot">Word-only pilot</a><a class="button small-button" href="/coach">Full coach</a></div>
+  </div>
+
+  <div id="serverStatus" class="status">Preparing the speech and nikud models in the Codespace...</div>
+
+  <section class="card warning">
+    <b>This is a real nikud experiment, but it is not yet a student grade.</b>
+    <div class="small">Start with a master reading. Record a correct reference, then select a guided test. The app shows exactly what to read and checks the intended vowel changes automatically.</div>
+  </section>
+
+  <section class="card">
+    <h2>1. Choose the reading</h2>
+    <div class="grid">
+      <label>Reader code, not a name
+        <input id="speakerId" value="adult-1" maxlength="40" autocomplete="off">
+      </label>
+      <label>Pronunciation tradition
+        <select id="tradition">
+          <option value="mixed">Mixed or not yet specified</option>
+          <option value="ashkenazi">Ashkenazi</option>
+          <option value="sephardi">Sephardi or Israeli</option>
+        </select>
+      </label>
+      <label>Passage
+        <select id="passage"></select>
+      </label>
+    </div>
+    <label id="customWrap" class="hidden" style="margin-top:12px">Custom pointed Hebrew
+      <textarea id="customText" placeholder="Paste the exact pointed Hebrew here"></textarea>
+    </label>
+    <div id="reading" class="reading" lang="he"></div>
+    <div id="wordCount" class="muted small"></div>
+    <div id="calibrationPurpose" class="muted small" style="margin-top:7px"></div>
+    <details id="recordingPlan" class="hidden" style="margin-top:12px">
+      <summary>How to calibrate this master reading</summary>
+      <ol class="small">
+        <li>Read every word correctly for Reading A.</li>
+        <li>First compare another correct reading to check ordinary voice variation.</li>
+        <li>Choose the highlighted-mistakes test and read the displayed Reading B passage.</li>
+        <li>The exact changed vowels are identified automatically. Do not label individual rows.</li>
+        <li>Check the number of catches, false alarms, misses, and unmeasured targets.</li>
+      </ol>
+    </details>
+  </section>
+
+  <section class="card">
+    <h2>2. Reading A</h2>
+    <div class="grid">
+      <label>What you know about this recording
+        <select id="truthA">
+          <option value="unknown">Not labeled yet</option>
+          <option value="known_acceptable">Known acceptable reading</option>
+          <option value="known_nikud_errors">Known nikud mistakes</option>
+          <option value="known_other_errors">Known other mistakes</option>
+        </select>
+      </label>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button id="record" class="primary">Start recording</button>
+      <button id="stop" class="danger" disabled>Stop</button>
+      <label class="button">Choose Reading A file
+        <input id="fileA" type="file" accept="audio/*,.webm,.m4a,.mp3,.wav,.ogg,.mp4" style="display:none">
+      </label>
+      <label class="button">Import a saved test
+        <input id="importPackage" type="file" accept="application/json,.json" style="display:none">
+      </label>
+      <button id="analyzeA" class="primary" disabled>Analyze nikud</button>
+    </div>
+    <div id="statusA" class="muted" style="margin-top:9px">Choose a recording or record one here.</div>
+    <div id="progressA" class="progress hidden"><div></div></div>
+    <audio id="audioA" controls class="hidden"></audio>
+  </section>
+
+  <section id="resultsA" class="card hidden">
+    <h2>3. Nikud evidence for Reading A</h2>
+    <div id="wordSummary" class="summary"></div>
+    <details>
+      <summary>What the word model heard</summary>
+      <div id="transcript" class="reading" style="font-size:1.2rem;margin-top:8px"></div>
+    </details>
+    <div id="nikudScope" class="status" style="margin-top:12px"></div>
+    <p class="muted small">“Expected stronger” means the acoustic model favored the expected sound at that aligned moment. It does not yet mean the pronunciation was definitely correct.</p>
+    <div id="vowelEvidence"></div>
+    <div class="row" style="margin-top:12px">
+      <button id="downloadA" class="primary">Download labeled Reading A</button>
+    </div>
+  </section>
+
+  <section id="compareCard" class="card hidden">
+    <h2>4. Compare Reading B against the correct reference</h2>
+    <p class="muted">Choose a guided test, then read the passage displayed below. Highlighted words are the intentional substitutions.</p>
+    <div class="grid">
+      <label>What should Reading B test?
+        <select id="guidedScenario"></select>
+      </label>
+      <label>What you know about Reading B
+        <select id="truthB">
+          <option value="unknown">Not labeled yet</option>
+          <option value="known_acceptable">Known acceptable reading</option>
+          <option value="known_nikud_errors">Known nikud mistakes</option>
+          <option value="known_other_errors">Known other mistakes</option>
+        </select>
+      </label>
+    </div>
+    <div id="guidedInstructions" class="muted small" style="margin-top:12px"></div>
+    <div id="readingBPrompt" class="reading" lang="he" style="margin-top:9px"></div>
+    <div class="row" style="margin-top:12px">
+      <button id="recordB" class="primary">Record Reading B</button>
+      <button id="stopB" class="danger" disabled>Stop Reading B</button>
+      <label class="button">Choose Reading B file
+        <input id="fileB" type="file" accept="audio/*,.webm,.m4a,.mp3,.wav,.ogg,.mp4" style="display:none">
+      </label>
+      <button id="analyzeB" class="primary" disabled>Compare nikud evidence</button>
+    </div>
+    <div id="statusB" class="muted" style="margin-top:9px">No comparison recording selected.</div>
+    <div id="progressB" class="progress hidden"><div></div></div>
+    <audio id="audioB" controls class="hidden"></audio>
+    <div id="comparison" class="hidden" style="margin-top:16px">
+      <div class="status">A strong change is a research signal, not a student pass or fail decision.</div>
+      <div id="comparisonSummary" class="summary"></div>
+      <div id="calibrationOutcome" class="status" style="margin-top:10px"></div>
+      <div id="targetResults" style="overflow:auto;margin-top:10px"></div>
+      <details style="margin-top:14px">
+        <summary>Advanced: inspect all vowel positions or add optional manual labels</summary>
+        <div class="row" style="margin-top:10px">
+          <button id="markBCorrect">Mark all Reading B vowels correct</button>
+          <button id="clearBLabels">Clear Reading B labels</button>
+        </div>
+      <div style="overflow:auto;margin-top:10px"><table>
+        <thead><tr><th>Word</th><th>Nekudah</th><th>A vowel evidence</th><th>B vowel evidence</th><th>Change</th><th>Finding</th><th>Reading B label</th></tr></thead>
+        <tbody id="comparisonRows"></tbody>
+      </table></div>
+      </details>
+      <div class="row" style="margin-top:12px"><button id="downloadPair" class="primary">Download comparison package</button></div>
+    </div>
+  </section>
+</main>
+
+<script>
+"use strict";
+
+const PASSAGES=[
+  {id:"1",name:"1. אָבוֹת",english:"Avot",text:"אֲדֹנָי שְׂפָתַי תִּפְתָּח וּפִי יַגִּיד תְּהִלָּתֶֽךָ: בָּרוּךְ אַתָּה יְהֹוָה אֱלֹהֵֽינוּ וֵאלֹהֵי אֲבוֹתֵֽינוּ אֱלֹהֵי אַבְרָהָם אֱלֹהֵי יִצְחָק וֵאלֹהֵי יַעֲקֹב הָאֵל הַגָּדוֹל הַגִּבּוֹר וְהַנּוֹרָא אֵל עֶלְיוֹן גּוֹמֵל חֲסָדִים טוֹבִים וְקוֹנֵה הַכֹּל וְזוֹכֵר חַסְדֵי אָבוֹת וּמֵבִיא גוֹאֵל לִבְנֵי בְנֵיהֶם לְמַֽעַן שְׁמוֹ בְּאַהֲבָה: מֶֽלֶךְ עוֹזֵר וּמוֹשִֽׁיעַ וּמָגֵן: בָּרוּךְ אַתָּה יְהֹוָה מָגֵן אַבְרָהָם:"},
+  {id:"2",name:"2. גְּבוּרוֹת",english:"Gevurot",text:"אַתָּה גִבּוֹר לְעוֹלָם אֲדֹנָי מְחַיֵּה מֵתִים אַתָּה רַב לְהוֹשִֽׁיעַ: מְכַלְכֵּל חַיִּים בְּחֶֽסֶד מְחַיֵּה מֵתִים בְּרַחֲמִים רַבִּים סוֹמֵךְ נוֹפְ֒לִים וְרוֹפֵא חוֹלִים וּמַתִּיר אֲסוּרִים וּמְקַיֵּם אֱמוּנָתוֹ לִישֵׁנֵי עָפָר, מִי כָמֽוֹךָ בַּֽעַל גְּבוּרוֹת וּמִי דּֽוֹמֶה לָּךְ מֶֽלֶךְ מֵמִית וּמְחַיֵּה וּמַצְמִֽיחַ יְשׁוּעָה: וְנֶאֱמָן אַתָּה לְהַחֲיוֹת מֵתִים: בָּרוּךְ אַתָּה יְהֹוָה מְחַיֵּה הַמֵּתִים:"},
+  {id:"3",name:"3. קְדוּשַּׁת הַשֵּׁם",english:"Atah Kadosh",text:"אַתָּה קָדוֹשׁ וְשִׁמְךָ קָדוֹשׁ וּקְדוֹשִׁים בְּכָל־יוֹם יְהַלְ֒לֽוּךָ סֶּֽלָה."},
+  {id:"4",name:"4. דַּעַת",english:"Atah Chonen",text:"אַתָּה חוֹנֵן לְאָדָם דַּֽעַת וּמְלַמֵּד לֶאֱנוֹשׁ בִּינָה: חָנֵּֽנוּ מֵאִתְּ֒ךָ דֵּעָה בִּינָה וְהַשְׂכֵּל: בָּרוּךְ אַתָּה יְהֹוָה חוֹנֵן הַדָּֽעַת:"},
+  {id:"custom",name:"Custom pointed Hebrew",english:"Custom",text:""}
+];
+
+const $=id=>document.getElementById(id);
+let analysisReady=false,stream=null,recorder=null,chunks=[],recordingTarget=null;
+let blobA=null,nameA="reading-a.webm",resultA=null,attemptA=null;
+let blobB=null,nameB="reading-b.webm",resultB=null,attemptB=null;
+let comparisonReport=null;
+const slotLabelsA={},slotLabelsB={};
+
+function escapeHtml(value){return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function passage(){return PASSAGES.find(item=>item.id===$("passage").value)||PASSAGES[0];}
+function currentText(){return passage().id==="custom"?$("customText").value.trim():passage().text;}
+function words(){return currentText().split(/\s+/).flatMap(token=>token.split("־")).filter(token=>/[א-ת]/.test(token));}
+function guidedScenario(){return(passage().scenarios||[]).find(item=>item.id===$("guidedScenario").value)||null;}
+function populatePassages(preferred="4"){$("passage").innerHTML=PASSAGES.map(item=>`<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}${item.english?` (${escapeHtml(item.english)})`:""}</option>`).join("");if(PASSAGES.some(item=>item.id===preferred))$("passage").value=preferred;renderPassage();}
+function renderPassage(){
+  const selected=passage(),custom=selected.id==="custom",master=selected.id.startsWith("cal-");
+  $("customWrap").classList.toggle("hidden",!custom);$("reading").textContent=currentText()||"הטקסט יופיע כאן";
+  const sources=Object.keys(selected.coverage?.vowel_sources||{});
+  $("wordCount").textContent=`${words().length} words${sources.length?`; ${sources.length} different written vowel types`:""}`;
+  $("calibrationPurpose").textContent=selected.purpose||"Use a known-correct reading of this exact passage as the reference.";
+  $("recordingPlan").classList.toggle("hidden",!master);
+  if(master&&$("truthA").value==="unknown")$("truthA").value="known_acceptable";
+  renderScenarioOptions();
+  updateButtons();
+}
+function renderScenarioOptions(preferred){
+  const scenarios=passage().scenarios||[];
+  $("guidedScenario").innerHTML=scenarios.length?scenarios.map(item=>`<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`).join(""):'<option value="manual">No predefined test for this passage</option>';
+  if(preferred&&scenarios.some(item=>item.id===preferred))$("guidedScenario").value=preferred;
+  renderGuidedPrompt();
+}
+function renderGuidedPrompt(){
+  const scenario=guidedScenario(),targets=new Map((scenario?.targets||[]).map(item=>[item.word_index,item]));
+  $("readingBPrompt").innerHTML=words().map((word,index)=>{const target=targets.get(index);return target?`<span class="planned-change" title="${escapeHtml(target.source)}">${escapeHtml(target.spoken_word)}</span>`:escapeHtml(word);}).join(" ");
+  if(scenario){$("truthB").value=scenario.kind;$("guidedInstructions").textContent=targets.size?`Read the ${targets.size} highlighted words exactly as shown. Their changed vowel positions will be evaluated automatically; do not mark individual rows.`:"Read every word correctly again. Any strong vowel alert is a false alarm for this clean-repeat test.";}
+  else $("guidedInstructions").textContent="Read the selected passage. Optional manual labels are available under Advanced after comparison.";
+}
+function clearLabels(labels){for(const key of Object.keys(labels))delete labels[key];}
+function clearComparison(){resultB=null;comparisonReport=null;clearLabels(slotLabelsB);$("comparison").classList.add("hidden");}
+function clearAnalysis(){resultA=null;clearLabels(slotLabelsA);clearComparison();$("resultsA").classList.add("hidden");$("compareCard").classList.add("hidden");updateButtons();}
+async function loadCalibrationSuite(preferred){
+  try{
+    const response=await fetch(`/calibration-suite?pronunciation_profile=${encodeURIComponent($("tradition").value)}`,{cache:"no-store"});
+    if(!response.ok)throw new Error(`HTTP ${response.status}`);
+    const suite=await response.json(),standard=PASSAGES.filter(item=>!item.id.startsWith("cal-")).map(item=>({...item,scenarios:suite.additional_passage_scenarios?.[item.id]||[]}));
+    PASSAGES.splice(0,PASSAGES.length,...suite.readings,...standard);populatePassages(preferred||"cal-core");
+  }catch(error){$("calibrationPurpose").textContent=`Master readings could not load: ${error.message}. Existing brachot remain available.`;}
+}
+function setStatus(id,message,bad=false){$(id).textContent=message;$(id).style.color=bad?"var(--red)":"var(--muted)";}
+function updateButtons(){$("analyzeA").disabled=!analysisReady||!blobA||!words().length;$("analyzeB").disabled=!analysisReady||!blobB||!resultA;}
+
+async function checkHealth(){
+  try{
+    const response=await fetch("/health",{cache:"no-store"});
+    if(!response.ok)throw new Error(`HTTP ${response.status}`);
+    const health=await response.json();
+    analysisReady=Boolean(health.nikud_lab_ready);
+    const prep=health.model_preparation||{};
+    if(analysisReady){$("serverStatus").className="status ok";$("serverStatus").textContent="Ready. Speech and nikud evidence models are loaded.";}
+    else if(health.pronunciation?.mode!=="shadow"){$("serverStatus").className="status bad";$("serverStatus").textContent="Nikud evidence is not enabled in this Codespace. Rebuild it from the latest branch.";}
+    else if(prep.speech==="failed"||prep.pronunciation==="failed"){$("serverStatus").className="status bad";$("serverStatus").textContent="A model failed to prepare. Open the Codespace log before testing.";}
+    else{$("serverStatus").className="status";$("serverStatus").textContent=`Preparing models in cloud storage. Speech: ${prep.speech||"waiting"}. Nikud: ${prep.pronunciation||"waiting"}.`;setTimeout(checkHealth,3000);}
+  }catch(error){analysisReady=false;$("serverStatus").className="status bad";$("serverStatus").textContent=`Server unavailable: ${error.message}`;setTimeout(checkHealth,4000);}
+  updateButtons();
+}
+
+function setAudio(which,blob,name){
+  const player=$(which==="A"?"audioA":"audioB");
+  if(player.src)URL.revokeObjectURL(player.src);
+  player.src=URL.createObjectURL(blob);player.classList.remove("hidden");
+  if(which==="A"){clearAnalysis();blobA=blob;nameA=name||"reading-a.webm";setStatus("statusA",`Reading A selected (${Math.max(1,Math.round(blob.size/1024))} KB).`);}else{clearComparison();blobB=blob;nameB=name||"reading-b.webm";setStatus("statusB",`Reading B selected (${Math.max(1,Math.round(blob.size/1024))} KB).`);}
+  updateButtons();
+}
+
+async function startRecording(which){
+  try{
+    if(recorder&&recorder.state!=="inactive")throw new Error("Stop the current recording first");
+    stream=await navigator.mediaDevices.getUserMedia({audio:true});chunks=[];recordingTarget=which;
+    const options=MediaRecorder.isTypeSupported("audio/webm;codecs=opus")?{mimeType:"audio/webm;codecs=opus"}:{};
+    recorder=new MediaRecorder(stream,options);recorder.ondataavailable=event=>{if(event.data.size)chunks.push(event.data)};recorder.start(500);
+    $("record").disabled=true;$("recordB").disabled=true;$(which==="A"?"stop":"stopB").disabled=false;
+    setStatus(which==="A"?"statusA":"statusB",`Recording Reading ${which}. Read the entire selected passage.`);
+  }catch(error){setStatus(which==="A"?"statusA":"statusB",`Microphone could not start: ${error.message}`,true);}
+}
+async function stopRecording(){
+  if(!recorder||recorder.state==="inactive")return;
+  const which=recordingTarget||"A",stopped=new Promise(resolve=>{recorder.onstop=resolve});recorder.stop();await stopped;
+  stream?.getTracks().forEach(track=>track.stop());stream=null;recordingTarget=null;$("record").disabled=false;$("recordB").disabled=false;$("stop").disabled=true;$("stopB").disabled=true;
+  setAudio(which,new Blob(chunks,{type:recorder.mimeType||"audio/webm"}),`live-reading-${which.toLowerCase()}.webm`);
+}
+
+function formFor(blob,name,attempt){
+  const form=new FormData();form.append("audio",blob,name);form.append("language","he");form.append("expected_words",JSON.stringify(words()));form.append("bracha",passage().id);form.append("attempt_id",attempt);form.append("pronunciation_profile",$("tradition").value);return form;
+}
+async function createJob(blob,name,attempt,statusId){
+  const body=await requestJson("/analysis-jobs",{method:"POST",body:formFor(blob,name,attempt)});
+  const started=Date.now();
+  for(;;){
+    await new Promise(resolve=>setTimeout(resolve,1500));
+    const job=await requestJson(`/analysis-jobs/${encodeURIComponent(body.job_id)}`,{cache:"no-store"});
+    if(job.status==="completed")return job.result;
+    if(job.status==="failed")throw new Error(job.error||"Analysis failed");
+    const seconds=Math.round((Date.now()-started)/1000);setStatus(statusId,`Analyzing speech and vowel evidence in the cloud (${seconds}s). Keep this page open.`);
+    if(Date.now()-started>900000)throw new Error("Analysis did not finish within 15 minutes");
+  }
+}
+async function requestJson(url,options={},attempt=0){
+  let response;
+  try{response=await fetch(url,{credentials:"same-origin",...options});}
+  catch(error){if(attempt<2){await new Promise(resolve=>setTimeout(resolve,500*(attempt+1)));return requestJson(url,options,attempt+1);}throw new Error(`Connection interrupted. Your selected recording is still on this page. ${error.message}`);}
+  if(response.status===401||response.status===403){if(attempt<2){await new Promise(resolve=>setTimeout(resolve,500*(attempt+1)));return requestJson(url,options,attempt+1);}throw new Error("GitHub preview authorization expired. Reopen this page from the Codespace Ports tab, then retry. Your recording remains on this page while it is open.");}
+  let body=null;try{body=await response.json();}catch(_error){}
+  if(!response.ok)throw new Error(body?.detail||`Server error ${response.status}`);
+  if(body===null)throw new Error("The server did not return a readable response. Your recording remains selected.");
+  return body;
+}
+
+async function analyzeA(){
+  if(!blobA)return;attemptA=crypto.randomUUID?crypto.randomUUID():`a-${Date.now()}`;$("progressA").classList.remove("hidden");$("analyzeA").disabled=true;setStatus("statusA","Uploading Reading A and starting analysis.");
+  try{resultA=await createJob(blobA,nameA,attemptA,"statusA");renderA(resultA);setStatus("statusA","Reading A analysis complete.");$("compareCard").classList.remove("hidden");}
+  catch(error){setStatus("statusA",`Analysis failed: ${error.message}`,true);}
+  finally{$("progressA").classList.add("hidden");updateButtons();}
+}
+async function analyzeB(){
+  if(!blobB||!resultA)return;attemptB=crypto.randomUUID?crypto.randomUUID():`b-${Date.now()}`;$("progressB").classList.remove("hidden");$("analyzeB").disabled=true;setStatus("statusB","Uploading Reading B and starting comparison analysis.");
+  try{
+    resultB=await createJob(blobB,nameB,attemptB,"statusB");
+    await compareAnalyzedReadings();setStatus("statusB","Reading B analysis and vowel comparison complete.");
+  }
+  catch(error){setStatus("statusB",`Analysis failed: ${error.message}`,true);}
+  finally{$("progressB").classList.add("hidden");updateButtons();}
+}
+async function compareAnalyzedReadings(){
+  const payload={reference:resultA,candidate:resultB},scenario=guidedScenario();
+  if(scenario)payload.scenario_id=scenario.id;
+  comparisonReport=await requestJson("/compare-readings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+  renderComparison();
+}
+
+function evidenceClass(margin){return margin>0?"favored":margin<0?"competing":"neutral";}
+function evidenceLabel(margin){return margin>0?"Expected stronger":margin<0?"Another sound stronger":"Evidence tied";}
+function pct(value){return value==null?"n/a":`${(Number(value)*100).toFixed(1)}%`;}
+function margin(value){const number=Number(value);return Number.isFinite(number)?`${number>=0?"+":""}${number.toFixed(2)}`:"n/a";}
+function renderA(result){
+  $("resultsA").classList.remove("hidden");$("transcript").textContent=result.transcript||"No transcript returned";
+  const pronunciation=result.pronunciation||{},summary=pronunciation.summary||{},vowels=[...flattenVowels(result).values()];
+  const vowelMean=vowels.length?vowels.reduce((total,slot)=>total+Number(slot.peak_expected_probability||0),0)/vowels.length:null;
+  $("wordSummary").innerHTML=[[`${Number(result.estimated_accuracy)||0}%`,"Word and order match"],[summary.words_measured??0,"Words with sound evidence"],[vowels.length,"Measured vowel positions"],[pct(vowelMean),"Average vowel evidence, not a grade"]].map(([value,label])=>`<div class="metric"><b>${escapeHtml(value)}</b><span>${escapeHtml(label)}</span></div>`).join("");
+  if(pronunciation.status!=="evidence_available"){$("nikudScope").className="status bad";$("nikudScope").textContent=`Nikud evidence was not available (${pronunciation.status||"unknown"}).`;$("vowelEvidence").innerHTML="";return;}
+  $("nikudScope").className="status";$("nikudScope").textContent=`Experimental vowel evidence collected using the ${pronunciation.pronunciation_profile||"mixed"} profile. It did not change the word result.`;
+  $("vowelEvidence").innerHTML=(pronunciation.words||[]).map(word=>{
+    if(word.status!=="measured_uncalibrated")return `<div class="word-card"><div class="word-head"><span class="heb">${escapeHtml(word.word)}</span><span class="muted small">Not measured: ${escapeHtml(word.status)}</span></div></div>`;
+    const slots=(word.slots||[]).map((slot,index)=>({...slot,index})).filter(slot=>slot.kind==="vowel");
+    const rows=slots.length?slots.map(slot=>{
+      const key=`${word.expected_index}:${slot.index}`,m=Number(slot.peak_competitor_margin||0),chosen=slotLabelsA[key]?.label;
+      return `<div class="slot"><div class="slot-title"><b>${escapeHtml(slot.source)}</b><span class="heb">${escapeHtml(slot.symbol)}</span> expected sound ${escapeHtml((slot.allowed||[]).join(" / "))}</div><div class="evidence"><b>${pct(slot.peak_expected_probability)}</b><div class="small muted">peak model evidence</div></div><div><span class="${evidenceClass(m)}">${evidenceLabel(m)}</span><div class="small">margin ${margin(m)}; competitor ${escapeHtml(slot.strongest_competing_phone||"n/a")}</div></div><div class="slot-labels" data-key="${key}" data-word="${escapeHtml(word.word)}" data-source="${escapeHtml(slot.source)}"><button data-label="human_correct" class="${chosen==="human_correct"?"chosen":""}">Known correct</button><button data-label="human_wrong_vowel" class="${chosen==="human_wrong_vowel"?"chosen":""}">Wrong vowel</button><button data-label="human_uncertain" class="${chosen==="human_uncertain"?"chosen":""}">Unsure</button></div></div>`;
+    }).join(""):`<div class="slot"><div>No mapped vowel slots for this word.</div></div>`;
+    return `<div class="word-card"><div class="word-head"><span class="heb">${escapeHtml(word.word)}</span><span class="small">heard: <span class="heb">${escapeHtml(word.heard||"-")}</span> <span class="pill">${escapeHtml(word.word_alignment)}</span></span></div>${rows}</div>`;
+  }).join("");
+  $("resultsA").scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+function flattenVowels(result){const mapped=new Map();for(const word of result?.pronunciation?.words||[]){if(word.status!=="measured_uncalibrated")continue;(word.slots||[]).forEach((slot,index)=>{if(slot.kind==="vowel")mapped.set(`${word.expected_index}:${index}`,{word:word.word,index:word.expected_index,slotIndex:index,...slot});});}return mapped;}
+function findingLabel(tier){return tier==="strong_candidate"?"Strong vowel change":tier==="possible_candidate"?"Possible vowel change":tier==="context_sensitive"?"Sheva: context sensitive":"No strong change";}
+function findingClass(tier){return tier==="strong_candidate"?"competing":tier==="possible_candidate"||tier==="context_sensitive"?"neutral":"favored";}
+function evaluateLabels(){
+  const labeled=(comparisonReport?.comparisons||[]).filter(item=>["human_correct","human_wrong_vowel"].includes(slotLabelsB[item.key]?.label));
+  let wrong=0,correct=0,caught=0,falseAlarms=0,missed=0;
+  for(const item of labeled){const isWrong=slotLabelsB[item.key].label==="human_wrong_vowel",flagged=item.tier==="strong_candidate";if(isWrong){wrong++;if(flagged)caught++;else missed++;}else{correct++;if(flagged)falseAlarms++;}}
+  return {labeled_vowels:labeled.length,actual_wrong_vowels:wrong,actual_correct_vowels:correct,caught_wrong_vowels:caught,false_alarms:falseAlarms,missed_wrong_vowels:missed,validated:false};
+}
+function renderEvaluation(){
+  const guided=comparisonReport?.target_evaluation;
+  if(guided){
+    const weak=guided.weak_reference_targets?` ${guided.weak_reference_targets} target reference vowel${guided.weak_reference_targets===1?" is":"s are"} too weak for confident interpretation.`:"";
+    $("calibrationOutcome").className=guided.false_alarms||guided.missed||guided.unmeasured?"status bad":guided.possible||guided.weak_reference_targets?"status":"status ok";
+    $("calibrationOutcome").textContent=guided.planned_vowels?`Automatic guided check: ${guided.planned_vowels} planned, ${guided.detected} detected, ${guided.possible} possible, ${guided.missed} missed, ${guided.unmeasured} unmeasured, ${guided.false_alarms} false alarms, ${guided.mislocalized} on the wrong vowel.${weak}`:`Clean-repeat check: ${guided.false_alarms} strong false alarms across ${comparisonReport.summary?.shared_vowel_slots??0} compared vowels.`;
+    return;
+  }
+  const result=evaluateLabels();
+  $("calibrationOutcome").className="status";
+  $("calibrationOutcome").textContent=result.labeled_vowels?`Calibration check: ${result.actual_wrong_vowels} actual wrong, ${result.caught_wrong_vowels} caught, ${result.false_alarms} false alarms, ${result.missed_wrong_vowels} missed. This one comparison is not a validated classroom accuracy rate.`:"Mark Reading B vowels to check catches, false alarms, and misses.";
+}
+function targetOutcomeLabel(value){return({detected:"Detected",possible:"Possible change",missed:"Missed",unmeasured_reference:"Reference not measured",unmeasured_candidate:"Reading B not measured",not_comparable:"Could not compare"})[value]||value;}
+function renderTargets(guided){
+  if(!guided?.target_results?.length){$("targetResults").innerHTML="";return;}
+  const rows=guided.target_results.map(item=>`<tr><td class="heb">${escapeHtml(item.expected_word)}</td><td class="heb">${escapeHtml(item.spoken_word)}</td><td>${escapeHtml(item.source)}</td><td class="${item.outcome==="detected"?"favored":item.outcome==="possible"?"neutral":"competing"}">${escapeHtml(targetOutcomeLabel(item.outcome))}${item.reference_quality==="weak"?' <span class="pill">weak reference</span>':""}</td></tr>`).join("");
+  $("targetResults").innerHTML=`<table><thead><tr><th>Expected word</th><th>Read instead</th><th>Changed vowel</th><th>Result</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+function renderComparison(){
+  const report=comparisonReport||{},summary=report.summary||{},rows=report.comparisons||[];
+  $("comparisonSummary").innerHTML=[[summary.shared_vowel_slots??0,"Shared vowel positions"],[pct(summary.reference_vowel_mean),"Reading A vowel evidence"],[pct(summary.candidate_vowel_mean),"Reading B vowel evidence"],[summary.strong_candidates??0,"Strong vowel changes"]].map(([value,label])=>`<div class="metric"><b>${escapeHtml(value)}</b><span>${escapeHtml(label)}</span></div>`).join("");
+  $("comparisonRows").innerHTML=rows.map(item=>{
+    const chosen=slotLabelsB[item.key]?.label;
+    return `<tr><td class="heb">${escapeHtml(item.word)}</td><td>${escapeHtml(item.source)}</td><td>${pct(item.reference.peak_expected_probability)}</td><td>${pct(item.candidate.peak_expected_probability)}</td><td class="${evidenceClass(item.margin_delta)}">${margin(item.margin_delta)}</td><td class="${findingClass(item.tier)}">${escapeHtml(findingLabel(item.tier))}</td><td><div class="slot-labels" data-key="${escapeHtml(item.key)}" data-word="${escapeHtml(item.word)}" data-source="${escapeHtml(item.source)}"><button data-label="human_correct" class="${chosen==="human_correct"?"chosen":""}">Correct</button><button data-label="human_wrong_vowel" class="${chosen==="human_wrong_vowel"?"chosen":""}">Wrong</button><button data-label="human_uncertain" class="${chosen==="human_uncertain"?"chosen":""}">Unsure</button></div></td></tr>`;
+  }).join("")||`<tr><td colspan="7">No shared vowel slots could be compared.</td></tr>`;
+  renderTargets(report.target_evaluation);
+  renderEvaluation();
+  $("comparison").classList.remove("hidden");$("comparison").scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+function blobBase64(blob){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(",")[1]);reader.onerror=()=>reject(reader.error);reader.readAsDataURL(blob);});}
+function downloadBlob(blob,filename){const url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+async function sample(which){const isA=which==="A",blob=isA?blobA:blobB;return {schema_version:"kriah-nikud-lab-v2",created_at:new Date().toISOString(),speaker_id:$("speakerId").value.trim(),pronunciation_tradition:$("tradition").value,passage:{id:passage().id,name:passage().name,text:currentText(),expected_words:words()},reading_label:isA?$("truthA").value:$("truthB").value,guided_scenario:isA?null:guidedScenario(),slot_labels:{...(isA?slotLabelsA:slotLabelsB)},analysis:isA?resultA:resultB,audio:{filename:isA?nameA:nameB,mime_type:blob.type||"application/octet-stream",size_bytes:blob.size,base64:await blobBase64(blob)}};}
+async function downloadA(){if(!resultA||!blobA)return;downloadBlob(new Blob([JSON.stringify(await sample("A"),null,2)],{type:"application/json"}),`kriah-nikud-${attemptA}.json`);}
+async function downloadPair(){if(!resultA||!resultB||!blobA||!blobB)return;const payload={schema_version:"kriah-nikud-pair-v3",created_at:new Date().toISOString(),reading_a:await sample("A"),reading_b:await sample("B"),comparison:comparisonReport,guided_evaluation:comparisonReport?.target_evaluation||null,label_evaluation:evaluateLabels()};downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}),`kriah-nikud-pair-${attemptA}.json`);}
+function sampleBlob(sample){const bytes=Uint8Array.from(atob(sample.audio.base64),char=>char.charCodeAt(0));return new Blob([bytes],{type:sample.audio.mime_type||"audio/webm"});}
+async function importSavedPackage(file){
+  try{
+    const saved=JSON.parse(await file.text()),first=saved.reading_a||saved,second=saved.reading_b||null;
+    if(!first?.analysis||!first?.audio?.base64||!first?.passage?.id)throw new Error("This file does not contain a saved Kriah recording and analysis.");
+    $("tradition").value=first.pronunciation_tradition||"mixed";await loadCalibrationSuite(first.passage.id);
+    if(passage().id!==first.passage.id)throw new Error("The saved passage is not available in this tester.");
+    $("speakerId").value=first.speaker_id||"adult-1";$("truthA").value=first.reading_label||"known_acceptable";
+    setAudio("A",sampleBlob(first),first.audio.filename);resultA=first.analysis;attemptA=resultA.attempt_id||`import-${Date.now()}`;renderA(resultA);$("compareCard").classList.remove("hidden");setStatus("statusA","Saved Reading A restored without rerunning the models.");
+    if(second?.analysis&&second?.audio?.base64){
+      const preferred=second.guided_scenario?.id||(second.reading_label==="known_nikud_errors"?passage().scenarios?.find(item=>item.targets?.length)?.id:"clean-repeat");renderScenarioOptions(preferred);
+      setAudio("B",sampleBlob(second),second.audio.filename);resultB=second.analysis;attemptB=resultB.attempt_id||`import-b-${Date.now()}`;
+      await compareAnalyzedReadings();setStatus("statusB","Saved recordings rechecked against the guided targets. Previous manual labels were ignored.");
+    }
+    updateButtons();
+  }catch(error){setStatus("statusA",`Saved test could not be imported: ${error.message}`,true);}
+}
+
+populatePassages();
+$("passage").addEventListener("change",()=>{clearAnalysis();renderPassage();});$("customText").addEventListener("input",()=>{clearAnalysis();renderPassage();});$("tradition").addEventListener("change",()=>{const selected=passage().id;clearAnalysis();loadCalibrationSuite(selected);});
+$("record").addEventListener("click",()=>startRecording("A"));$("stop").addEventListener("click",stopRecording);$("recordB").addEventListener("click",()=>startRecording("B"));$("stopB").addEventListener("click",stopRecording);
+$("fileA").addEventListener("change",event=>{const file=event.target.files?.[0];if(file)setAudio("A",file,file.name);});$("fileB").addEventListener("change",event=>{const file=event.target.files?.[0];if(file)setAudio("B",file,file.name);});
+$("importPackage").addEventListener("change",event=>{const file=event.target.files?.[0];if(file)importSavedPackage(file);});
+$("guidedScenario").addEventListener("change",()=>{clearComparison();renderGuidedPrompt();updateButtons();});
+$("analyzeA").addEventListener("click",analyzeA);$("analyzeB").addEventListener("click",analyzeB);$("downloadA").addEventListener("click",downloadA);$("downloadPair").addEventListener("click",downloadPair);
+function chooseLabel(event,labels){const button=event.target.closest("button[data-label]");if(!button)return;const group=button.closest(".slot-labels"),key=group.dataset.key;labels[key]={label:button.dataset.label,word:group.dataset.word,source:group.dataset.source};group.querySelectorAll("button").forEach(item=>item.classList.toggle("chosen",item===button));if(labels===slotLabelsB)renderEvaluation();}
+$("vowelEvidence").addEventListener("click",event=>chooseLabel(event,slotLabelsA));$("comparisonRows").addEventListener("click",event=>chooseLabel(event,slotLabelsB));
+$("markBCorrect").addEventListener("click",()=>{for(const item of comparisonReport?.comparisons||[])slotLabelsB[item.key]={label:"human_correct",word:item.word,source:item.source};renderComparison();});
+$("clearBLabels").addEventListener("click",()=>{clearLabels(slotLabelsB);renderComparison();});
+window.addEventListener("beforeunload",()=>stream?.getTracks().forEach(track=>track.stop()));
+loadCalibrationSuite();checkHealth();
+</script>
+</body>
+</html>

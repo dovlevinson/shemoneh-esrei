@@ -8,7 +8,7 @@ for (const filename of ["index.html", "pilot.html", "nikud.html"]) {
   }
   new Function(scripts[0]);
   if (filename === "nikud.html") {
-    for (const marker of ["/calibration-suite", "/compare-readings", "slotLabelsB", "recordB", "false_alarms"]) {
+    for (const marker of ["/calibration-suite", "/compare-readings", "slotLabelsB", "recordB", "false_alarms", "guidedScenario", "target_evaluation", "importPackage", "planned-change"]) {
       if (!html.includes(marker)) {
         throw new Error(`${filename}: missing required calibration feature ${marker}`);
       }
@@ -16,3 +16,5 @@ for (const filename of ["index.html", "pilot.html", "nikud.html"]) {
   }
   console.log(`${filename} inline JavaScript parses`);
 }
+
+await import("./check_nikud_guided.mjs");

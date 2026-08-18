@@ -59,13 +59,19 @@ The passage menu starts with three short, pointed master readings:
 3. Hebrew consonants and commonly confused sound contrasts.
 
 Together they exercise every vowel category currently supported by the
-pointed-Hebrew mapper. Record Reading A correctly, then record Reading B directly
-in the browser. First compare a second correct take to measure natural
-variation. Next compare a reading with deliberately changed vowels. Mark all
-Reading B vowels correct, change the planted mistakes to wrong, and inspect
-catches, false alarms, and misses.
+pointed-Hebrew mapper. Record Reading A correctly, then choose a guided Reading B
+test. First repeat every word correctly to measure natural variation. Next select
+the guided mistakes and read the highlighted substitutions shown on screen. The
+server already knows their exact word and vowel positions, so it reports catches,
+misses, unmeasured targets, misplaced detections, and false alarms without manual
+labels. Previously downloaded comparison packages can also be imported and
+re-evaluated without trusting their old labels.
 
-The lab compares only shared vowel slots and reports separate vowel-only means.
+The lab compares shared vowel slots and reports separate vowel-only means.
+Timestamped words remain measurable when Whisper changes their consonant
+spelling, but their windows are explicitly marked lower confidence. Vowels are
+aligned without assuming that their expected sound was actually spoken, and
+vowel competitors are restricted to other vowel sounds.
 Large reference-to-candidate drops are shown as research candidates, not grades.
 Sounded sheva is explicitly context-sensitive. One master reading does not
 replace clean references for each real bracha or validation on different

@@ -32,6 +32,7 @@
     button.primary{background:var(--blue);color:var(--blue-text);font-weight:750}button.danger{background:var(--red);color:#fff}
     button:disabled{opacity:.45;cursor:not-allowed}.button.small-button{padding:7px 10px;font-size:.82rem}
     .reading{direction:rtl;text-align:right;font:1.6rem/2 "Times New Roman","Noto Serif Hebrew",serif;padding:13px;border-radius:12px;background:color-mix(in srgb,var(--blue) 8%,var(--card))}
+    .reading .planned-change{padding:2px 5px;border-radius:7px;background:var(--red-bg);color:var(--red);font-weight:750}
     .status{padding:11px 13px;border-radius:11px;background:var(--amber-bg);color:var(--amber);font-weight:650}
     .status.ok{background:var(--green-bg);color:var(--green)}.status.bad{background:var(--red-bg);color:var(--red)}
     .warning{border-left:5px solid var(--amber);background:var(--amber-bg);color:var(--amber)}
@@ -58,7 +59,7 @@
 
   <section class="card warning">
     <b>This is a real nikud experiment, but it is not yet a student grade.</b>
-    <div class="small">Start with a master reading. Record a correct reference, record the same words again, then compare their vowel sounds. Labels are for building and checking the system, not for reviewing every future student.</div>
+    <div class="small">Start with a master reading. Record a correct reference, then select a guided test. The app shows exactly what to read and checks the intended vowel changes automatically.</div>
   </section>
 
   <section class="card">
@@ -89,9 +90,9 @@
       <ol class="small">
         <li>Read every word correctly for Reading A.</li>
         <li>First compare another correct reading to check ordinary voice variation.</li>
-        <li>Next record Reading B again with one or more deliberate vowel mistakes.</li>
-        <li>Mark all Reading B vowels correct, then mark only the deliberate mistakes wrong.</li>
-        <li>Check the number of catches, false alarms, and misses.</li>
+        <li>Choose the highlighted-mistakes test and read the displayed Reading B passage.</li>
+        <li>The exact changed vowels are identified automatically. Do not label individual rows.</li>
+        <li>Check the number of catches, false alarms, misses, and unmeasured targets.</li>
       </ol>
     </details>
   </section>
@@ -113,6 +114,9 @@
       <button id="stop" class="danger" disabled>Stop</button>
       <label class="button">Choose Reading A file
         <input id="fileA" type="file" accept="audio/*,.webm,.m4a,.mp3,.wav,.ogg,.mp4" style="display:none">
+      </label>
+      <label class="button">Import a saved test
+        <input id="importPackage" type="file" accept="application/json,.json" style="display:none">
       </label>
       <button id="analyzeA" class="primary" disabled>Analyze nikud</button>
     </div>
@@ -138,8 +142,11 @@
 
   <section id="compareCard" class="card hidden">
     <h2>4. Compare Reading B against the correct reference</h2>
-    <p class="muted">Read the exact same words again, either correctly to check normal variation or with deliberate vowel mistakes to test detection.</p>
+    <p class="muted">Choose a guided test, then read the passage displayed below. Highlighted words are the intentional substitutions.</p>
     <div class="grid">
+      <label>What should Reading B test?
+        <select id="guidedScenario"></select>
+      </label>
       <label>What you know about Reading B
         <select id="truthB">
           <option value="unknown">Not labeled yet</option>
@@ -149,6 +156,8 @@
         </select>
       </label>
     </div>
+    <div id="guidedInstructions" class="muted small" style="margin-top:12px"></div>
+    <div id="readingBPrompt" class="reading" lang="he" style="margin-top:9px"></div>
     <div class="row" style="margin-top:12px">
       <button id="recordB" class="primary">Record Reading B</button>
       <button id="stopB" class="danger" disabled>Stop Reading B</button>
@@ -163,15 +172,19 @@
     <div id="comparison" class="hidden" style="margin-top:16px">
       <div class="status">A strong change is a research signal, not a student pass or fail decision.</div>
       <div id="comparisonSummary" class="summary"></div>
-      <div class="row" style="margin-top:10px">
-        <button id="markBCorrect">Mark all Reading B vowels correct</button>
-        <button id="clearBLabels">Clear Reading B labels</button>
-      </div>
-      <div id="calibrationOutcome" class="muted small" style="margin-top:10px"></div>
+      <div id="calibrationOutcome" class="status" style="margin-top:10px"></div>
+      <div id="targetResults" style="overflow:auto;margin-top:10px"></div>
+      <details style="margin-top:14px">
+        <summary>Advanced: inspect all vowel positions or add optional manual labels</summary>
+        <div class="row" style="margin-top:10px">
+          <button id="markBCorrect">Mark all Reading B vowels correct</button>
+          <button id="clearBLabels">Clear Reading B labels</button>
+        </div>
       <div style="overflow:auto;margin-top:10px"><table>
         <thead><tr><th>Word</th><th>Nekudah</th><th>A vowel evidence</th><th>B vowel evidence</th><th>Change</th><th>Finding</th><th>Reading B label</th></tr></thead>
         <tbody id="comparisonRows"></tbody>
       </table></div>
+      </details>
       <div class="row" style="margin-top:12px"><button id="downloadPair" class="primary">Download comparison package</button></div>
     </div>
   </section>
@@ -199,6 +212,7 @@ function escapeHtml(value){return String(value??"").replace(/[&<>"']/g,c=>({"&":
 function passage(){return PASSAGES.find(item=>item.id===$("passage").value)||PASSAGES[0];}
 function currentText(){return passage().id==="custom"?$("customText").value.trim():passage().text;}
 function words(){return currentText().split(/\s+/).flatMap(token=>token.split("־")).filter(token=>/[א-ת]/.test(token));}
+function guidedScenario(){return(passage().scenarios||[]).find(item=>item.id===$("guidedScenario").value)||null;}
 function populatePassages(preferred="4"){$("passage").innerHTML=PASSAGES.map(item=>`<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}${item.english?` (${escapeHtml(item.english)})`:""}</option>`).join("");if(PASSAGES.some(item=>item.id===preferred))$("passage").value=preferred;renderPassage();}
 function renderPassage(){
   const selected=passage(),custom=selected.id==="custom",master=selected.id.startsWith("cal-");
@@ -208,7 +222,20 @@ function renderPassage(){
   $("calibrationPurpose").textContent=selected.purpose||"Use a known-correct reading of this exact passage as the reference.";
   $("recordingPlan").classList.toggle("hidden",!master);
   if(master&&$("truthA").value==="unknown")$("truthA").value="known_acceptable";
+  renderScenarioOptions();
   updateButtons();
+}
+function renderScenarioOptions(preferred){
+  const scenarios=passage().scenarios||[];
+  $("guidedScenario").innerHTML=scenarios.length?scenarios.map(item=>`<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`).join(""):'<option value="manual">No predefined test for this passage</option>';
+  if(preferred&&scenarios.some(item=>item.id===preferred))$("guidedScenario").value=preferred;
+  renderGuidedPrompt();
+}
+function renderGuidedPrompt(){
+  const scenario=guidedScenario(),targets=new Map((scenario?.targets||[]).map(item=>[item.word_index,item]));
+  $("readingBPrompt").innerHTML=words().map((word,index)=>{const target=targets.get(index);return target?`<span class="planned-change" title="${escapeHtml(target.source)}">${escapeHtml(target.spoken_word)}</span>`:escapeHtml(word);}).join(" ");
+  if(scenario){$("truthB").value=scenario.kind;$("guidedInstructions").textContent=targets.size?`Read the ${targets.size} highlighted words exactly as shown. Their changed vowel positions will be evaluated automatically; do not mark individual rows.`:"Read every word correctly again. Any strong vowel alert is a false alarm for this clean-repeat test.";}
+  else $("guidedInstructions").textContent="Read the selected passage. Optional manual labels are available under Advanced after comparison.";
 }
 function clearLabels(labels){for(const key of Object.keys(labels))delete labels[key];}
 function clearComparison(){resultB=null;comparisonReport=null;clearLabels(slotLabelsB);$("comparison").classList.add("hidden");}
@@ -217,7 +244,7 @@ async function loadCalibrationSuite(preferred){
   try{
     const response=await fetch(`/calibration-suite?pronunciation_profile=${encodeURIComponent($("tradition").value)}`,{cache:"no-store"});
     if(!response.ok)throw new Error(`HTTP ${response.status}`);
-    const suite=await response.json(),standard=PASSAGES.filter(item=>!item.id.startsWith("cal-"));
+    const suite=await response.json(),standard=PASSAGES.filter(item=>!item.id.startsWith("cal-")).map(item=>({...item,scenarios:suite.additional_passage_scenarios?.[item.id]||[]}));
     PASSAGES.splice(0,PASSAGES.length,...suite.readings,...standard);populatePassages(preferred||"cal-core");
   }catch(error){$("calibrationPurpose").textContent=`Master readings could not load: ${error.message}. Existing brachot remain available.`;}
 }
@@ -268,17 +295,26 @@ function formFor(blob,name,attempt){
   const form=new FormData();form.append("audio",blob,name);form.append("language","he");form.append("expected_words",JSON.stringify(words()));form.append("bracha",passage().id);form.append("attempt_id",attempt);form.append("pronunciation_profile",$("tradition").value);return form;
 }
 async function createJob(blob,name,attempt,statusId){
-  const response=await fetch("/analysis-jobs",{method:"POST",body:formFor(blob,name,attempt)});let body=null;try{body=await response.json()}catch(_error){}if(!response.ok)throw new Error(body?.detail||`Server error ${response.status}`);
+  const body=await requestJson("/analysis-jobs",{method:"POST",body:formFor(blob,name,attempt)});
   const started=Date.now();
   for(;;){
     await new Promise(resolve=>setTimeout(resolve,1500));
-    const poll=await fetch(`/analysis-jobs/${encodeURIComponent(body.job_id)}`,{cache:"no-store"});const job=await poll.json();
-    if(!poll.ok)throw new Error(job?.detail||`Status error ${poll.status}`);
+    const job=await requestJson(`/analysis-jobs/${encodeURIComponent(body.job_id)}`,{cache:"no-store"});
     if(job.status==="completed")return job.result;
     if(job.status==="failed")throw new Error(job.error||"Analysis failed");
     const seconds=Math.round((Date.now()-started)/1000);setStatus(statusId,`Analyzing speech and vowel evidence in the cloud (${seconds}s). Keep this page open.`);
     if(Date.now()-started>900000)throw new Error("Analysis did not finish within 15 minutes");
   }
+}
+async function requestJson(url,options={},attempt=0){
+  let response;
+  try{response=await fetch(url,{credentials:"same-origin",...options});}
+  catch(error){if(attempt<2){await new Promise(resolve=>setTimeout(resolve,500*(attempt+1)));return requestJson(url,options,attempt+1);}throw new Error(`Connection interrupted. Your selected recording is still on this page. ${error.message}`);}
+  if(response.status===401||response.status===403){if(attempt<2){await new Promise(resolve=>setTimeout(resolve,500*(attempt+1)));return requestJson(url,options,attempt+1);}throw new Error("GitHub preview authorization expired. Reopen this page from the Codespace Ports tab, then retry. Your recording remains on this page while it is open.");}
+  let body=null;try{body=await response.json();}catch(_error){}
+  if(!response.ok)throw new Error(body?.detail||`Server error ${response.status}`);
+  if(body===null)throw new Error("The server did not return a readable response. Your recording remains selected.");
+  return body;
 }
 
 async function analyzeA(){
@@ -291,12 +327,16 @@ async function analyzeB(){
   if(!blobB||!resultA)return;attemptB=crypto.randomUUID?crypto.randomUUID():`b-${Date.now()}`;$("progressB").classList.remove("hidden");$("analyzeB").disabled=true;setStatus("statusB","Uploading Reading B and starting comparison analysis.");
   try{
     resultB=await createJob(blobB,nameB,attemptB,"statusB");
-    const response=await fetch("/compare-readings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({reference:resultA,candidate:resultB})});
-    const report=await response.json();if(!response.ok)throw new Error(report.detail||`Comparison error ${response.status}`);
-    comparisonReport=report;renderComparison();setStatus("statusB","Reading B analysis and vowel comparison complete.");
+    await compareAnalyzedReadings();setStatus("statusB","Reading B analysis and vowel comparison complete.");
   }
   catch(error){setStatus("statusB",`Analysis failed: ${error.message}`,true);}
   finally{$("progressB").classList.add("hidden");updateButtons();}
+}
+async function compareAnalyzedReadings(){
+  const payload={reference:resultA,candidate:resultB},scenario=guidedScenario();
+  if(scenario)payload.scenario_id=scenario.id;
+  comparisonReport=await requestJson("/compare-readings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+  renderComparison();
 }
 
 function evidenceClass(margin){return margin>0?"favored":margin<0?"competing":"neutral";}
@@ -332,8 +372,22 @@ function evaluateLabels(){
   return {labeled_vowels:labeled.length,actual_wrong_vowels:wrong,actual_correct_vowels:correct,caught_wrong_vowels:caught,false_alarms:falseAlarms,missed_wrong_vowels:missed,validated:false};
 }
 function renderEvaluation(){
+  const guided=comparisonReport?.target_evaluation;
+  if(guided){
+    const weak=guided.weak_reference_targets?` ${guided.weak_reference_targets} target reference vowel${guided.weak_reference_targets===1?" is":"s are"} too weak for confident interpretation.`:"";
+    $("calibrationOutcome").className=guided.false_alarms||guided.missed||guided.unmeasured?"status bad":guided.possible||guided.weak_reference_targets?"status":"status ok";
+    $("calibrationOutcome").textContent=guided.planned_vowels?`Automatic guided check: ${guided.planned_vowels} planned, ${guided.detected} detected, ${guided.possible} possible, ${guided.missed} missed, ${guided.unmeasured} unmeasured, ${guided.false_alarms} false alarms, ${guided.mislocalized} on the wrong vowel.${weak}`:`Clean-repeat check: ${guided.false_alarms} strong false alarms across ${comparisonReport.summary?.shared_vowel_slots??0} compared vowels.`;
+    return;
+  }
   const result=evaluateLabels();
+  $("calibrationOutcome").className="status";
   $("calibrationOutcome").textContent=result.labeled_vowels?`Calibration check: ${result.actual_wrong_vowels} actual wrong, ${result.caught_wrong_vowels} caught, ${result.false_alarms} false alarms, ${result.missed_wrong_vowels} missed. This one comparison is not a validated classroom accuracy rate.`:"Mark Reading B vowels to check catches, false alarms, and misses.";
+}
+function targetOutcomeLabel(value){return({detected:"Detected",possible:"Possible change",missed:"Missed",unmeasured_reference:"Reference not measured",unmeasured_candidate:"Reading B not measured",not_comparable:"Could not compare"})[value]||value;}
+function renderTargets(guided){
+  if(!guided?.target_results?.length){$("targetResults").innerHTML="";return;}
+  const rows=guided.target_results.map(item=>`<tr><td class="heb">${escapeHtml(item.expected_word)}</td><td class="heb">${escapeHtml(item.spoken_word)}</td><td>${escapeHtml(item.source)}</td><td class="${item.outcome==="detected"?"favored":item.outcome==="possible"?"neutral":"competing"}">${escapeHtml(targetOutcomeLabel(item.outcome))}${item.reference_quality==="weak"?' <span class="pill">weak reference</span>':""}</td></tr>`).join("");
+  $("targetResults").innerHTML=`<table><thead><tr><th>Expected word</th><th>Read instead</th><th>Changed vowel</th><th>Result</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 function renderComparison(){
   const report=comparisonReport||{},summary=report.summary||{},rows=report.comparisons||[];
@@ -342,20 +396,40 @@ function renderComparison(){
     const chosen=slotLabelsB[item.key]?.label;
     return `<tr><td class="heb">${escapeHtml(item.word)}</td><td>${escapeHtml(item.source)}</td><td>${pct(item.reference.peak_expected_probability)}</td><td>${pct(item.candidate.peak_expected_probability)}</td><td class="${evidenceClass(item.margin_delta)}">${margin(item.margin_delta)}</td><td class="${findingClass(item.tier)}">${escapeHtml(findingLabel(item.tier))}</td><td><div class="slot-labels" data-key="${escapeHtml(item.key)}" data-word="${escapeHtml(item.word)}" data-source="${escapeHtml(item.source)}"><button data-label="human_correct" class="${chosen==="human_correct"?"chosen":""}">Correct</button><button data-label="human_wrong_vowel" class="${chosen==="human_wrong_vowel"?"chosen":""}">Wrong</button><button data-label="human_uncertain" class="${chosen==="human_uncertain"?"chosen":""}">Unsure</button></div></td></tr>`;
   }).join("")||`<tr><td colspan="7">No shared vowel slots could be compared.</td></tr>`;
+  renderTargets(report.target_evaluation);
   renderEvaluation();
   $("comparison").classList.remove("hidden");$("comparison").scrollIntoView({behavior:"smooth",block:"start"});
 }
 
 function blobBase64(blob){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(",")[1]);reader.onerror=()=>reject(reader.error);reader.readAsDataURL(blob);});}
 function downloadBlob(blob,filename){const url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-async function sample(which){const isA=which==="A",blob=isA?blobA:blobB;return {schema_version:"kriah-nikud-lab-v1",created_at:new Date().toISOString(),speaker_id:$("speakerId").value.trim(),pronunciation_tradition:$("tradition").value,passage:{id:passage().id,name:passage().name,text:currentText(),expected_words:words()},reading_label:isA?$("truthA").value:$("truthB").value,slot_labels:{...(isA?slotLabelsA:slotLabelsB)},analysis:isA?resultA:resultB,audio:{filename:isA?nameA:nameB,mime_type:blob.type||"application/octet-stream",size_bytes:blob.size,base64:await blobBase64(blob)}};}
+async function sample(which){const isA=which==="A",blob=isA?blobA:blobB;return {schema_version:"kriah-nikud-lab-v2",created_at:new Date().toISOString(),speaker_id:$("speakerId").value.trim(),pronunciation_tradition:$("tradition").value,passage:{id:passage().id,name:passage().name,text:currentText(),expected_words:words()},reading_label:isA?$("truthA").value:$("truthB").value,guided_scenario:isA?null:guidedScenario(),slot_labels:{...(isA?slotLabelsA:slotLabelsB)},analysis:isA?resultA:resultB,audio:{filename:isA?nameA:nameB,mime_type:blob.type||"application/octet-stream",size_bytes:blob.size,base64:await blobBase64(blob)}};}
 async function downloadA(){if(!resultA||!blobA)return;downloadBlob(new Blob([JSON.stringify(await sample("A"),null,2)],{type:"application/json"}),`kriah-nikud-${attemptA}.json`);}
-async function downloadPair(){if(!resultA||!resultB||!blobA||!blobB)return;const payload={schema_version:"kriah-nikud-pair-v2",created_at:new Date().toISOString(),reading_a:await sample("A"),reading_b:await sample("B"),comparison:comparisonReport,label_evaluation:evaluateLabels()};downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}),`kriah-nikud-pair-${attemptA}.json`);}
+async function downloadPair(){if(!resultA||!resultB||!blobA||!blobB)return;const payload={schema_version:"kriah-nikud-pair-v3",created_at:new Date().toISOString(),reading_a:await sample("A"),reading_b:await sample("B"),comparison:comparisonReport,guided_evaluation:comparisonReport?.target_evaluation||null,label_evaluation:evaluateLabels()};downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}),`kriah-nikud-pair-${attemptA}.json`);}
+function sampleBlob(sample){const bytes=Uint8Array.from(atob(sample.audio.base64),char=>char.charCodeAt(0));return new Blob([bytes],{type:sample.audio.mime_type||"audio/webm"});}
+async function importSavedPackage(file){
+  try{
+    const saved=JSON.parse(await file.text()),first=saved.reading_a||saved,second=saved.reading_b||null;
+    if(!first?.analysis||!first?.audio?.base64||!first?.passage?.id)throw new Error("This file does not contain a saved Kriah recording and analysis.");
+    $("tradition").value=first.pronunciation_tradition||"mixed";await loadCalibrationSuite(first.passage.id);
+    if(passage().id!==first.passage.id)throw new Error("The saved passage is not available in this tester.");
+    $("speakerId").value=first.speaker_id||"adult-1";$("truthA").value=first.reading_label||"known_acceptable";
+    setAudio("A",sampleBlob(first),first.audio.filename);resultA=first.analysis;attemptA=resultA.attempt_id||`import-${Date.now()}`;renderA(resultA);$("compareCard").classList.remove("hidden");setStatus("statusA","Saved Reading A restored without rerunning the models.");
+    if(second?.analysis&&second?.audio?.base64){
+      const preferred=second.guided_scenario?.id||(second.reading_label==="known_nikud_errors"?passage().scenarios?.find(item=>item.targets?.length)?.id:"clean-repeat");renderScenarioOptions(preferred);
+      setAudio("B",sampleBlob(second),second.audio.filename);resultB=second.analysis;attemptB=resultB.attempt_id||`import-b-${Date.now()}`;
+      await compareAnalyzedReadings();setStatus("statusB","Saved recordings rechecked against the guided targets. Previous manual labels were ignored.");
+    }
+    updateButtons();
+  }catch(error){setStatus("statusA",`Saved test could not be imported: ${error.message}`,true);}
+}
 
 populatePassages();
 $("passage").addEventListener("change",()=>{clearAnalysis();renderPassage();});$("customText").addEventListener("input",()=>{clearAnalysis();renderPassage();});$("tradition").addEventListener("change",()=>{const selected=passage().id;clearAnalysis();loadCalibrationSuite(selected);});
 $("record").addEventListener("click",()=>startRecording("A"));$("stop").addEventListener("click",stopRecording);$("recordB").addEventListener("click",()=>startRecording("B"));$("stopB").addEventListener("click",stopRecording);
 $("fileA").addEventListener("change",event=>{const file=event.target.files?.[0];if(file)setAudio("A",file,file.name);});$("fileB").addEventListener("change",event=>{const file=event.target.files?.[0];if(file)setAudio("B",file,file.name);});
+$("importPackage").addEventListener("change",event=>{const file=event.target.files?.[0];if(file)importSavedPackage(file);});
+$("guidedScenario").addEventListener("change",()=>{clearComparison();renderGuidedPrompt();updateButtons();});
 $("analyzeA").addEventListener("click",analyzeA);$("analyzeB").addEventListener("click",analyzeB);$("downloadA").addEventListener("click",downloadA);$("downloadPair").addEventListener("click",downloadPair);
 function chooseLabel(event,labels){const button=event.target.closest("button[data-label]");if(!button)return;const group=button.closest(".slot-labels"),key=group.dataset.key;labels[key]={label:button.dataset.label,word:group.dataset.word,source:group.dataset.source};group.querySelectorAll("button").forEach(item=>item.classList.toggle("chosen",item===button));if(labels===slotLabelsB)renderEvaluation();}
 $("vowelEvidence").addEventListener("click",event=>chooseLabel(event,slotLabelsA));$("comparisonRows").addEventListener("click",event=>chooseLabel(event,slotLabelsB));

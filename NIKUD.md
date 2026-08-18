@@ -17,8 +17,10 @@ transcript, so word matching cannot distinguish readings such as `בָּרוּך
    explicit accepted alternatives for the configured pronunciation profile.
 2. The word model locates omissions, additions, substitutions, and approximate
    time windows.
-3. A separate multilingual CTC model aligns the expected consonant and vowel
-   slots inside those windows and reports posterior evidence.
+3. A separate multilingual CTC model anchors consonants but aligns vowel slots
+   against any vowel sound, allowing an incorrect vowel to stay in its proper
+   position rather than forcing the expected vowel into a neighboring syllable.
+   Vowel evidence is compared against competing vowel sounds only.
 4. The measurements are returned as uncalibrated shadow evidence with
    `affects_routing: false`.
 
@@ -42,11 +44,14 @@ The recommended sequence is:
 
 1. Record a correct reference take for one master section.
 2. Record a second correct take and check for false alarms from natural variation.
-3. Record another take with one or more known, deliberate vowel changes.
-4. Label the Reading B vowel positions and inspect catches, misses, and false alarms.
+3. Select a guided mistake scenario and read the highlighted substitute words.
+4. Inspect automatic per-target catches, misses, unmeasured words, misplaced
+   vowel alerts, and false alarms. No manual vowel labels are needed.
 5. Repeat across other speakers, traditions, recording conditions, and actual brachot.
 
-The comparison endpoint uses only matched vowel slots, not consonant evidence.
+The comparison endpoint uses only aligned vowel slots, not consonant evidence.
+If Whisper calls a timestamped word incorrect, its audio window is still checked
+against the expected pronunciation and explicitly marked lower confidence.
 Its initial strong-candidate research rule requires a competitor-margin drop of
 at least five points, a negative candidate margin, and expected-vowel evidence
 at or below 20%. Sounded sheva is separated as context-sensitive. These numbers

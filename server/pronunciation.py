@@ -18,6 +18,7 @@ from .hebrew_g2p import collapse_model_phone, pronunciation_variants
 
 DEFAULT_MODEL = "facebook/wav2vec2-lv-60-espeak-cv-ft"
 DEFAULT_MODEL_REVISION = "c43348bbaa5a77692c8e7bf3409d683474fdf2a4"
+VOWEL_PHONES = frozenset({"a", "e", "i", "o", "u"})
 
 
 class PronunciationUnavailable(RuntimeError):
@@ -241,8 +242,16 @@ class CtcPronunciationAssessor:
         resources = self._load()
         slots = list(variant.slots)
         slot_scores = np.empty((logpost.shape[0], len(slots)), dtype=np.float32)
+        alignment_scores = np.empty_like(slot_scores)
         allowed_ids: list[list[int]] = []
         repeat_keys: list[tuple[str, ...]] = []
+        vowel_ids = sorted(
+            {
+                token_id
+                for phone in VOWEL_PHONES
+                for token_id in resources["buckets"].get(phone, [])
+            }
+        )
         for index, slot in enumerate(slots):
             ids = sorted(
                 {
@@ -258,16 +267,23 @@ class CtcPronunciationAssessor:
             allowed_ids.append(ids)
             repeat_keys.append(tuple(sorted(slot.allowed)))
             slot_scores[:, index] = _logsumexp_columns(logpost, ids)
+            alignment_scores[:, index] = (
+                _logsumexp_columns(logpost, vowel_ids)
+                if slot.kind == "vowel" and vowel_ids
+                else slot_scores[:, index]
+            )
 
         blank_scores = logpost[:, resources["blank_id"]]
-        assignments = _ctc_viterbi(slot_scores, blank_scores, repeat_keys)
+        assignments = _ctc_viterbi(alignment_scores, blank_scores, repeat_keys)
         phone_ids = set(resources["phone_ids"])
 
         evidence = []
         for index, (slot, assigned_frames) in enumerate(zip(slots, assignments)):
-            peak = max(assigned_frames, key=lambda frame: float(slot_scores[frame, index]))
+            peak_scores = alignment_scores if slot.kind == "vowel" else slot_scores
+            peak = max(assigned_frames, key=lambda frame: float(peak_scores[frame, index]))
             expected_log = float(slot_scores[peak, index])
-            competitor_ids = sorted(phone_ids.difference(allowed_ids[index]))
+            competitor_pool = set(vowel_ids) if slot.kind == "vowel" else phone_ids
+            competitor_ids = sorted(competitor_pool.difference(allowed_ids[index]))
             strongest_competing_phone = None
             if competitor_ids:
                 competitor_values = logpost[peak, competitor_ids]
@@ -336,7 +352,7 @@ class CtcPronunciationAssessor:
                 "word_alignment": row.get("operation"),
             }
             heard_index = row.get("heard_index")
-            if row.get("operation") not in {"ok", "almost"} or heard_index is None:
+            if heard_index is None or row.get("operation") not in {"ok", "almost", "wrong"}:
                 item["status"] = "not_measured_word_mismatch"
                 results.append(item)
                 continue
@@ -385,6 +401,11 @@ class CtcPronunciationAssessor:
                 {
                     "status": "measured_uncalibrated",
                     "word_window": {"start": round(start, 3), "end": round(end, 3)},
+                    "word_window_reliability": (
+                        "mismatched_transcript"
+                        if row.get("operation") == "wrong"
+                        else "matched_transcript"
+                    ),
                     **chosen,
                 }
             )
@@ -399,7 +420,7 @@ class CtcPronunciationAssessor:
             "status": "evidence_available" if measured else "no_measurable_words",
             "affects_routing": False,
             "calibration_state": "uncalibrated",
-            "method": "word-windowed-ctc-viterbi-posterior",
+            "method": "word-windowed-vowel-neutral-ctc-viterbi-posterior",
             "model": self.model_id,
             "model_revision": self.revision,
             "pronunciation_profile": requested_profile,
@@ -407,6 +428,10 @@ class CtcPronunciationAssessor:
             "inference_seconds": round(time.monotonic() - started, 3),
             "summary": {
                 "words_measured": len(measured),
+                "mismatched_words_measured": sum(
+                    item.get("word_window_reliability") == "mismatched_transcript"
+                    for item in measured
+                ),
                 "expected_words": len(expected_words),
                 "mean_peak_expected_probability": (
                     round(float(np.mean(all_probabilities)), 6)
@@ -418,6 +443,7 @@ class CtcPronunciationAssessor:
             "limitations": [
                 "uncalibrated research evidence only",
                 "uses ASR word windows rather than validated Hebrew forced alignment",
+                "mismatched transcript windows are retained but explicitly lower confidence",
                 "does not determine pass, retry, or teacher review",
             ],
         }

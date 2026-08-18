@@ -55,6 +55,7 @@ class VerifyRequest(BaseModel):
 class CompareReadingsRequest(BaseModel):
     reference: dict
     candidate: dict
+    scenario_id: str | None = None
 
 
 class SlidingWindowLimiter:
@@ -248,7 +249,11 @@ def create_app(transcriber=None, pronunciation_assessor=None) -> FastAPI:
     @app.post("/compare-readings")
     def compare_readings(payload: CompareReadingsRequest):
         try:
-            return compare_vowel_evidence(payload.reference, payload.candidate)
+            return compare_vowel_evidence(
+                payload.reference,
+                payload.candidate,
+                scenario_id=payload.scenario_id,
+            )
         except (KeyError, TypeError, ValueError) as exc:
             raise HTTPException(
                 status_code=422,

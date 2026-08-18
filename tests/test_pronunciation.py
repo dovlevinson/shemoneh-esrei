@@ -2,7 +2,13 @@ import unittest
 
 import numpy as np
 
-from server.pronunciation import PronunciationUnavailable, _ctc_viterbi
+from server.hebrew_g2p import pronunciation_variants
+from server.pronunciation import (
+    CtcPronunciationAssessor,
+    PronunciationUnavailable,
+    _ctc_viterbi,
+)
+from server.transcriber import TranscriptWord
 
 
 class CtcAlignmentTests(unittest.TestCase):
@@ -29,6 +35,77 @@ class CtcAlignmentTests(unittest.TestCase):
                 np.array([-0.1]),
                 [("b",), ("a",)],
             )
+
+
+class VowelEvidenceTests(unittest.TestCase):
+    def setUp(self):
+        self.assessor = CtcPronunciationAssessor()
+        self.posterior = np.full((7, 5), -8.0, dtype=np.float32)
+        self.posterior[:, 0] = -0.2
+        self.posterior[1, 1] = -0.01  # /b/
+        self.posterior[3, 3] = -0.01  # spoken /e/, although /a/ is expected
+        self.posterior[5, 4] = -0.01  # /t/
+        self.assessor._resources = {
+            "blank_id": 0,
+            "buckets": {"b": [1], "a": [2], "e": [3], "t": [4]},
+            "phone_ids": [1, 2, 3, 4],
+            "phone_by_id": {1: "b", 2: "a", 3: "e", 4: "t"},
+        }
+
+    def test_wrong_vowel_stays_in_its_own_acoustic_position(self):
+        variant = pronunciation_variants("בַּתּ")[0]
+        result = self.assessor._variant_evidence(self.posterior, 0, 0.1, variant)
+        vowel = next(slot for slot in result["slots"] if slot["kind"] == "vowel")
+        self.assertEqual(vowel["strongest_competing_phone"], "e")
+        self.assertLess(vowel["peak_competitor_margin"], 0)
+        self.assertEqual(vowel["start"], 0.3)
+
+    def test_vowel_competitor_never_reports_a_consonant(self):
+        self.posterior[3, 1] = -0.005
+        variant = pronunciation_variants("בַּתּ")[0]
+        result = self.assessor._variant_evidence(self.posterior, 0, 0.1, variant)
+        vowel = next(slot for slot in result["slots"] if slot["kind"] == "vowel")
+        self.assertEqual(vowel["strongest_competing_phone"], "e")
+
+    def test_timestamped_mismatched_word_is_still_measured(self):
+        self.assessor._posteriors = lambda _path: (self.posterior, 0.7)
+        result = self.assessor.assess(
+            path="unused.webm",
+            expected_words=["בַּתּ"],
+            alignment_rows=[
+                {
+                    "expected_index": 0,
+                    "heard_index": 0,
+                    "heard": "בית",
+                    "operation": "wrong",
+                }
+            ],
+            transcript_words=[TranscriptWord("בית", 0.0, 0.7, 0.9)],
+            transcript_duration=0.7,
+        )
+        self.assertEqual(result["words"][0]["status"], "measured_uncalibrated")
+        self.assertEqual(
+            result["words"][0]["word_window_reliability"], "mismatched_transcript"
+        )
+        self.assertEqual(result["summary"]["mismatched_words_measured"], 1)
+
+    def test_missing_word_without_audio_window_is_not_invented(self):
+        self.assessor._posteriors = lambda _path: (self.posterior, 0.7)
+        result = self.assessor.assess(
+            path="unused.webm",
+            expected_words=["בַּתּ"],
+            alignment_rows=[
+                {
+                    "expected_index": 0,
+                    "heard_index": None,
+                    "heard": None,
+                    "operation": "missing",
+                }
+            ],
+            transcript_words=[],
+            transcript_duration=0.7,
+        )
+        self.assertEqual(result["words"][0]["status"], "not_measured_word_mismatch")
 
 
 if __name__ == "__main__":

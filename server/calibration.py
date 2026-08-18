@@ -25,6 +25,14 @@ class CalibrationReading:
         return self.text.split()
 
 
+@dataclass(frozen=True)
+class PlannedVowelChange:
+    word_index: int
+    spoken_word: str
+    source: str
+    occurrence: int = 0
+
+
 CALIBRATION_READINGS = (
     CalibrationReading(
         identifier="cal-core",
@@ -70,6 +78,37 @@ CALIBRATION_READINGS = (
     ),
 )
 
+ATAH_CHONEN_TEXT = (
+    "אַתָּה חוֹנֵן לְאָדָם דַּֽעַת וּמְלַמֵּד לֶאֱנוֹשׁ בִּינָה: "
+    "חָנֵּֽנוּ מֵאִתְּ֒ךָ דֵּעָה בִּינָה וְהַשְׂכֵּל: "
+    "בָּרוּךְ אַתָּה יְהֹוָה חוֹנֵן הַדָּֽעַת:"
+)
+
+GUIDED_CHANGES = {
+    "cal-core": (
+        PlannedVowelChange(2, "שֶׁבָּת", "פתח"),
+        PlannedVowelChange(6, "מַלֶךְ", "סגול"),
+        PlannedVowelChange(10, "דִּעָה", "צירי"),
+        PlannedVowelChange(14, "תַּלְמֵיד", "חיריק"),
+        PlannedVowelChange(17, "טוּב", "חולם מלא"),
+        PlannedVowelChange(18, "בָּרוֹךְ", "שורוק"),
+        PlannedVowelChange(22, "סַכָּה", "קובוץ"),
+    ),
+    "cal-special": (
+        PlannedVowelChange(0, "אֲמֶת", "חטף סגול"),
+        PlannedVowelChange(3, "אֱנַחְנוּ", "חטף פתח"),
+        PlannedVowelChange(6, "חֲדָשִׁים", "חטף קמץ"),
+        PlannedVowelChange(9, "כַּל", "קמץ קטן"),
+        PlannedVowelChange(10, "חַכְמָה", "קמץ קטן"),
+    ),
+    "4": (
+        PlannedVowelChange(4, "וּמְלַמִּד", "צירי"),
+        PlannedVowelChange(9, "דִּעָה", "צירי"),
+        PlannedVowelChange(11, "וְהַשְׂכִּל:", "צירי"),
+        PlannedVowelChange(12, "בָּרוֹךְ", "שורוק"),
+    ),
+}
+
 REQUIRED_VOWEL_SOURCES = frozenset(
     {
         "פתח",
@@ -93,6 +132,67 @@ STRONG_MARGIN_DROP = -5.0
 POSSIBLE_MARGIN_DROP = -3.0
 MAX_STRONG_EXPECTED_PROBABILITY = 0.20
 CONTEXT_SENSITIVE_VOWELS = frozenset({"שווא נע"})
+WEAK_REFERENCE_PROBABILITY = 0.12
+
+
+def _scenario_targets(words: list[str], changes: tuple, profile: str) -> list[dict]:
+    targets = []
+    for change in changes:
+        expected_word = words[change.word_index]
+        matching_slots = [
+            (index, slot)
+            for index, slot in enumerate(
+                pronunciation_variants(expected_word, profile=profile)[0].slots
+            )
+            if slot.kind == "vowel" and slot.source == change.source
+        ]
+        if change.occurrence >= len(matching_slots):
+            raise ValueError(
+                f"guided target {change.source} is missing from {expected_word}"
+            )
+        slot_index, slot = matching_slots[change.occurrence]
+        targets.append(
+            {
+                "key": f"{change.word_index}:{slot_index}",
+                "word_index": change.word_index,
+                "slot_index": slot_index,
+                "expected_word": expected_word,
+                "spoken_word": change.spoken_word,
+                "source": change.source,
+                "allowed": sorted(slot.allowed),
+            }
+        )
+    return targets
+
+
+def guided_scenarios(passage_id: str, words: list[str], profile: str) -> list[dict]:
+    scenarios = [
+        {
+            "id": "clean-repeat",
+            "name": "Read every word correctly again",
+            "kind": "known_acceptable",
+            "prompt_text": " ".join(words),
+            "targets": [],
+        }
+    ]
+    changes = GUIDED_CHANGES.get(passage_id)
+    if not changes:
+        return scenarios
+
+    targets = _scenario_targets(words, changes, profile)
+    prompt_words = list(words)
+    for target in targets:
+        prompt_words[target["word_index"]] = target["spoken_word"]
+    scenarios.append(
+        {
+            "id": f"{passage_id}-guided-mistakes",
+            "name": f"Read the {len(targets)} highlighted vowel changes",
+            "kind": "known_nikud_errors",
+            "prompt_text": " ".join(prompt_words),
+            "targets": targets,
+        }
+    )
+    return scenarios
 
 
 def _reading_coverage(reading: CalibrationReading, profile: str) -> dict:
@@ -135,12 +235,13 @@ def calibration_suite(profile: str = "mixed") -> dict:
                 "words": reading.words,
                 "word_count": len(reading.words),
                 "coverage": coverage,
+                "scenarios": guided_scenarios(reading.identifier, reading.words, profile),
             }
         )
 
     missing_sources = sorted(REQUIRED_VOWEL_SOURCES.difference(combined_vowels))
     return {
-        "version": 1,
+        "version": 2,
         "pronunciation_profile": profile,
         "readings": readings,
         "coverage": {
@@ -152,10 +253,13 @@ def calibration_suite(profile: str = "mixed") -> dict:
         },
         "recording_plan": [
             "Record each section correctly twice to measure natural variation.",
-            "Record selected deliberate vowel changes one at a time.",
-            "Mark the exact changed vowel in the second reading.",
+            "Choose the guided mistakes and read the highlighted substitutions.",
+            "The exact target vowels are scored automatically without manual labels.",
             "Repeat with other adult and child speakers before choosing thresholds.",
         ],
+        "additional_passage_scenarios": {
+            "4": guided_scenarios("4", ATAH_CHONEN_TEXT.split(), profile)
+        },
         "limitations": [
             "A master suite checks sound coverage but cannot replace references for actual brachot.",
             "Silent sheva has no expected audible vowel slot and cannot be directly scored as a vowel.",
@@ -217,7 +321,124 @@ def _candidate_tier(reference: dict, candidate: dict) -> tuple[str, float]:
     return "stable", delta
 
 
-def compare_vowel_evidence(reference_result: dict, candidate_result: dict) -> dict:
+def _target_evaluation(
+    *,
+    reference_result: dict,
+    candidate_result: dict,
+    comparisons: list[dict],
+    scenario_id: str,
+    profile: str,
+) -> dict:
+    passage_id = reference_result.get("bracha")
+    if passage_id == "4":
+        expected_words = ATAH_CHONEN_TEXT.split()
+    else:
+        reading = next(
+            (item for item in CALIBRATION_READINGS if item.identifier == passage_id),
+            None,
+        )
+        if reading is None:
+            raise ValueError("guided scenarios are unavailable for this passage")
+        expected_words = reading.words
+
+    scenario = next(
+        (
+            item
+            for item in guided_scenarios(passage_id, expected_words, profile)
+            if item["id"] == scenario_id
+        ),
+        None,
+    )
+    if scenario is None:
+        raise ValueError("guided scenario does not match this passage")
+
+    comparisons_by_key = {item["key"]: item for item in comparisons}
+    reference_words = {
+        word.get("expected_index"): word
+        for word in reference_result["pronunciation"].get("words", [])
+    }
+    candidate_words = {
+        word.get("expected_index"): word
+        for word in candidate_result["pronunciation"].get("words", [])
+    }
+    targeted_keys = {target["key"] for target in scenario["targets"]}
+    target_words = {target["word_index"] for target in scenario["targets"]}
+    target_results = []
+    for target in scenario["targets"]:
+        comparison = comparisons_by_key.get(target["key"])
+        reference_word = reference_words.get(target["word_index"], {})
+        candidate_word = candidate_words.get(target["word_index"], {})
+        if reference_word.get("status") != "measured_uncalibrated":
+            outcome = "unmeasured_reference"
+        elif candidate_word.get("status") != "measured_uncalibrated":
+            outcome = "unmeasured_candidate"
+        elif comparison is None:
+            outcome = "not_comparable"
+        elif comparison["tier"] == "strong_candidate":
+            outcome = "detected"
+        elif comparison["tier"] == "possible_candidate":
+            outcome = "possible"
+        else:
+            outcome = "missed"
+
+        reference_quality = None
+        if comparison is not None:
+            probability = float(comparison["reference"]["peak_expected_probability"])
+            reference_quality = (
+                "weak" if probability < WEAK_REFERENCE_PROBABILITY else "usable"
+            )
+        target_results.append(
+            {
+                **target,
+                "outcome": outcome,
+                "reference_quality": reference_quality,
+                "reference_word_alignment": reference_word.get("word_alignment"),
+                "candidate_word_alignment": candidate_word.get("word_alignment"),
+                "margin_delta": comparison.get("margin_delta") if comparison else None,
+                "strongest_competing_phone": (
+                    comparison["candidate"].get("strongest_competing_phone")
+                    if comparison
+                    else None
+                ),
+            }
+        )
+
+    false_alarms = [
+        item
+        for item in comparisons
+        if item["tier"] == "strong_candidate" and item["key"] not in targeted_keys
+    ]
+    mislocalized = [item for item in false_alarms if item["word_index"] in target_words]
+    outcomes = Counter(item["outcome"] for item in target_results)
+    return {
+        "scenario_id": scenario["id"],
+        "scenario_name": scenario["name"],
+        "truth_source": "predefined_reading_script",
+        "manual_labels_used": False,
+        "planned_vowels": len(target_results),
+        "detected": outcomes["detected"],
+        "possible": outcomes["possible"],
+        "missed": outcomes["missed"],
+        "unmeasured": (
+            outcomes["unmeasured_reference"]
+            + outcomes["unmeasured_candidate"]
+            + outcomes["not_comparable"]
+        ),
+        "false_alarms": len(false_alarms),
+        "mislocalized": len(mislocalized),
+        "weak_reference_targets": sum(
+            item["reference_quality"] == "weak" for item in target_results
+        ),
+        "target_results": target_results,
+        "validated": False,
+    }
+
+
+def compare_vowel_evidence(
+    reference_result: dict,
+    candidate_result: dict,
+    scenario_id: str | None = None,
+) -> dict:
     reference_profile = reference_result.get("requested_pronunciation_profile", "mixed")
     candidate_profile = candidate_result.get("requested_pronunciation_profile", "mixed")
     if reference_profile != candidate_profile:
@@ -257,13 +478,15 @@ def compare_vowel_evidence(reference_result: dict, candidate_result: dict) -> di
         float(item["candidate"]["peak_expected_probability"]) for item in comparisons
     ]
     tiers = Counter(item["tier"] for item in comparisons)
-    return {
-        "version": 1,
+    report = {
+        "version": 2,
         "authoritative": False,
         "calibration_state": "uncalibrated",
         "pronunciation_profile": reference_profile,
         "summary": {
             "shared_vowel_slots": len(comparisons),
+            "reference_only_vowel_slots": len(reference_slots.keys() - candidate_slots.keys()),
+            "candidate_only_vowel_slots": len(candidate_slots.keys() - reference_slots.keys()),
             "reference_vowel_mean": (
                 round(mean(reference_probabilities), 6) if reference_probabilities else None
             ),
@@ -288,3 +511,12 @@ def compare_vowel_evidence(reference_result: dict, candidate_result: dict) -> di
             "Teacher-labeled child readings are required before any automatic grade.",
         ],
     }
+    if scenario_id is not None:
+        report["target_evaluation"] = _target_evaluation(
+            reference_result=reference_result,
+            candidate_result=candidate_result,
+            comparisons=comparisons,
+            scenario_id=scenario_id,
+            profile=reference_profile,
+        )
+    return report

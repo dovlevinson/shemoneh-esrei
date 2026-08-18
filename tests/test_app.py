@@ -79,6 +79,8 @@ class AppTests(unittest.TestCase):
         self.assertEqual(body["pronunciation_profile"], "sephardi")
         self.assertEqual(len(body["readings"]), 3)
         self.assertTrue(body["coverage"]["all_required_vowel_sources_covered"])
+        self.assertEqual(len(body["readings"][0]["scenarios"][1]["targets"]), 7)
+        self.assertIn("4", body["additional_passage_scenarios"])
 
     def test_calibration_suite_rejects_unknown_profile(self):
         client = TestClient(create_app(FakeTranscriber()))
@@ -129,6 +131,24 @@ class AppTests(unittest.TestCase):
         body = response.json()
         self.assertFalse(body["authoritative"])
         self.assertEqual(body["summary"]["strong_candidates"], 1)
+
+    def test_comparison_rejects_scenario_for_the_wrong_passage(self):
+        evidence = {
+            "bracha": "cal-core",
+            "requested_pronunciation_profile": "mixed",
+            "pronunciation": {"status": "evidence_available", "words": []},
+        }
+        client = TestClient(create_app(FakeTranscriber()))
+        response = client.post(
+            "/compare-readings",
+            json={
+                "reference": evidence,
+                "candidate": evidence,
+                "scenario_id": "cal-special-guided-mistakes",
+            },
+        )
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("guided scenario", response.json()["detail"])
 
     def test_exact_recorded_reading(self):
         fake = FakeTranscriber()

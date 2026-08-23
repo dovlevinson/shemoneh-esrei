@@ -2,7 +2,9 @@ import copy
 import unittest
 
 from server.calibration import (
+    BIRKAT_HASHANIM_TEXT,
     CALIBRATION_READINGS,
+    KIBBUTZ_GALUYOT_TEXT,
     REQUIRED_VOWEL_SOURCES,
     calibration_suite,
     compare_vowel_evidence,
@@ -76,6 +78,28 @@ def complete_reading(passage_id="cal-core", profile="mixed"):
 
 
 class CalibrationSuiteTests(unittest.TestCase):
+    def test_rapid_study_pair_has_expected_practical_coverage(self):
+        text = f"{BIRKAT_HASHANIM_TEXT} {KIBBUTZ_GALUYOT_TEXT}"
+        words = [word for token in text.split() for word in token.split("־")]
+        vowel_sources = set()
+        vowel_sounds = set()
+        consonant_sounds = set()
+        vowel_slots = 0
+        for word in words:
+            for slot in pronunciation_variants(word, profile="mixed")[0].slots:
+                if slot.kind == "vowel":
+                    vowel_slots += 1
+                    vowel_sources.add(slot.source)
+                    vowel_sounds.update(slot.allowed)
+                elif slot.kind == "consonant":
+                    consonant_sounds.update(slot.allowed)
+        self.assertEqual(len(words), 48)
+        self.assertEqual(vowel_slots, 129)
+        self.assertEqual(len(vowel_sources), 12)
+        self.assertEqual(vowel_sounds, {"a", "e", "i", "o", "u"})
+        self.assertEqual(len(consonant_sounds), 19)
+        self.assertNotIn("חטף קמץ", vowel_sources)
+
     def test_master_suite_covers_every_supported_written_vowel_type(self):
         suite = calibration_suite()
         self.assertEqual(len(suite["readings"]), 3)
@@ -152,6 +176,52 @@ class CalibrationSuiteTests(unittest.TestCase):
         self.assertIn("קָדוּשׁ", scenarios[1]["prompt_text"])
         self.assertIn("סִּלָה.", scenarios[1]["prompt_text"])
         self.assertIn("הַקָּדוֹשׁ:", scenarios[1]["prompt_text"])
+
+    def test_birkat_hashanim_targets_four_distinct_vowel_sources(self):
+        scenario = calibration_suite("mixed")["additional_passage_scenarios"]["9"][1]
+        self.assertEqual(
+            [item["key"] for item in scenario["targets"]],
+            ["3:0", "6:3", "9:1", "16:2"],
+        )
+        self.assertEqual(
+            [item["source"] for item in scenario["targets"]],
+            ["חטף סגול", "חולם", "חיריק", "חטף פתח"],
+        )
+        self.assertIn("אֲלֹהֵֽינוּ", scenario["prompt_text"])
+        self.assertIn("הָאֱדָמָה", scenario["prompt_text"])
+
+    def test_kibbutz_galuyot_targets_four_distinct_vowel_sources(self):
+        scenario = calibration_suite("ashkenazi")["additional_passage_scenarios"]["10"][1]
+        self.assertEqual(
+            [item["key"] for item in scenario["targets"]],
+            ["1:3", "3:3", "7:3", "13:3"],
+        )
+        self.assertEqual(
+            [item["source"] for item in scenario["targets"]],
+            ["חולם מלא", "צירי", "קובוץ", "שורוק"],
+        )
+        self.assertIn("בְּשׁוּפָר", scenario["prompt_text"])
+        self.assertIn("גָּלִיּוֹתֵֽינוּ", scenario["prompt_text"])
+
+    def test_rapid_study_changes_are_unambiguously_wrong_across_profiles(self):
+        for profile in ("mixed", "ashkenazi", "sephardi"):
+            suite = calibration_suite(profile)
+            for passage_id in ("9", "10"):
+                targets = suite["additional_passage_scenarios"][passage_id][1]["targets"]
+                for target in targets:
+                    with self.subTest(
+                        profile=profile,
+                        passage_id=passage_id,
+                        key=target["key"],
+                    ):
+                        spoken_slots = pronunciation_variants(
+                            target["spoken_word"], profile=profile
+                        )[0].slots
+                        spoken_slot = spoken_slots[target["slot_index"]]
+                        self.assertEqual(spoken_slot.kind, "vowel")
+                        self.assertTrue(
+                            set(target["allowed"]).isdisjoint(spoken_slot.allowed)
+                        )
 
 
 class VowelComparisonTests(unittest.TestCase):

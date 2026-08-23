@@ -6,6 +6,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from server.app import create_app
+from server.calibration import BIRKAT_HASHANIM_TEXT, KIBBUTZ_GALUYOT_TEXT
 from server.pronunciation import PronunciationUnavailable
 from server.transcriber import Transcript, TranscriptWord
 
@@ -56,7 +57,11 @@ class AppTests(unittest.TestCase):
         response = client.get("/study")
         self.assertEqual(response.status_code, 200)
         self.assertIn("Kriah Rapid Adult Study", response.text)
-        self.assertIn("kriah-rapid-validation-raw-v1", response.text)
+        self.assertIn("kriah-rapid-validation-raw-v2", response.text)
+        self.assertIn("Bracha 9: Barech Aleinu", response.text)
+        self.assertIn("Bracha 10: Teka Beshofar", response.text)
+        self.assertIn(BIRKAT_HASHANIM_TEXT, response.text)
+        self.assertIn(KIBBUTZ_GALUYOT_TEXT, response.text)
 
     def test_coach_serves_the_full_browser_app(self):
         client = TestClient(create_app(FakeTranscriber()))
@@ -89,6 +94,14 @@ class AppTests(unittest.TestCase):
         self.assertEqual(len(body["readings"][0]["scenarios"][1]["targets"]), 7)
         self.assertIn("3", body["additional_passage_scenarios"])
         self.assertIn("4", body["additional_passage_scenarios"])
+        self.assertIn("9", body["additional_passage_scenarios"])
+        self.assertIn("10", body["additional_passage_scenarios"])
+        self.assertEqual(
+            len(body["additional_passage_scenarios"]["9"][1]["targets"]), 4
+        )
+        self.assertEqual(
+            len(body["additional_passage_scenarios"]["10"][1]["targets"]), 4
+        )
 
     def test_calibration_suite_rejects_unknown_profile(self):
         client = TestClient(create_app(FakeTranscriber()))

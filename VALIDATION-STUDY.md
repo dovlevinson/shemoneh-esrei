@@ -3,8 +3,8 @@
 ## Purpose and limit
 
 This study tests whether the vowel evidence separates known-correct and
-deliberately changed readings across adult voices. Each person records only two
-actual brachot of Shemoneh Esrei. The browser collector is at `/study`.
+deliberately changed readings across adult voices. Each person records Brachot
+9 and 10 of Shemoneh Esrei. The browser collector is at `/study`.
 
 This is an exploratory adult study. It can help decide whether the current model
 and evidence method are worth testing on children. It cannot validate automatic
@@ -15,7 +15,7 @@ student pass, retry, or mastery decisions.
 Alternate assignments as people arrive. Keep reading ability and pronunciation
 tradition reasonably balanced between the two groups.
 
-| Assignment | Bracha 3, Atah Kadosh | Bracha 4, Atah Chonen |
+| Assignment | Bracha 9, Barech Aleinu | Bracha 10, Teka Beshofar |
 |---|---|---|
 | A | Read correctly | Read four displayed vowel changes |
 | B | Read four displayed vowel changes | Read correctly |
@@ -27,26 +27,33 @@ balanced speakers are more informative.
 This crossover gives every tested vowel position a correct adult control group
 and a separate adult error group without requiring anyone to repeat a bracha.
 
+The selected non-winter texts contain 48 words after splitting maqaf-linked
+words, 129 mapped vowel slots, all five core vowel sounds, all 19 consonant
+phones represented by the current mapper, and 12 of the 13 written vowel
+categories found in the current ordinary-weekday prayer text. The missing
+category is hataf kamatz. These counts describe test coverage, not demonstrated
+model accuracy.
+
 ## Exact guided changes
 
 The page inserts and highlights these changes automatically.
 
-### Bracha 3
+### Bracha 9
 
 | Correct form | Form to say |
 |---|---|
-| קָדוֹשׁ | קָדוּשׁ |
-| וְשִׁמְךָ | וְשַׁמְךָ |
-| יְהַלְלוּךָ | יְהֶלְלוּךָ |
-| סֶּלָה | סִּלָה |
+| אֱלֹהֵינוּ | אֲלֹהֵינוּ |
+| הַזֹּאת | הַזֵּאת |
+| מִינֵי | מֵינֵי |
+| הָאֲדָמָה | הָאֱדָמָה |
 
-### Bracha 4
+### Bracha 10
 
 | Correct form | Form to say |
 |---|---|
-| וּמְלַמֵּד | וּמְלַמִּד |
-| דֵּעָה | דִּעָה |
-| וְהַשְׂכֵּל | וְהַשְׂכִּל |
+| בְּשׁוֹפָר | בְּשׁוּפָר |
+| לְחֵרוּתֵנוּ | לְחִרוּתֵנוּ |
+| גָּלֻיּוֹתֵינוּ | גָּלִיּוֹתֵינוּ |
 | בָּרוּךְ | בָּרוֹךְ |
 
 ## Recording procedure
@@ -64,6 +71,10 @@ The page inserts and highlights these changes automatically.
 
 The two recordings should take about five minutes including setup and playback.
 Natural reading is more useful than slow over-enunciation.
+
+Use the exact displayed non-winter text for Bracha 9, including `וְתֵן בְּרָכָה`.
+Do not substitute the seasonal `טַל וּמָטָר` wording during this
+collection, because every package must have the same expected word sequence.
 
 ## Privacy and analysis
 

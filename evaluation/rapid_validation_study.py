@@ -42,8 +42,8 @@ def _summary(values: list[float]) -> dict:
 
 def load_package(path: str | Path) -> dict:
     data = json.loads(Path(path).read_text(encoding="utf-8"))
-    if data.get("schema_version") != "kriah-rapid-validation-analyzed-v1":
-        raise ValueError(f"{path}: expected kriah-rapid-validation-analyzed-v1")
+    if data.get("schema_version") != "kriah-rapid-validation-analyzed-v2":
+        raise ValueError(f"{path}: expected kriah-rapid-validation-analyzed-v2")
     if not data.get("complete"):
         raise ValueError(f"{path}: package is not complete and confirmed")
     speaker = data.get("speaker") or {}
@@ -52,9 +52,9 @@ def load_package(path: str | Path) -> dict:
     if not code or assignment not in {"A", "B"}:
         raise ValueError(f"{path}: valid speaker code and assignment are required")
     recordings = data.get("recordings") or []
-    if len(recordings) != 2 or {str(item.get("passage_id")) for item in recordings} != {"3", "4"}:
-        raise ValueError(f"{path}: expected exactly brachot 3 and 4")
-    expected_roles = {"A": {"3": "correct", "4": "guided_mistakes"}, "B": {"3": "guided_mistakes", "4": "correct"}}
+    if len(recordings) != 2 or {str(item.get("passage_id")) for item in recordings} != {"9", "10"}:
+        raise ValueError(f"{path}: expected exactly brachot 9 and 10")
+    expected_roles = {"A": {"9": "correct", "10": "guided_mistakes"}, "B": {"9": "guided_mistakes", "10": "correct"}}
     for recording in recordings:
         passage = str(recording.get("passage_id"))
         if recording.get("role") != expected_roles[assignment][passage]:

@@ -94,6 +94,28 @@ ATAH_CHONEN_TEXT = (
     "בָּרוּךְ אַתָּה יְהֹוָה חוֹנֵן הַדָּֽעַת:"
 )
 
+BIRKAT_HASHANIM_TEXT = (
+    "בָּרֵךְ עָלֵֽינוּ יְהֹוָה אֱלֹהֵֽינוּ אֶת־הַשָּׁנָה הַזֹּאת "
+    "וְאֶת־כָּל־מִינֵי תְבוּאָתָהּ לְטוֹבָה, וְתֵן בְּרָכָה "
+    "עַל פְּנֵי הָאֲדָמָה וְשַׂבְּ֒עֵֽנוּ מִטּוּבֶֽךָ וּבָרֵךְ "
+    "שְׁנָתֵֽנוּ כַּשָּׁנִים הַטּוֹבוֹת: בָּרוּךְ אַתָּה יְהֹוָה "
+    "מְבָרֵךְ הַשָּׁנִים:"
+)
+
+KIBBUTZ_GALUYOT_TEXT = (
+    "תְּקַע בְּשׁוֹפָר גָּדוֹל לְחֵרוּתֵֽנוּ וְשָׂא נֵס לְקַבֵּץ "
+    "גָּלֻיּוֹתֵֽינוּ וְקַבְּ֒צֵֽנוּ יַֽחַד מֵאַרְבַּע כַּנְפוֹת "
+    "הָאָֽרֶץ: בָּרוּךְ אַתָּה יְהֹוָה מְקַבֵּץ נִדְחֵי עַמּוֹ "
+    "יִשְׂרָאֵל:"
+)
+
+ADDITIONAL_PASSAGE_TEXTS = {
+    "3": ATAH_KADOSH_TEXT,
+    "4": ATAH_CHONEN_TEXT,
+    "9": BIRKAT_HASHANIM_TEXT,
+    "10": KIBBUTZ_GALUYOT_TEXT,
+}
+
 GUIDED_CHANGES = {
     "cal-core": (
         PlannedVowelChange(2, "שֶׁבָּת", "פתח"),
@@ -122,6 +144,18 @@ GUIDED_CHANGES = {
         PlannedVowelChange(9, "דִּעָה", "צירי"),
         PlannedVowelChange(11, "וְהַשְׂכִּל:", "צירי"),
         PlannedVowelChange(12, "בָּרוֹךְ", "שורוק"),
+    ),
+    "9": (
+        PlannedVowelChange(3, "אֲלֹהֵֽינוּ", "חטף סגול"),
+        PlannedVowelChange(6, "הַזֵּאת", "חולם"),
+        PlannedVowelChange(9, "מֵינֵי", "חיריק"),
+        PlannedVowelChange(16, "הָאֱדָמָה", "חטף פתח"),
+    ),
+    "10": (
+        PlannedVowelChange(1, "בְּשׁוּפָר", "חולם מלא"),
+        PlannedVowelChange(3, "לְחִרוּתֵֽנוּ", "צירי"),
+        PlannedVowelChange(7, "גָּלִיּוֹתֵֽינוּ", "קובוץ"),
+        PlannedVowelChange(13, "בָּרוֹךְ", "שורוק"),
     ),
 }
 
@@ -274,8 +308,10 @@ def calibration_suite(profile: str = "mixed") -> dict:
             "Repeat with other adult and child speakers before choosing thresholds.",
         ],
         "additional_passage_scenarios": {
-            "3": guided_scenarios("3", _reading_words(ATAH_KADOSH_TEXT), profile),
-            "4": guided_scenarios("4", _reading_words(ATAH_CHONEN_TEXT), profile),
+            passage_id: guided_scenarios(
+                passage_id, _reading_words(text), profile
+            )
+            for passage_id, text in ADDITIONAL_PASSAGE_TEXTS.items()
         },
         "limitations": [
             "A master suite checks sound coverage but cannot replace references for actual brachot.",
@@ -347,8 +383,9 @@ def _target_evaluation(
     profile: str,
 ) -> dict:
     passage_id = reference_result.get("bracha")
-    if passage_id == "4":
-        expected_words = ATAH_CHONEN_TEXT.split()
+    passage_text = ADDITIONAL_PASSAGE_TEXTS.get(passage_id)
+    if passage_text:
+        expected_words = _reading_words(passage_text)
     else:
         reading = next(
             (item for item in CALIBRATION_READINGS if item.identifier == passage_id),

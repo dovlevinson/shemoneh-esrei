@@ -16,8 +16,8 @@ evaluation gates.
 - `index.html`: static student and teacher interface
 - `nikud.html`: default Codespaces lab with three controlled master readings,
   per-vowel evidence, labels for both readings, and paired-reference comparisons
-- `study.html`: two-bracha, balanced adult validation workflow with private raw
-  and analyzed package downloads
+- `study.html`: balanced Brachot 9 and 10 adult validation workflow with private
+  raw and analyzed package downloads
 - `pilot.html`: streamlined word-only record, upload, analyze, and label workflow for the
   four brachot represented by the supplied adult test recordings, plus custom
   pointed Hebrew

@@ -55,8 +55,8 @@ class AppTests(unittest.TestCase):
         client = TestClient(create_app(FakeTranscriber()))
         response = client.get("/study")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("Kriah Multi-Speaker Study", response.text)
-        self.assertIn("kriah-validation-raw-v1", response.text)
+        self.assertIn("Kriah Rapid Adult Study", response.text)
+        self.assertIn("kriah-rapid-validation-raw-v1", response.text)
 
     def test_coach_serves_the_full_browser_app(self):
         client = TestClient(create_app(FakeTranscriber()))
@@ -87,6 +87,7 @@ class AppTests(unittest.TestCase):
         self.assertEqual(len(body["readings"]), 3)
         self.assertTrue(body["coverage"]["all_required_vowel_sources_covered"])
         self.assertEqual(len(body["readings"][0]["scenarios"][1]["targets"]), 7)
+        self.assertIn("3", body["additional_passage_scenarios"])
         self.assertIn("4", body["additional_passage_scenarios"])
 
     def test_calibration_suite_rejects_unknown_profile(self):

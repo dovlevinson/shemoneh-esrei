@@ -15,7 +15,7 @@ for (const filename of ["index.html", "pilot.html", "nikud.html", "study.html"])
     }
   }
   if (filename === "study.html") {
-    for (const marker of ["kriah-validation-raw-v1", "${passage.id}-reference", "guided_mistakes", "script_confirmed", "analyzeAll", "indexedDB"]) {
+    for (const marker of ["kriah-rapid-validation-raw-v1", "balanced_between_speaker_crossover", "guided_mistakes", "script_confirmed", "analyzeAll", "indexedDB"]) {
       if (!html.includes(marker)) throw new Error(`${filename}: missing study feature ${marker}`);
     }
   }

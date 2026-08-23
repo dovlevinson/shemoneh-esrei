@@ -142,6 +142,16 @@ class CalibrationSuiteTests(unittest.TestCase):
             ["צירי", "צירי", "צירי", "שורוק"],
         )
 
+    def test_atah_kadosh_has_four_guided_changes_after_maqaf_split(self):
+        scenarios = calibration_suite("mixed")["additional_passage_scenarios"]["3"]
+        self.assertEqual(len(scenarios[1]["targets"]), 4)
+        self.assertEqual(
+            [item["key"] for item in scenarios[1]["targets"]],
+            ["1:3", "2:3", "7:3", "8:1"],
+        )
+        self.assertIn("קָדוּשׁ", scenarios[1]["prompt_text"])
+        self.assertIn("סִּלָה.", scenarios[1]["prompt_text"])
+
 
 class VowelComparisonTests(unittest.TestCase):
     def test_strong_margin_drop_with_weak_expected_vowel_is_flagged(self):

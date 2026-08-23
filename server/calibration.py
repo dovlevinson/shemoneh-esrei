@@ -22,7 +22,7 @@ class CalibrationReading:
 
     @property
     def words(self) -> list[str]:
-        return self.text.split()
+        return _reading_words(self.text)
 
 
 @dataclass(frozen=True)
@@ -78,6 +78,15 @@ CALIBRATION_READINGS = (
     ),
 )
 
+def _reading_words(text: str) -> list[str]:
+    return [word for token in text.split() for word in token.split("־")]
+
+
+ATAH_KADOSH_TEXT = (
+    "אַתָּה קָדוֹשׁ וְשִׁמְךָ קָדוֹשׁ וּקְדוֹשִׁים "
+    "בְּכָל־יוֹם יְהַלְ֒לֽוּךָ סֶּֽלָה."
+)
+
 ATAH_CHONEN_TEXT = (
     "אַתָּה חוֹנֵן לְאָדָם דַּֽעַת וּמְלַמֵּד לֶאֱנוֹשׁ בִּינָה: "
     "חָנֵּֽנוּ מֵאִתְּ֒ךָ דֵּעָה בִּינָה וְהַשְׂכֵּל: "
@@ -100,6 +109,12 @@ GUIDED_CHANGES = {
         PlannedVowelChange(6, "חֲדָשִׁים", "חטף קמץ"),
         PlannedVowelChange(9, "כַּל", "קמץ קטן"),
         PlannedVowelChange(10, "חַכְמָה", "קמץ קטן"),
+    ),
+    "3": (
+        PlannedVowelChange(1, "קָדוּשׁ", "חולם מלא"),
+        PlannedVowelChange(2, "וְשַׁמְךָ", "חיריק"),
+        PlannedVowelChange(7, "יְהֶלְלוּךָ", "פתח"),
+        PlannedVowelChange(8, "סִּלָה.", "סגול"),
     ),
     "4": (
         PlannedVowelChange(4, "וּמְלַמִּד", "צירי"),
@@ -258,7 +273,8 @@ def calibration_suite(profile: str = "mixed") -> dict:
             "Repeat with other adult and child speakers before choosing thresholds.",
         ],
         "additional_passage_scenarios": {
-            "4": guided_scenarios("4", ATAH_CHONEN_TEXT.split(), profile)
+            "3": guided_scenarios("3", _reading_words(ATAH_KADOSH_TEXT), profile),
+            "4": guided_scenarios("4", _reading_words(ATAH_CHONEN_TEXT), profile),
         },
         "limitations": [
             "A master suite checks sound coverage but cannot replace references for actual brachot.",

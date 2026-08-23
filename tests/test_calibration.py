@@ -151,6 +151,7 @@ class CalibrationSuiteTests(unittest.TestCase):
         )
         self.assertIn("קָדוּשׁ", scenarios[1]["prompt_text"])
         self.assertIn("סִּלָה.", scenarios[1]["prompt_text"])
+        self.assertIn("הַקָּדוֹשׁ:", scenarios[1]["prompt_text"])
 
 
 class VowelComparisonTests(unittest.TestCase):

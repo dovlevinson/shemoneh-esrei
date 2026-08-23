@@ -16,6 +16,8 @@ evaluation gates.
 - `index.html`: static student and teacher interface
 - `nikud.html`: default Codespaces lab with three controlled master readings,
   per-vowel evidence, labels for both readings, and paired-reference comparisons
+- `study.html`: nine-take, collection-first multi-speaker validation workflow
+  with private raw and analyzed package downloads
 - `pilot.html`: streamlined word-only record, upload, analyze, and label workflow for the
   four brachot represented by the supplied adult test recordings, plus custom
   pointed Hebrew
@@ -33,9 +35,13 @@ evaluation gates.
   windows; permanently non-authoritative while configured as shadow mode
 - `evaluation/metrics.py`: speaker-disjoint pilot metrics, including false-pass
   and false-flag rates
+- `evaluation/validation_study.py`: multi-speaker threshold and false-alarm
+  aggregation without copying audio into the report
 - `tests/`: unit, API, tamper-detection, evaluation, and browser-script checks
 
 Teacher and student recordings are intentionally absent from this public branch.
+The exact short-term collection protocol is in
+[`VALIDATION-STUDY.md`](VALIDATION-STUDY.md).
 
 ## Nikud evidence lab
 

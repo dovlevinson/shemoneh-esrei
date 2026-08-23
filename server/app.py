@@ -44,6 +44,7 @@ ALLOWED_SUFFIXES = {".webm", ".wav", ".mp3", ".m4a", ".mp4", ".ogg"}
 FRONTEND_PATH = Path(__file__).resolve().parents[1] / "index.html"
 PILOT_PATH = Path(__file__).resolve().parents[1] / "pilot.html"
 NIKUD_PATH = Path(__file__).resolve().parents[1] / "nikud.html"
+STUDY_PATH = Path(__file__).resolve().parents[1] / "study.html"
 JOB_TTL_SECONDS = int(os.getenv("KRIAH_JOB_TTL_SECONDS", "1800"))
 MAX_JOBS = int(os.getenv("KRIAH_MAX_JOBS", "25"))
 
@@ -295,6 +296,12 @@ if (location.hostname.endsWith('.app.github.dev')) {
         if not NIKUD_PATH.is_file():
             raise HTTPException(status_code=404, detail="nikud lab is unavailable")
         return HTMLResponse(NIKUD_PATH.read_text(encoding="utf-8"))
+
+    @app.get("/study", include_in_schema=False)
+    def study_frontend():
+        if not STUDY_PATH.is_file():
+            raise HTTPException(status_code=404, detail="validation study is unavailable")
+        return HTMLResponse(STUDY_PATH.read_text(encoding="utf-8"))
 
     async def transcribe_path(path: str, language: str):
         if language != "he":

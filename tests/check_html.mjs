@@ -1,6 +1,6 @@
 import fs from "node:fs";
 
-for (const filename of ["index.html", "pilot.html", "nikud.html"]) {
+for (const filename of ["index.html", "pilot.html", "nikud.html", "study.html"]) {
   const html = fs.readFileSync(new URL(`../${filename}`, import.meta.url), "utf8");
   const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(match => match[1]);
   if (scripts.length !== 1) {
@@ -12,6 +12,11 @@ for (const filename of ["index.html", "pilot.html", "nikud.html"]) {
       if (!html.includes(marker)) {
         throw new Error(`${filename}: missing required calibration feature ${marker}`);
       }
+    }
+  }
+  if (filename === "study.html") {
+    for (const marker of ["kriah-validation-raw-v1", "${passage.id}-reference", "guided_mistakes", "script_confirmed", "analyzeAll", "indexedDB"]) {
+      if (!html.includes(marker)) throw new Error(`${filename}: missing study feature ${marker}`);
     }
   }
   console.log(`${filename} inline JavaScript parses`);

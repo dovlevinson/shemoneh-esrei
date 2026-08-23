@@ -51,6 +51,13 @@ class AppTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("/analysis-jobs", response.text)
 
+    def test_study_serves_the_multi_speaker_collector(self):
+        client = TestClient(create_app(FakeTranscriber()))
+        response = client.get("/study")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Kriah Multi-Speaker Study", response.text)
+        self.assertIn("kriah-validation-raw-v1", response.text)
+
     def test_coach_serves_the_full_browser_app(self):
         client = TestClient(create_app(FakeTranscriber()))
         response = client.get("/coach")

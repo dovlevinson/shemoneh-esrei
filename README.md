@@ -137,16 +137,18 @@ and result-code workflow from the first test:
 1. Use a pseudonymous reader code.
 2. Choose bracha 1, 2, 3, or 4, or paste custom pointed Hebrew.
 3. Record in the browser or upload an existing audio file.
-4. Review the word-and-order result.
-5. Attach one human label.
+4. Inspect the word-alignment and uncalibrated acoustic evidence.
+5. Save the recording and full model result. Human review is optional during
+   collection and can be recorded separately later.
 
-Nothing is stored automatically. A labeled sample can be downloaded as one JSON
-file containing the human label, model response, and base64-encoded audio. Keep
-those files in an approved private location. The page also exports a lightweight
-JSONL list of the current browser session's labels without audio.
+Nothing is stored automatically. A sample can be downloaded as one JSON file
+containing the optional human review, model response, and base64-encoded audio.
+Keep those files in an approved private location. The page also exports a
+lightweight JSONL list of the current browser collection without audio.
 
 The label does not alter the model result. Nikud and pronunciation remain shadow
-evidence only when the optional model is enabled.
+evidence only when the optional model is enabled. Unreviewed samples can document
+model behavior but cannot establish the model's accuracy.
 
 ## What it does not do
 

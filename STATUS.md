@@ -55,6 +55,10 @@ Updated 2026-08-25.
 - Added explicit full, partial, and unknown passage coverage so an incomplete
   recording contributes only verified word and vowel evidence and cannot be
   mistaken for complete-bracha validation coverage.
+- Made human grading optional during research collection. The collector now
+  preserves unreviewed audio and model output, clearly separates ASR/acoustic
+  evidence from human ground truth, and hides optional review controls by
+  default.
 
 ## Verified locally
 
@@ -95,6 +99,8 @@ still need verification in the target environment.
 - Research samples improve the evidence base but do not automatically retrain
   Whisper or the phoneme model. Any learned update still requires a defined
   training method and a speaker-disjoint held-out evaluation.
+- Unreviewed samples do not provide ground truth and therefore cannot validate
+  model accuracy until an independent review protocol is applied.
 - Existing client result codes remain easy to alter. Server responses can carry
   a signed sub-token, but a real dashboard must verify it server-side.
 

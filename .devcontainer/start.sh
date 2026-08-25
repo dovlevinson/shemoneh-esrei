@@ -6,15 +6,19 @@ log_file="${TMPDIR:-/tmp}/kriah-reading-coach.log"
 announce_ready() {
   printf '\nKriah Reading Coach is ready.\n'
   printf 'Open the Nikud testing page: http://127.0.0.1:8000/\n'
+  printf 'Open the research collection: http://127.0.0.1:8000/research\n'
 
   if [[ -n "${CODESPACE_NAME:-}" && -n "${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-}" ]]; then
     printf 'Codespaces browser link: https://%s-8000.%s/\n' \
+      "${CODESPACE_NAME}" "${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
+    printf 'Codespaces research link: https://%s-8000.%s/research\n' \
       "${CODESPACE_NAME}" "${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
   fi
 }
 
 health="$(curl --fail --silent http://127.0.0.1:8000/health 2>/dev/null || true)"
-if [[ "${health}" == *'"mode":"shadow"'* ]]; then
+research_page="$(curl --fail --silent http://127.0.0.1:8000/research 2>/dev/null || true)"
+if [[ "${health}" == *'"mode":"shadow"'* && "${research_page}" == *'Kriah Research Collection'* ]]; then
   announce_ready
   exit 0
 fi

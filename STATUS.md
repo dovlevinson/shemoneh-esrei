@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-08-18.
+Updated 2026-08-25.
 
 ## Completed on the rebuild branch
 
@@ -45,6 +45,13 @@ Updated 2026-08-18.
 - Added a conservative, non-authoritative reference-comparison endpoint that
   reports vowel-only means, strong candidate changes, context-sensitive sheva,
   and labeled catches, misses, and false alarms.
+- Added a cumulative research collector for all 19 weekday brachot. It reuses
+  the coach's pointed, condition-tagged text, supports seasonal and special
+  insertions, uploads or records audio, runs the complete maintained analysis
+  pipeline, and requires versioned human review before export.
+- Added browser-local research collection, individual self-contained backups,
+  audio-free manifest export, and descriptive aggregation across speakers,
+  passages, human labels, and pinned model versions.
 
 ## Verified locally
 
@@ -82,6 +89,9 @@ still need verification in the target environment.
 - No school privacy, retention, or vendor review has been approved.
 - No student authentication, roster sync, durable result storage, or teacher
   dashboard exists.
+- Research samples improve the evidence base but do not automatically retrain
+  Whisper or the phoneme model. Any learned update still requires a defined
+  training method and a speaker-disjoint held-out evaluation.
 - Existing client result codes remain easy to alter. Server responses can carry
   a signed sub-token, but a real dashboard must verify it server-side.
 

@@ -45,6 +45,7 @@ class AppTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("Kriah Nikud Evidence Lab", response.text)
         self.assertIn('href="/coach"', response.text)
+        self.assertIn('href="/research"', response.text)
 
     def test_nikud_alias_serves_the_lab(self):
         client = TestClient(create_app(FakeTranscriber()))
@@ -62,6 +63,25 @@ class AppTests(unittest.TestCase):
         self.assertIn("Bracha 10: Teka Beshofar", response.text)
         self.assertIn(BIRKAT_HASHANIM_TEXT, response.text)
         self.assertIn(KIBBUTZ_GALUYOT_TEXT, response.text)
+
+    def test_research_serves_the_all_brachot_collector(self):
+        client = TestClient(create_app(FakeTranscriber()))
+        response = client.get("/research")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Kriah Research Collection", response.text)
+        self.assertIn("kriah-research-sample-v1", response.text)
+        self.assertIn("/passage-catalog", response.text)
+        self.assertIn("indexedDB", response.text)
+
+    def test_passage_catalog_exposes_all_nineteen_brachot(self):
+        client = TestClient(create_app(FakeTranscriber()))
+        response = client.get("/passage-catalog")
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["schema_version"], "kriah-passage-catalog-v1")
+        self.assertEqual(len(body["passages"]), 19)
+        self.assertEqual(body["passages"][0]["id"], "1")
+        self.assertEqual(body["passages"][-1]["id"], "19")
 
     def test_coach_serves_the_full_browser_app(self):
         client = TestClient(create_app(FakeTranscriber()))

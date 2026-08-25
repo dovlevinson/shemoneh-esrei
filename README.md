@@ -18,6 +18,8 @@ evaluation gates.
   per-vowel evidence, labels for both readings, and paired-reference comparisons
 - `study.html`: balanced Brachot 9 and 10 adult validation workflow with private
   raw and analyzed package downloads
+- `research.html`: cumulative, human-reviewed collection workflow for all 19
+  weekday brachot, exact seasonal text variants, and versioned model evidence
 - `pilot.html`: streamlined word-only record, upload, analyze, and label workflow for the
   four brachot represented by the supplied adult test recordings, plus custom
   pointed Hebrew
@@ -39,11 +41,45 @@ evaluation gates.
   aggregation without copying audio into the report
 - `evaluation/rapid_validation_study.py`: unpaired correct-versus-guided-error
   aggregation for the shortened two-bracha adult study
+- `evaluation/research_dataset.py`: descriptive aggregation of versioned,
+  human-reviewed research samples without automatic threshold selection
 - `tests/`: unit, API, tamper-detection, evaluation, and browser-script checks
 
 Teacher and student recordings are intentionally absent from this public branch.
 The exact short-term collection protocol is in
 [`VALIDATION-STUDY.md`](VALIDATION-STUDY.md).
+
+## Cumulative research collection
+
+The `/research` page is the reusable intake path for natural recordings. It
+uses the same condition-tagged, pointed text already embedded in the coach for
+all 19 weekday brachot. The collector supports regular and winter wording,
+Aseret Yemei Teshuvah changes, Rosh Chodesh, Chanukah, and Purim insertions. The
+exact displayed text remains editable because a research sample must match the
+reader's actual siddur and nusach.
+
+One upload runs the maintained Hebrew speech, word-alignment, G2P, and shadow
+pronunciation pipeline. A reviewer can label every aligned word and measured
+vowel before saving a `kriah-research-sample-v1` package. The package includes
+the audio, exact text, metadata, model versions, raw analysis, and human labels.
+It is stored in that browser's IndexedDB and downloaded as a backup. The server
+does not retain the audio.
+
+The collection page imports earlier sample packages and exports an audio-free
+evaluation manifest. Summarize one or more packages with:
+
+```bash
+python -m evaluation.research_dataset \
+  /private/kriah-research-S01-bracha-3.json \
+  /private/kriah-research-S02-bracha-3.json \
+  --output /private/kriah-research-summary.json
+```
+
+Adding a recording does not retrain a live model. The versioned dataset first
+shows passage coverage, speaker overlap, human-label distributions, and whether
+evidence from one pinned model version separates manually verified correct and
+wrong vowels. Model or rule changes must be made explicitly and re-evaluated on
+a speaker-disjoint held-out set.
 
 ## Nikud evidence lab
 

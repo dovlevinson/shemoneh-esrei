@@ -1,6 +1,6 @@
 import fs from "node:fs";
 
-for (const filename of ["index.html", "pilot.html", "nikud.html", "study.html"]) {
+for (const filename of ["index.html", "pilot.html", "nikud.html", "study.html", "research.html"]) {
   const html = fs.readFileSync(new URL(`../${filename}`, import.meta.url), "utf8");
   const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(match => match[1]);
   if (scripts.length !== 1) {
@@ -17,6 +17,11 @@ for (const filename of ["index.html", "pilot.html", "nikud.html", "study.html"])
   if (filename === "study.html") {
     for (const marker of ["kriah-rapid-validation-raw-v2", "balanced_between_speaker_crossover", "Bracha 9: Barech Aleinu", "Bracha 10: Teka Beshofar", 'brachot:["9","10"]', "guided_mistakes", "script_confirmed", "analyzeAll", "indexedDB"]) {
       if (!html.includes(marker)) throw new Error(`${filename}: missing study feature ${marker}`);
+    }
+  }
+  if (filename === "research.html") {
+    for (const marker of ["kriah-research-sample-v1", "/passage-catalog", "/analysis-jobs", "indexedDB", "human_wrong_vowel", "Export evaluation manifest", "all 19 weekday brachot"]) {
+      if (!html.includes(marker)) throw new Error(`${filename}: missing research feature ${marker}`);
     }
   }
   console.log(`${filename} inline JavaScript parses`);

@@ -27,6 +27,7 @@ from starlette.responses import HTMLResponse, JSONResponse
 
 from .calibration import calibration_suite, compare_vowel_evidence
 from .hebrew_g2p import VALID_PROFILES
+from .passage_catalog import passage_catalog
 from .pronunciation import (
     PronunciationUnavailable,
     configured_pronunciation_assessor,
@@ -45,6 +46,7 @@ FRONTEND_PATH = Path(__file__).resolve().parents[1] / "index.html"
 PILOT_PATH = Path(__file__).resolve().parents[1] / "pilot.html"
 NIKUD_PATH = Path(__file__).resolve().parents[1] / "nikud.html"
 STUDY_PATH = Path(__file__).resolve().parents[1] / "study.html"
+RESEARCH_PATH = Path(__file__).resolve().parents[1] / "research.html"
 JOB_TTL_SECONDS = int(os.getenv("KRIAH_JOB_TTL_SECONDS", "1800"))
 MAX_JOBS = int(os.getenv("KRIAH_MAX_JOBS", "25"))
 
@@ -302,6 +304,20 @@ if (location.hostname.endsWith('.app.github.dev')) {
         if not STUDY_PATH.is_file():
             raise HTTPException(status_code=404, detail="validation study is unavailable")
         return HTMLResponse(STUDY_PATH.read_text(encoding="utf-8"))
+
+    @app.get("/research", include_in_schema=False)
+    def research_frontend():
+        if not RESEARCH_PATH.is_file():
+            raise HTTPException(status_code=404, detail="research collector is unavailable")
+        return HTMLResponse(RESEARCH_PATH.read_text(encoding="utf-8"))
+
+    @app.get("/passage-catalog")
+    def get_passage_catalog():
+        try:
+            return passage_catalog(FRONTEND_PATH)
+        except (OSError, TypeError, ValueError):
+            LOGGER.exception("prayer catalog could not be loaded")
+            raise HTTPException(status_code=503, detail="prayer catalog is unavailable")
 
     async def transcribe_path(path: str, language: str):
         if language != "he":

@@ -93,8 +93,10 @@ def aggregate(samples: Iterable[dict]) -> dict:
     passages = set()
     passages_by_speaker: dict[str, set[str]] = defaultdict(set)
     speakers_by_passage: dict[str, set[str]] = defaultdict(set)
+    complete_speakers_by_passage: dict[str, set[str]] = defaultdict(set)
     model_versions = Counter()
     reading_truth = Counter()
+    passage_coverage = Counter()
     word_labels = Counter()
     vowel_labels = Counter()
     vowel_sources = Counter()
@@ -112,6 +114,12 @@ def aggregate(samples: Iterable[dict]) -> dict:
         passages_by_speaker[speaker].add(passage)
         speakers_by_passage[passage].add(speaker)
         reading_truth[str(sample.get("reading_truth") or "unknown")] += 1
+        coverage = str(
+            sample.get("recording_context", {}).get("passage_coverage") or "unknown"
+        )
+        passage_coverage[coverage] += 1
+        if coverage == "full":
+            complete_speakers_by_passage[passage].add(speaker)
         signature = sample.get("model_signature") or {}
         model_versions[
             " | ".join(
@@ -148,7 +156,16 @@ def aggregate(samples: Iterable[dict]) -> dict:
         passage for passage, passage_speakers in speakers_by_passage.items()
         if len(passage_speakers) >= 2
     )
+    shared_complete_passages = sorted(
+        passage
+        for passage, passage_speakers in complete_speakers_by_passage.items()
+        if len(passage_speakers) >= 2
+    )
     missing_brachot = [str(number) for number in range(1, 20) if str(number) not in passages]
+    complete_passages = set(complete_speakers_by_passage)
+    missing_complete_brachot = [
+        str(number) for number in range(1, 20) if str(number) not in complete_passages
+    ]
     correct_count = vowel_labels["human_correct"]
     wrong_count = vowel_labels["human_wrong_vowel"]
     return {
@@ -157,10 +174,16 @@ def aggregate(samples: Iterable[dict]) -> dict:
         "speakers": len(speakers),
         "brachot_represented": len(passages.intersection({str(i) for i in range(1, 20)})),
         "missing_brachot": missing_brachot,
+        "complete_brachot_represented": len(
+            complete_passages.intersection({str(i) for i in range(1, 20)})
+        ),
+        "missing_complete_brachot": missing_complete_brachot,
         "shared_passages_across_speakers": shared_passages,
+        "shared_complete_passages_across_speakers": shared_complete_passages,
         "recordings_per_speaker": dict(sorted((k, len(v)) for k, v in passages_by_speaker.items())),
         "speakers_per_passage": dict(sorted((k, len(v)) for k, v in speakers_by_passage.items())),
         "reading_truth": dict(reading_truth),
+        "passage_coverage": dict(passage_coverage),
         "word_labels": dict(word_labels),
         "vowel_labels": dict(vowel_labels),
         "measured_vowel_slots": measured_total,
@@ -179,6 +202,9 @@ def aggregate(samples: Iterable[dict]) -> dict:
             "has_correct_vowel_labels": correct_count > 0,
             "has_wrong_vowel_labels": wrong_count > 0,
             "has_cross_speaker_passage_overlap": bool(shared_passages),
+            "has_cross_speaker_complete_passage_overlap": bool(
+                shared_complete_passages
+            ),
             "single_model_version": len(model_versions) == 1,
             "can_describe_label_separation": correct_count > 0 and wrong_count > 0,
             "validated_threshold_available": False,
@@ -188,6 +214,7 @@ def aggregate(samples: Iterable[dict]) -> dict:
             "Human labels must be checked before they are calibration evidence.",
             "Threshold selection requires a predefined calibration split and a speaker-disjoint held-out test split.",
             "Adult recordings do not establish performance on children.",
+            "Partial readings support only the manually verified, measured words and do not count as complete-bracha coverage.",
         ],
     }
 

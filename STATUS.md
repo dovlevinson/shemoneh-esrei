@@ -52,6 +52,9 @@ Updated 2026-08-25.
 - Added browser-local research collection, individual self-contained backups,
   audio-free manifest export, and descriptive aggregation across speakers,
   passages, human labels, and pinned model versions.
+- Added explicit full, partial, and unknown passage coverage so an incomplete
+  recording contributes only verified word and vowel evidence and cannot be
+  mistaken for complete-bracha validation coverage.
 
 ## Verified locally
 

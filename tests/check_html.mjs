@@ -20,7 +20,7 @@ for (const filename of ["index.html", "pilot.html", "nikud.html", "study.html", 
     }
   }
   if (filename === "research.html") {
-    for (const marker of ["kriah-research-sample-v1", "/passage-catalog", "/analysis-jobs", "indexedDB", "human_wrong_vowel", "Export evaluation manifest", "all 19 weekday brachot"]) {
+    for (const marker of ["kriah-research-sample-v1", "/passage-catalog", "/analysis-jobs", "indexedDB", "human_wrong_vowel", "passage_coverage", "Started after the beginning", "Export evaluation manifest", "all 19 weekday brachot"]) {
       if (!html.includes(marker)) throw new Error(`${filename}: missing research feature ${marker}`);
     }
   }

@@ -81,6 +81,12 @@ evidence from one pinned model version separates manually verified correct and
 wrong vowels. Model or rule changes must be made explicitly and re-evaluated on
 a speaker-disjoint held-out set.
 
+Partial recordings remain usable for their manually verified, acoustically
+measured words. Mark whether the reader started late, ended early, or skipped
+words, and edit the final expected text to the portion actually spoken before
+saving. The evaluator reports partial samples separately and does not count
+them as complete-bracha coverage.
+
 ## Nikud evidence lab
 
 The root address opens the nikud evidence lab. Codespaces installs and starts

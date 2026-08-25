@@ -11,6 +11,7 @@ def sample(sample_id="S01-3", speaker="S01", passage="3", label="human_correct",
         "schema_version": "kriah-research-sample-v1",
         "sample_id": sample_id,
         "speaker": {"code": speaker},
+        "recording_context": {"passage_coverage": "full"},
         "passage": {"id": passage},
         "reading_truth": "known_acceptable",
         "model_signature": {
@@ -56,10 +57,21 @@ class ResearchDatasetTests(unittest.TestCase):
         self.assertEqual(report["recordings"], 2)
         self.assertEqual(report["speakers"], 2)
         self.assertEqual(report["shared_passages_across_speakers"], ["3"])
+        self.assertEqual(report["shared_complete_passages_across_speakers"], ["3"])
+        self.assertEqual(report["complete_brachot_represented"], 1)
         self.assertEqual(report["vowel_labels"]["human_correct"], 1)
         self.assertEqual(report["vowel_labels"]["human_wrong_vowel"], 1)
         self.assertTrue(report["evaluation_readiness"]["can_describe_label_separation"])
         self.assertFalse(report["evaluation_readiness"]["validated_threshold_available"])
+
+    def test_partial_reading_does_not_count_as_complete_bracha_coverage(self):
+        item = sample()
+        item["recording_context"]["passage_coverage"] = "started_late"
+        report = aggregate([item])
+        self.assertEqual(report["brachot_represented"], 1)
+        self.assertEqual(report["complete_brachot_represented"], 0)
+        self.assertIn("3", report["missing_complete_brachot"])
+        self.assertEqual(report["passage_coverage"], {"started_late": 1})
 
     def test_loads_samples_and_deduplicates_manifest_entries(self):
         item = sample()

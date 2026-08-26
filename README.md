@@ -1,0 +1,283 @@
+# Shemoneh Esrei Reading Coach
+
+This branch turns the single-file prototype into a testable pilot. It keeps the
+instant browser practice experience, adds a structured Hebrew transcription API,
+and removes the unsupported claim that the software can grade nikud.
+
+The current authoritative result is still a word-and-order reading pilot, not a
+complete kriah assessor. The Codespaces test now runs a nikud evidence lab that
+collects and displays nikud-aware CTC acoustic evidence without changing a
+score, pass, retry, or review decision.
+Automatic pronunciation decisions remain blocked until that evidence passes the
+evaluation gates.
+
+## What is implemented
+
+- `index.html`: static student and teacher interface
+- `nikud.html`: default Codespaces lab with three controlled master readings,
+  per-vowel evidence, labels for both readings, and paired-reference comparisons
+- `study.html`: balanced Brachot 9 and 10 adult validation workflow with private
+  raw and analyzed package downloads
+- `research.html`: cumulative, human-reviewed collection workflow for all 19
+  weekday brachot, exact seasonal text variants, and versioned model evidence
+- `pilot.html`: streamlined word-only record, upload, analyze, and label workflow for the
+  four brachot represented by the supplied adult test recordings, plus custom
+  pointed Hebrew
+- `server/app.py`: FastAPI service with health, transcription, structured
+  word-order analysis, and signed-result verification endpoints
+- `server/scoring.py`: dependency-free Hebrew normalization and global word
+  alignment with explicit missing, extra, different, and uncertain operations
+- `server/transcriber.py`: lazy `faster-whisper` adapter using the ivrit.ai Hebrew
+  model without an expected-text prompt
+- `server/hebrew_g2p.py`: pointed-Hebrew pronunciation map with explicit mixed,
+  Sephardi, and Ashkenazi alternatives
+- `server/calibration.py`: master-reading coverage and conservative,
+  non-authoritative vowel-only comparison rules
+- `server/pronunciation.py`: optional, lazy CTC Viterbi evidence inside ASR word
+  windows; permanently non-authoritative while configured as shadow mode
+- `evaluation/metrics.py`: speaker-disjoint pilot metrics, including false-pass
+  and false-flag rates
+- `evaluation/validation_study.py`: multi-speaker threshold and false-alarm
+  aggregation without copying audio into the report
+- `evaluation/rapid_validation_study.py`: unpaired correct-versus-guided-error
+  aggregation for the shortened two-bracha adult study
+- `evaluation/research_dataset.py`: descriptive aggregation of versioned,
+  human-reviewed research samples without automatic threshold selection
+- `tests/`: unit, API, tamper-detection, evaluation, and browser-script checks
+
+Teacher and student recordings are intentionally absent from this public branch.
+The exact short-term collection protocol is in
+[`VALIDATION-STUDY.md`](VALIDATION-STUDY.md).
+
+## Cumulative research collection
+
+The `/research` page is the reusable intake path for natural recordings. It
+uses the same condition-tagged, pointed text already embedded in the coach for
+all 19 weekday brachot. The collector supports regular and winter wording,
+Aseret Yemei Teshuvah changes, Rosh Chodesh, Chanukah, and Purim insertions. The
+exact displayed text remains editable because a research sample must match the
+reader's actual siddur and nusach.
+
+One upload runs the maintained Hebrew speech, word-alignment, G2P, and shadow
+pronunciation pipeline. A reviewer can label every aligned word and measured
+vowel before saving a `kriah-research-sample-v1` package. The package includes
+the audio, exact text, metadata, model versions, raw analysis, and human labels.
+It is stored in that browser's IndexedDB and downloaded as a backup. The server
+does not retain the audio.
+
+The collection page imports earlier sample packages and exports an audio-free
+evaluation manifest. Summarize one or more packages with:
+
+```bash
+python -m evaluation.research_dataset \
+  /private/kriah-research-S01-bracha-3.json \
+  /private/kriah-research-S02-bracha-3.json \
+  --output /private/kriah-research-summary.json
+```
+
+Adding a recording does not retrain a live model. The versioned dataset first
+shows passage coverage, speaker overlap, human-label distributions, and whether
+evidence from one pinned model version separates manually verified correct and
+wrong vowels. Model or rule changes must be made explicitly and re-evaluated on
+a speaker-disjoint held-out set.
+
+Each sample records its pronunciation-policy version separately from the
+acoustic-model revision. A saved full sample can be loaded from the collection
+table and reanalyzed with the current server while preserving a `reanalysis_of`
+link. Evaluation reports separate policy versions instead of pooling
+incompatible outputs.
+
+Partial recordings remain usable for their manually verified, acoustically
+measured words. Mark whether the reader started late, ended early, or skipped
+words, and edit the final expected text to the portion actually spoken before
+saving. The evaluator reports partial samples separately and does not count
+them as complete-bracha coverage.
+
+## Nikud evidence lab
+
+The root address opens the nikud evidence lab. Codespaces installs and starts
+both the Hebrew speech model and the optional pronunciation model. The page
+waits until both are loaded before enabling analysis, then submits background
+jobs so a long CPU analysis is not tied to one forwarded HTTP request.
+
+For each mapped vowel-family slot, the lab displays:
+
+- the expected nekudah and accepted sound;
+- peak acoustic evidence for the expected sound;
+- whether the expected sound or another modeled phone had stronger evidence;
+- the strongest competing modeled phone;
+- a human label for whether the vowel was actually correct, wrong, or uncertain.
+
+Policy v2 preserves the exact written nekudah while mapping chataf patach,
+chataf segol, and chataf kamatz to A, E, and O respectively; kubutz and shuruk
+both map to U. Sheva remains visible as written metadata but is not forced into
+the acoustic sequence or counted as primary evidence. See [`NIKUD.md`](NIKUD.md)
+for the full policy table and evidence tiers.
+
+The passage menu starts with three short, pointed master readings:
+
+1. Everyday vowel sounds in familiar words.
+2. Reduced vowels, kamatz katan, sounded and silent sheva, and special cases.
+3. Hebrew consonants and commonly confused sound contrasts.
+
+Together they exercise the vowel categories targeted by the controlled suite.
+Record Reading A correctly, then choose a guided Reading B
+test. First repeat every word correctly to measure natural variation. Next select
+the guided mistakes and read the highlighted substitutions shown on screen. The
+server already knows their exact word and vowel positions, so it reports catches,
+misses, unmeasured targets, misplaced detections, and false alarms without manual
+labels. Previously downloaded comparison packages can also be imported and
+re-evaluated without trusting their old labels.
+
+The lab compares shared vowel slots and reports separate vowel-only means.
+Timestamped words remain measurable when Whisper changes their consonant
+spelling, but their windows are explicitly marked lower confidence. Vowels are
+aligned without assuming that their expected sound was actually spoken, and
+vowel competitors are restricted to other vowel sounds.
+Large reference-to-candidate drops are shown as research candidates, not grades.
+Sheva is recorded as research-only written metadata. One master reading does not
+replace clean references for each real bracha or validation on different
+speakers and children.
+
+## Word-only pilot
+
+After the server starts, `/pilot` and `/word-pilot` open the fast word-only pilot,
+and the full student coach remains available at `/coach`.
+The fast page removes the teacher settings
+and result-code workflow from the first test:
+
+1. Use a pseudonymous reader code.
+2. Choose bracha 1, 2, 3, or 4, or paste custom pointed Hebrew.
+3. Record in the browser or upload an existing audio file.
+4. Inspect the word-alignment and uncalibrated acoustic evidence.
+5. Save the recording and full model result. Human review is optional during
+   collection and can be recorded separately later.
+
+Nothing is stored automatically. A sample can be downloaded as one JSON file
+containing the optional human review, model response, and base64-encoded audio.
+Keep those files in an approved private location. The page also exports a
+lightweight JSONL list of the current browser collection without audio.
+
+The label does not alter the model result. Nikud and pronunciation remain shadow
+evidence only when the optional model is enabled. Unreviewed samples can document
+model behavior but cannot establish the model's accuracy.
+
+## What it does not do
+
+- It does not make pass/fail decisions about nikud.
+- It does not establish that a child's pronunciation is correct.
+- It does not provide a validated mastery score.
+- It does not store recordings or provide a teacher dashboard.
+- It does not authenticate students or teachers.
+
+## Nikud shadow mode and selective review
+
+The pointed text is now converted into expected sound slots. When shadow mode is
+enabled, a separate multilingual phoneme model measures evidence for those slots
+inside each ASR-located word window. The server returns the raw evidence marked
+`uncalibrated`, while routing continues to use only word identity and order. See
+[`NIKUD.md`](NIKUD.md) for the evidence contract and remaining limitations.
+
+Whisper returns unvocalized Hebrew, so vowel-only differences remain outside the
+word transcript. The shadow model is Meta's multilingual
+[`wav2vec2-lv-60-espeak-cv-ft`](https://huggingface.co/facebook/wav2vec2-lv-60-espeak-cv-ft),
+whose model card describes phoneme recognition but does not validate Hebrew
+child liturgical assessment. Research reports weaker pronunciation-score
+discrimination for child speech than adult speech, so the older one-speaker
+comparison is not treated as a grade:
+[Cao et al., Interspeech 2023](https://www.isca-archive.org/interspeech_2023/cao23_interspeech.pdf).
+
+## Architecture
+
+```mermaid
+flowchart TD
+    A["Browser practice"] --> B["Recorded Check"]
+    B --> C["Ephemeral audio upload"]
+    C --> D["Hebrew transcription"]
+    D --> E["Conservative word alignment"]
+    E --> F["Word-only routing"]
+    D --> G["Optional shadow evidence"]
+    G --> H["Research report only"]
+```
+
+Native ASR word timestamps are not treated as forced alignment. If a later
+phoneme scorer needs tight time boundaries, use and validate a dedicated
+alignment system. [WhisperX](https://github.com/m-bain/whisperX) documents this
+as a separate alignment stage.
+
+## Free browser test with GitHub Codespaces
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/dovlevinson/shemoneh-esrei/tree/codex/kriah-rebuild?quickstart=1)
+
+The Codespaces configuration installs the pinned server dependencies, starts the
+analysis service, and opens the application on its forwarded HTTPS address. The
+first Recorded Check downloads and loads the speech model, so it can take much
+longer than later attempts. Stop the codespace after testing so it no longer uses
+included compute time.
+
+The forwarded Codespaces address opens the streamlined pilot automatically.
+
+This is a developer smoke test, not evidence that the model grades children or
+nikud accurately. Use only consented adult test recordings until the privacy and
+evaluation gates below are complete.
+
+## Run locally
+
+The server now hosts both the browser application and analysis API:
+
+```bash
+python -m venv .venv
+. .venv/bin/activate
+pip install -r server/requirements-dev.txt
+uvicorn server.app:app --host 127.0.0.1 --port 8000
+```
+
+Open `http://127.0.0.1:8000` in Chrome. In Teacher, enable recorded-reading
+analysis and use Test connection to confirm the server is available.
+
+The first server request downloads and loads the speech model, so it will be
+slower than later requests.
+
+### Enable experimental pronunciation evidence
+
+Codespaces installs and enables the additional model stack automatically. To run
+the same research layer outside Codespaces without changing the student result:
+
+```bash
+pip install -r server/requirements-pronunciation.txt
+KRIAH_PRONUNCIATION_MODE=shadow \
+  uvicorn server.app:app --host 0.0.0.0 --port 8000
+```
+
+The API health response must show `shadow-pronunciation-evidence`. Every
+pronunciation response also states `affects_routing: false`.
+
+For a local JSON research report using a consented adult recording:
+
+```bash
+KRIAH_PRONUNCIATION_MODE=shadow \
+  python -m research.pronunciation_report --bracha 4 /private/reading.webm
+```
+
+Do not place recordings or generated reports inside this public repository.
+
+## Run checks
+
+```bash
+PYTHONPATH=. python -m unittest discover -s tests -v
+node tests/check_html.mjs
+python -m compileall -q server evaluation tests
+```
+
+## Before real students
+
+Read these in order:
+
+1. [`EVALUATION.md`](EVALUATION.md)
+2. [`PRIVACY.md`](PRIVACY.md)
+3. [`DEPLOYMENT.md`](DEPLOYMENT.md)
+4. [`STATUS.md`](STATUS.md)
+
+No software license has been selected for this repository. The prayer-text
+source and its license must be verified separately before redistribution beyond
+the intended school pilot.

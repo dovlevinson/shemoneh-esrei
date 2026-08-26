@@ -1,0 +1,14 @@
+.git
+.github
+.venv
+__pycache__
+tests
+evaluation
+research
+private
+*.webm
+*.wav
+*.mp3
+*.m4a
+*.ogg
+*.mp4

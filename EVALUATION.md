@@ -15,6 +15,12 @@ estimate classroom accuracy, child-speech transfer, or a safe pass threshold.
    pronunciation or nikud issues.
 6. Split by speaker before choosing thresholds. A student's recordings may
    appear in calibration or test, never both.
+7. Keep pronunciation-policy versions separate. Reanalyze the same audio when
+   a mapper policy changes, retain lineage to the original sample, and never
+   pool legacy and current acoustic results in one threshold estimate.
+8. Report primary vowel-family evidence separately from research-only items.
+   Sheva is research-only in policy v2 and cannot contribute to a release-gate
+   pass.
 
 ## Minimum pilot shape
 

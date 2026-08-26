@@ -18,6 +18,7 @@ def sample(sample_id="S01-3", speaker="S01", passage="3", label="human_correct",
             "speech": "whisper-test",
             "pronunciation": "ctc-test",
             "pronunciation_revision": "abc",
+            "pronunciation_policy": "kriah-pronunciation-v2",
         },
         "human_review": {
             "complete": True,
@@ -35,6 +36,9 @@ def sample(sample_id="S01-3", speaker="S01", passage="3", label="human_correct",
                             {
                                 "kind": "vowel",
                                 "source": "פתח",
+                                "sound_family": "A",
+                                "evaluation_tier": "primary",
+                                "counts_toward_primary": True,
                                 "peak_competitor_margin": margin,
                                 "peak_expected_probability": 0.8,
                             }
@@ -63,6 +67,27 @@ class ResearchDatasetTests(unittest.TestCase):
         self.assertEqual(report["vowel_labels"]["human_wrong_vowel"], 1)
         self.assertTrue(report["evaluation_readiness"]["can_describe_label_separation"])
         self.assertFalse(report["evaluation_readiness"]["validated_threshold_available"])
+        self.assertEqual(
+            report["pronunciation_policy_versions"],
+            {"kriah-pronunciation-v2": 2},
+        )
+        self.assertEqual(report["measured_vowel_families"], {"A": 2})
+        self.assertEqual(report["primary_measured_vowel_slots"], 2)
+
+    def test_unreviewed_labels_do_not_count_as_ground_truth(self):
+        item = sample()
+        item["human_review"]["complete"] = False
+        report = aggregate([item])
+        self.assertEqual(report["vowel_labels"], {})
+        self.assertEqual(report["measured_vowel_slots"], 1)
+        self.assertFalse(report["evaluation_readiness"]["has_correct_vowel_labels"])
+
+    def test_reanalysis_lineage_is_reported(self):
+        item = sample()
+        item["lineage"] = {"reanalysis_of": "older-sample"}
+        report = aggregate([item])
+        self.assertEqual(report["analysis_lineage"], {"reanalysis": 1})
+        self.assertEqual(report["unique_audio_recordings"], 1)
 
     def test_partial_reading_does_not_count_as_complete_bracha_coverage(self):
         item = sample()

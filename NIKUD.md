@@ -13,8 +13,8 @@ transcript, so word matching cannot distinguish readings such as `בָּרוּך
 
 ## Shadow layer now implemented
 
-1. The pointed siddur text is converted into expected phoneme slots, including
-   explicit accepted alternatives for the configured pronunciation profile.
+1. The pointed siddur text is preserved as exact written-vowel metadata, then
+   mapped to accepted sound families under `kriah-pronunciation-v2`.
 2. The word model locates omissions, additions, substitutions, and approximate
    time windows.
 3. A separate multilingual CTC model anchors consonants but aligns vowel slots
@@ -23,6 +23,37 @@ transcript, so word matching cannot distinguish readings such as `בָּרוּך
    Vowel evidence is compared against competing vowel sounds only.
 4. The measurements are returned as uncalibrated shadow evidence with
    `affects_routing: false`.
+
+## Pronunciation policy v2
+
+The written mark remains exact in every result. Acoustic evidence is evaluated
+against a sound family rather than treating every Tiberian sign as a separate
+modern vowel quality.
+
+| Written mark | Accepted family or realization | Evidence tier |
+| --- | --- | --- |
+| Patach | A | primary |
+| Kamatz gadol | A or rounded A/O | primary |
+| Kamatz katan | O | primary |
+| Segol | E | primary |
+| Tzeirei | E or EI in mixed/Ashkenazi mode; E in Sephardi mode | multi-realization family |
+| Chirik | I | primary |
+| Cholam | O or OY in mixed/Ashkenazi mode; O in Sephardi mode | multi-realization family |
+| Kubutz and shuruk | U | primary |
+| Chataf patach | A | reduced-family |
+| Chataf segol | E | reduced-family |
+| Chataf kamatz | O | reduced-family |
+| Sheva | brief E or no separately audible vowel | research-only, not independently scored |
+
+Chataf duration is not graded. Kubutz and shuruk retain different written
+labels but share U acoustically. Tzeirei and cholam preserve their permitted
+realizations in metadata while the current five-family model collects the
+base-family evidence. Soft tav remains token-level T or S in mixed mode.
+
+Sheva is deliberately outside the primary CTC sequence. The result stores its
+traditional classification, the rule used, and both `BRIEF_E` and `NONE` as
+possible modern realizations. This prevents a missing or extremely brief sheva
+from shifting every later vowel alignment in the word.
 
 The default Codespaces page now exposes this layer as a nikud evidence lab. It
 shows expected-vowel evidence and the strongest competing modeled phone for each
@@ -34,11 +65,11 @@ into correct, incorrect, pass, or fail decisions.
 ## Controlled master-reading calibration
 
 The lab also supplies three short, pointed master readings with ordinary Hebrew
-words. Together they cover all 14 written vowel sources currently emitted by the
-mapper, the five core vowel sounds, and representative consonant contrasts. The
-special-cases section includes sounded sheva, silent sheva, kamatz katan,
-reduced vowels, and furtive patach. A silent sheva has no audible vowel slot and
-therefore cannot itself be scored as an audible vowel.
+words. Together they cover the target vowel sources in the controlled suite,
+the five core vowel sounds, and representative consonant contrasts. The
+special-cases section includes sheva classifications, kamatz katan, reduced
+vowels, and furtive patach. No sheva has a forced audible vowel slot in policy
+v2.
 
 The recommended sequence is:
 
@@ -54,15 +85,25 @@ If Whisper calls a timestamped word incorrect, its audio window is still checked
 against the expected pronunciation and explicitly marked lower confidence.
 Its initial strong-candidate research rule requires a competitor-margin drop of
 at least five points, a negative candidate margin, and expected-vowel evidence
-at or below 20%. Sounded sheva is separated as context-sensitive. These numbers
+at or below 20%. Sheva is excluded from policy-v2 comparison. These numbers
 were selected from an adult example and are not validated decision thresholds.
 They cannot change a student's routing or grade.
 
 The source text uses U+0592 immediately after selected shevas as a source-specific
-sheva-na marker. The mapper also handles shuruk, holam malei, furtive patah,
-beged-kefet, soft tav alternatives, and separate Hashem/Adonai whole-word
-variants. These are tested engineering rules, not yet a school-approved
-pronunciation policy.
+sheva-na marker even though Unicode names U+0592 "HEBREW ACCENT SEGOL." Policy
+v2 reports that source-specific rule instead of treating the character as a
+universal sheva sign. It also recognizes U+05BA and preserves consonantal V plus
+O in forms such as `מִצְוֺתֶיךָ`; a regression rule handles the current source
+spelling `מִצְוֹתֶיךָ` as V plus O as well. The mapper also handles shuruk,
+holam malei, furtive patah, beged-kefet, soft tav alternatives, and separate
+Hashem/Adonai whole-word variants. These remain tested engineering rules, not a
+validated student assessment.
+
+Every saved sample carries its pronunciation-policy version. The research page
+can load the audio and exact text from an older full sample and rerun it under
+the current policy. Reports keep the new result linked to its source sample and
+do not pool different policy versions for threshold claims.
+The same table is available to clients at `/pronunciation-policy`.
 
 The model is pinned to a specific revision of Meta's multilingual
 [`wav2vec2-lv-60-espeak-cv-ft`](https://huggingface.co/facebook/wav2vec2-lv-60-espeak-cv-ft).

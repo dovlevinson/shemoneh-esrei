@@ -9,7 +9,7 @@ from server.calibration import (
     calibration_suite,
     compare_vowel_evidence,
 )
-from server.hebrew_g2p import pronunciation_variants
+from server.hebrew_g2p import PRONUNCIATION_POLICY_VERSION, pronunciation_variants
 
 
 def reading(*, margin=2.0, probability=0.8, source="צירי", profile="mixed"):
@@ -18,6 +18,7 @@ def reading(*, margin=2.0, probability=0.8, source="צירי", profile="mixed"):
         "requested_pronunciation_profile": profile,
         "pronunciation": {
             "status": "evidence_available",
+            "policy_version": PRONUNCIATION_POLICY_VERSION,
             "words": [
                 {
                     "expected_index": 0,
@@ -73,7 +74,11 @@ def complete_reading(passage_id="cal-core", profile="mixed"):
     return {
         "bracha": passage_id,
         "requested_pronunciation_profile": profile,
-        "pronunciation": {"status": "evidence_available", "words": words},
+        "pronunciation": {
+            "status": "evidence_available",
+            "policy_version": PRONUNCIATION_POLICY_VERSION,
+            "words": words,
+        },
     }
 
 
@@ -94,8 +99,8 @@ class CalibrationSuiteTests(unittest.TestCase):
                 elif slot.kind == "consonant":
                     consonant_sounds.update(slot.allowed)
         self.assertEqual(len(words), 48)
-        self.assertEqual(vowel_slots, 129)
-        self.assertEqual(len(vowel_sources), 12)
+        self.assertEqual(vowel_slots, 111)
+        self.assertEqual(len(vowel_sources), 11)
         self.assertEqual(vowel_sounds, {"a", "e", "i", "o", "u"})
         self.assertEqual(len(consonant_sounds), 19)
         self.assertNotIn("חטף קמץ", vowel_sources)
@@ -171,7 +176,7 @@ class CalibrationSuiteTests(unittest.TestCase):
         self.assertEqual(len(scenarios[1]["targets"]), 4)
         self.assertEqual(
             [item["key"] for item in scenarios[1]["targets"]],
-            ["1:3", "2:3", "7:3", "8:1"],
+            ["1:3", "2:2", "7:2", "8:1"],
         )
         self.assertIn("קָדוּשׁ", scenarios[1]["prompt_text"])
         self.assertIn("סִּלָה.", scenarios[1]["prompt_text"])
@@ -194,7 +199,7 @@ class CalibrationSuiteTests(unittest.TestCase):
         scenario = calibration_suite("ashkenazi")["additional_passage_scenarios"]["10"][1]
         self.assertEqual(
             [item["key"] for item in scenario["targets"]],
-            ["1:3", "3:3", "7:3", "13:3"],
+            ["1:2", "3:2", "7:3", "13:3"],
         )
         self.assertEqual(
             [item["source"] for item in scenario["targets"]],
@@ -273,6 +278,12 @@ class VowelComparisonTests(unittest.TestCase):
     def test_mismatched_profiles_are_rejected(self):
         with self.assertRaisesRegex(ValueError, "same pronunciation profile"):
             compare_vowel_evidence(reading(), reading(profile="ashkenazi"))
+
+    def test_mismatched_policy_versions_are_rejected(self):
+        candidate = reading()
+        candidate["pronunciation"]["policy_version"] = "legacy-policy"
+        with self.assertRaisesRegex(ValueError, "same pronunciation policy version"):
+            compare_vowel_evidence(reading(), candidate)
 
     def test_mismatched_passages_are_rejected(self):
         candidate = reading()

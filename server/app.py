@@ -26,7 +26,11 @@ from starlette.concurrency import run_in_threadpool
 from starlette.responses import HTMLResponse, JSONResponse
 
 from .calibration import calibration_suite, compare_vowel_evidence
-from .hebrew_g2p import VALID_PROFILES
+from .hebrew_g2p import (
+    PRONUNCIATION_POLICY_VERSION,
+    VALID_PROFILES,
+    pronunciation_policy,
+)
 from .passage_catalog import passage_catalog
 from .pronunciation import (
     PronunciationUnavailable,
@@ -239,6 +243,7 @@ def create_app(transcriber=None, pronunciation_assessor=None) -> FastAPI:
                 "model": getattr(pronunciation, "model_id", None),
                 "model_loaded": pronunciation_loaded,
                 "affects_routing": False,
+                "policy_version": PRONUNCIATION_POLICY_VERSION,
             },
         }
 
@@ -246,6 +251,13 @@ def create_app(transcriber=None, pronunciation_assessor=None) -> FastAPI:
     def get_calibration_suite(pronunciation_profile: str = "mixed"):
         try:
             return calibration_suite(pronunciation_profile)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.get("/pronunciation-policy")
+    def get_pronunciation_policy(pronunciation_profile: str = "mixed"):
+        try:
+            return pronunciation_policy(pronunciation_profile)
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -432,7 +444,8 @@ if (location.hostname.endsWith('.app.github.dev')) {
             pronunciation_result.get("status") == "evidence_available"
         )
         result = {
-            "version": 2,
+            "version": 3,
+            "pronunciation_policy_version": PRONUNCIATION_POLICY_VERSION,
             "attempt_id": attempt_id or str(uuid4()),
             "bracha": bracha,
             "requested_pronunciation_profile": pronunciation_profile,

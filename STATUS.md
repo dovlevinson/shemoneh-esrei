@@ -38,8 +38,8 @@ Updated 2026-08-25.
   recording comparison, and downloadable labeled packages.
 - Moved long analysis into in-memory background jobs so Codespaces forwarding does
   not need to hold one request open for the full CPU inference run.
-- Added three controlled, fully pointed master readings covering every supported
-  written vowel source, all five core vowel sounds, and major consonant contrasts.
+- Added three controlled, fully pointed master readings covering the targeted
+  written vowel sources, all five core vowel sounds, and major consonant contrasts.
 - Added browser recording for Reading B, exact Reading B vowel labels, bulk
   correct labeling, and export of both readings' labels.
 - Added a conservative, non-authoritative reference-comparison endpoint that
@@ -48,7 +48,7 @@ Updated 2026-08-25.
 - Added a cumulative research collector for all 19 weekday brachot. It reuses
   the coach's pointed, condition-tagged text, supports seasonal and special
   insertions, uploads or records audio, runs the complete maintained analysis
-  pipeline, and requires versioned human review before export.
+  pipeline, and supports optional human review before export.
 - Added browser-local research collection, individual self-contained backups,
   audio-free manifest export, and descriptive aggregation across speakers,
   passages, human labels, and pinned model versions.
@@ -59,6 +59,15 @@ Updated 2026-08-25.
   preserves unreviewed audio and model output, clearly separates ASR/acoustic
   evidence from human ground truth, and hides optional review controls by
   default.
+- Added pronunciation policy `kriah-pronunciation-v2`. It preserves exact
+  written marks, maps chataf to its A/E/O family, maps kubutz and shuruk to U,
+  records common tzeirei and cholam realizations, and excludes sheva from the
+  primary acoustic sequence while retaining its written classification.
+- Fixed the consonantal vav plus holam loss in the current `מִצְוֹתֶיךָ`
+  spelling and added direct U+05BA support.
+- Added policy-version metadata, primary-versus-tiered evidence summaries,
+  browser reanalysis of saved full samples, reanalysis lineage, and evaluator
+  safeguards against pooling different pronunciation policies.
 
 ## Verified locally
 
@@ -81,6 +90,9 @@ Updated 2026-08-25.
   are 0.755751 for the correct reading and 0.701499 for the mistake reading.
   This does not establish performance on the fourth reported planted error,
   different speakers, or child recordings.
+- Those recorded figures predate pronunciation policy v2. They are retained as
+  historical evidence only and must be regenerated before comparison with new
+  samples.
 
 The API integration tests are included but require the development dependencies.
 Actual ASR accuracy, model startup, container behavior, and microphone behavior
@@ -101,6 +113,8 @@ still need verification in the target environment.
   training method and a speaker-disjoint held-out evaluation.
 - Unreviewed samples do not provide ground truth and therefore cannot validate
   model accuracy until an independent review protocol is applied.
+- Samples created before policy v2 must be reanalyzed before direct comparison
+  with current output. The original sample remains useful and is not overwritten.
 - Existing client result codes remain easy to alter. Server responses can carry
   a signed sub-token, but a real dashboard must verify it server-side.
 

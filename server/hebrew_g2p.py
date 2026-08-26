@@ -23,6 +23,7 @@ SEGOL = "\u05b6"
 PATAH = "\u05b7"
 QAMATS = "\u05b8"
 HOLAM = "\u05b9"
+HOLAM_HASER = "\u05ba"
 QUBUTS = "\u05bb"
 DAGESH = "\u05bc"
 METEG = "\u05bd"
@@ -44,6 +45,7 @@ VOWEL_POINTS = {
     QAMATS,
     QAMATS_QATAN,
     HOLAM,
+    HOLAM_HASER,
     QUBUTS,
     HATAF_SEGOL,
     HATAF_PATAH,
@@ -61,6 +63,7 @@ KEPT_MARKS = VOWEL_POINTS | {
 FINALS = {"ך": "כ", "ם": "מ", "ן": "נ", "ף": "פ", "ץ": "צ"}
 VALID_PROFILES = {"mixed", "sephardi", "ashkenazi"}
 VALID_DIVINE_POLICIES = {"both", "hashem", "adonai"}
+PRONUNCIATION_POLICY_VERSION = "kriah-pronunciation-v2"
 
 
 @dataclass(frozen=True)
@@ -69,6 +72,10 @@ class Slot:
     kind: str
     source: str
     symbol: str
+    sound_family: str | None = None
+    accepted_realizations: tuple[str, ...] = ()
+    evaluation_tier: str = "primary"
+    counts_toward_primary: bool = True
 
     def to_dict(self) -> dict:
         return {
@@ -76,6 +83,10 @@ class Slot:
             "kind": self.kind,
             "source": self.source,
             "symbol": self.symbol,
+            "sound_family": self.sound_family,
+            "accepted_realizations": list(self.accepted_realizations),
+            "evaluation_tier": self.evaluation_tier,
+            "counts_toward_primary": self.counts_toward_primary,
         }
 
 
@@ -120,11 +131,30 @@ VOWEL_NAMES = {
     QAMATS: "קמץ",
     QAMATS_QATAN: "קמץ קטן",
     HOLAM: "חולם",
+    HOLAM_HASER: "חולם חסר בווי עיצורית",
     QUBUTS: "קובוץ",
     HATAF_SEGOL: "חטף סגול",
     HATAF_PATAH: "חטף פתח",
     HATAF_QAMATS: "חטף קמץ",
 }
+
+VOWEL_FAMILIES = {
+    HIRIQ: "I",
+    TSERE: "E",
+    SEGOL: "E",
+    PATAH: "A",
+    QAMATS: "A_OR_ROUNDED_A_O",
+    QAMATS_QATAN: "O",
+    HOLAM: "O",
+    HOLAM_HASER: "O",
+    QUBUTS: "U",
+    HATAF_SEGOL: "E",
+    HATAF_PATAH: "A",
+    HATAF_QAMATS: "O",
+}
+
+REDUCED_VOWELS = {HATAF_SEGOL, HATAF_PATAH, HATAF_QAMATS}
+TRADITIONAL_LONG_VOWEL_MARKS = {QAMATS, TSERE, HOLAM, HOLAM_HASER}
 
 
 def _vowel_sound(mark: str, profile: str) -> frozenset[str]:
@@ -135,6 +165,7 @@ def _vowel_sound(mark: str, profile: str) -> frozenset[str]:
         PATAH: {"a"},
         QAMATS_QATAN: {"o"},
         HOLAM: {"o"},
+        HOLAM_HASER: {"o"},
         QUBUTS: {"u"},
         HATAF_SEGOL: {"e"},
         HATAF_PATAH: {"a"},
@@ -147,6 +178,36 @@ def _vowel_sound(mark: str, profile: str) -> frozenset[str]:
             else ({"o"} if profile == "ashkenazi" else {"a"})
         )
     return frozenset(fixed[mark])
+
+
+def _accepted_realizations(mark: str, profile: str) -> tuple[str, ...]:
+    if mark == QAMATS:
+        if profile == "sephardi":
+            return ("A",)
+        if profile == "ashkenazi":
+            return ("ROUNDED_A_O",)
+        return ("A", "ROUNDED_A_O")
+    if mark == TSERE and profile != "sephardi":
+        return ("E", "EI")
+    if mark in {HOLAM, HOLAM_HASER} and profile != "sephardi":
+        return ("O", "OY")
+    return (VOWEL_FAMILIES[mark],)
+
+
+def _vowel_slot(mark: str, profile: str, source: str | None = None, symbol: str | None = None) -> Slot:
+    variant_limited = mark in {TSERE, HOLAM, HOLAM_HASER} and profile != "sephardi"
+    reduced = mark in REDUCED_VOWELS
+    tier = "reduced_family" if reduced else ("variant_limited" if variant_limited else "primary")
+    return Slot(
+        _vowel_sound(mark, profile),
+        "vowel",
+        source or VOWEL_NAMES[mark],
+        symbol or mark,
+        VOWEL_FAMILIES[mark],
+        _accepted_realizations(mark, profile),
+        tier,
+        True,
+    )
 
 
 def _soft_tav(profile: str) -> frozenset[str]:
@@ -163,26 +224,26 @@ def is_divine_name(word: str) -> bool:
     return _bare(word) in {"יהוה", "אדני", "אדוני"}
 
 
-def _divine_variants(policy: str) -> list[PronunciationVariant]:
+def _divine_variants(policy: str, profile: str) -> list[PronunciationVariant]:
     variants = {
         "hashem": PronunciationVariant(
             "hashem",
             (
                 Slot(frozenset({"h"}), "consonant", "שם ה׳", "ה"),
-                Slot(frozenset({"a"}), "vowel", "פתח", PATAH),
+                _vowel_slot(PATAH, profile),
                 Slot(frozenset({"sh"}), "consonant", "שם ה׳", "ש"),
-                Slot(frozenset({"e"}), "vowel", "סגול", SEGOL),
+                _vowel_slot(SEGOL, profile),
                 Slot(frozenset({"m"}), "consonant", "שם ה׳", "ם"),
             ),
         ),
         "adonai": PronunciationVariant(
             "adonai",
             (
-                Slot(frozenset({"a"}), "vowel", "חטף פתח", HATAF_PATAH),
+                _vowel_slot(HATAF_PATAH, profile),
                 Slot(frozenset({"d"}), "consonant", "ד", "ד"),
-                Slot(frozenset({"o"}), "vowel", "חולם", HOLAM),
+                _vowel_slot(HOLAM, profile),
                 Slot(frozenset({"n"}), "consonant", "נ", "נ"),
-                Slot(frozenset({"a"}), "vowel", "קמץ", QAMATS),
+                _vowel_slot(QAMATS, profile),
                 Slot(frozenset({"j"}), "consonant", "י", "י"),
             ),
         ),
@@ -205,19 +266,44 @@ def _units(word: str) -> list[tuple[str, list[str]]]:
     return [(letter, marks) for letter, marks in units]
 
 
-def _is_shva_na(units: list[tuple[str, list[str]]], index: int, marks: set[str]) -> bool:
+def _classify_shva(
+    units: list[tuple[str, list[str]]], index: int, marks: set[str]
+) -> tuple[str, str]:
     if SOURCE_SHVA_NA_MARKER in marks:
-        return True
+        return "na", "source_specific_u0592_marker"
     if index == 0:
-        return True
+        return "na", "word_initial"
     previous_marks = set(units[index - 1][1])
     if SHVA in previous_marks and index == len(units) - 1:
-        return False
+        return "nach", "final_of_two_shevas"
     if SHVA in previous_marks:
-        return True
+        return "na", "second_of_two_shevas"
     if DAGESH in marks and FINALS.get(units[index][0], units[index][0]) not in BEGEDKEFET_HARD:
-        return True
-    return False
+        return "na", "under_dagesh_chazak_candidate"
+    # A sheva after a shuruk or a written long vowel is traditionally
+    # classified as na. Natural contemporary reading may nevertheless realize
+    # it as a very brief vowel or as no separately audible vowel. The acoustic
+    # grader records the classification but does not force an /e/ slot.
+    if (
+        units[index - 1][0] == "ו"
+        and DAGESH in previous_marks
+        and not previous_marks.intersection(VOWEL_POINTS)
+    ):
+        return "na", "after_shuruk"
+    if previous_marks.intersection(TRADITIONAL_LONG_VOWEL_MARKS):
+        return "na", "after_written_long_vowel"
+    if (
+        units[index - 1][0] == "י"
+        and not previous_marks.intersection(VOWEL_POINTS | {SHVA})
+        and index >= 2
+        and HIRIQ in set(units[index - 2][1])
+    ):
+        return "na", "after_hiriq_malei"
+    return "uncertain", "not_resolved_by_conservative_rules"
+
+
+def _is_shva_na(units: list[tuple[str, list[str]]], index: int, marks: set[str]) -> bool:
+    return _classify_shva(units, index, marks)[0] == "na"
 
 
 def _ordinary_slots(word: str, profile: str) -> tuple[Slot, ...]:
@@ -234,10 +320,10 @@ def _ordinary_slots(word: str, profile: str) -> tuple[Slot, ...]:
 
         # Matres lectionis and shuruk contribute a vowel, not a /v/ consonant.
         if base == "ו" and has_dagesh and not vowel and SHVA not in marks:
-            slots.append(Slot(frozenset({"u"}), "vowel", "שורוק", "וּ"))
+            slots.append(_vowel_slot(QUBUTS, profile, "שורוק", "וּ"))
             continue
-        if base == "ו" and vowel == HOLAM and not has_dagesh:
-            slots.append(Slot(frozenset({"o"}), "vowel", "חולם מלא", "וֹ"))
+        if base == "ו" and vowel == HOLAM and not has_dagesh and SHVA not in previous_marks:
+            slots.append(_vowel_slot(HOLAM, profile, "חולם מלא", "וֹ"))
             continue
         if base == "ו" and not vowel and HOLAM in previous_marks:
             continue
@@ -270,11 +356,7 @@ def _ordinary_slots(word: str, profile: str) -> tuple[Slot, ...]:
                 Slot(frozenset({sound}), "consonant", letter, letter) if sound else None
             )
 
-        vowel_slot = (
-            Slot(_vowel_sound(vowel, profile), "vowel", VOWEL_NAMES[vowel], vowel)
-            if vowel
-            else None
-        )
+        vowel_slot = _vowel_slot(vowel, profile) if vowel else None
 
         # A final furtive patah is pronounced before the final guttural.
         if is_last and base in {"ח", "ה", "ע"} and vowel == PATAH:
@@ -288,10 +370,101 @@ def _ordinary_slots(word: str, profile: str) -> tuple[Slot, ...]:
             if vowel_slot:
                 slots.append(vowel_slot)
 
-        if not vowel and SHVA in marks and _is_shva_na(units, index, marks):
-            slots.append(Slot(frozenset({"e"}), "vowel", "שווא נע", SHVA))
-
     return tuple(slots)
+
+
+def written_vowels(word: str, profile: str = "mixed") -> list[dict]:
+    """Return exact written marks and their policy without forcing audio slots.
+
+    Sheva is preserved here even though it is excluded from the primary CTC
+    alignment.  That separation prevents an optional or inaudible sheva from
+    shifting every later acoustic slot in the word.
+    """
+
+    if profile not in VALID_PROFILES:
+        raise ValueError(f"unsupported pronunciation profile: {profile}")
+    units = _units(word)
+    result = []
+    for index, (letter, raw_marks) in enumerate(units):
+        marks = set(raw_marks)
+        vowels = [mark for mark in raw_marks if mark in VOWEL_POINTS]
+        if letter == "ו" and DAGESH in marks and not vowels and SHVA not in marks:
+            slot = _vowel_slot(QUBUTS, profile, "שורוק", "וּ")
+            result.append({"letter_index": index, **slot.to_dict()})
+            continue
+        for mark in vowels:
+            source = VOWEL_NAMES[mark]
+            if letter == "ו" and mark == HOLAM and SHVA not in (set(units[index - 1][1]) if index else set()):
+                source = "חולם מלא"
+            result.append({"letter_index": index, **_vowel_slot(mark, profile, source).to_dict()})
+        if SHVA in marks:
+            classification, rule = _classify_shva(units, index, marks)
+            result.append(
+                {
+                    "letter_index": index,
+                    "allowed": ["e", "none"],
+                    "kind": "vowel",
+                    "source": "שווא נע" if classification == "na" else ("שווא נח" if classification == "nach" else "שווא"),
+                    "symbol": SHVA,
+                    "sound_family": "E_OR_NONE",
+                    "accepted_realizations": ["BRIEF_E", "NONE"],
+                    "evaluation_tier": "research_only",
+                    "counts_toward_primary": False,
+                    "shva_classification": classification,
+                    "classification_rule": rule,
+                    "acoustic_status": "not_independently_scored",
+                }
+            )
+    return result
+
+
+def pronunciation_policy(profile: str = "mixed") -> dict:
+    """Return the versioned, machine-readable policy used by the mapper."""
+
+    if profile not in VALID_PROFILES:
+        raise ValueError(f"unsupported pronunciation profile: {profile}")
+    marks = [
+        (PATAH, "פתח", "ַ"),
+        (QAMATS, "קמץ", "ָ"),
+        (QAMATS_QATAN, "קמץ קטן", "ׇ"),
+        (SEGOL, "סגול", "ֶ"),
+        (TSERE, "צירי", "ֵ"),
+        (HIRIQ, "חיריק", "ִ"),
+        (HOLAM, "חולם", "ֹ"),
+        (QUBUTS, "קובוץ", "ֻ"),
+        (QUBUTS, "שורוק", "וּ"),
+        (HATAF_PATAH, "חטף פתח", "ֲ"),
+        (HATAF_SEGOL, "חטף סגול", "ֱ"),
+        (HATAF_QAMATS, "חטף קמץ", "ֳ"),
+    ]
+    mappings = []
+    for mark, source, symbol in marks:
+        mappings.append(_vowel_slot(mark, profile, source, symbol).to_dict())
+    mappings.append(
+        {
+            "allowed": ["e", "none"],
+            "kind": "vowel",
+            "source": "שווא",
+            "symbol": SHVA,
+            "sound_family": "E_OR_NONE",
+            "accepted_realizations": ["BRIEF_E", "NONE"],
+            "evaluation_tier": "research_only",
+            "counts_toward_primary": False,
+        }
+    )
+    return {
+        "version": PRONUNCIATION_POLICY_VERSION,
+        "profile": profile,
+        "acoustic_classes": ["A", "E", "I", "O", "U"],
+        "mappings": mappings,
+        "sheva_policy": {
+            "stored_exactly": True,
+            "classified_when_supported": True,
+            "independently_scored": False,
+            "reason": "optional or extremely brief realization can shift later CTC slots",
+        },
+        "authoritative_grade": False,
+    }
 
 
 def pronunciation_variants(
@@ -304,7 +477,7 @@ def pronunciation_variants(
     if divine_policy not in VALID_DIVINE_POLICIES:
         raise ValueError(f"unsupported Divine-Name policy: {divine_policy}")
     if is_divine_name(word):
-        return _divine_variants(divine_policy)
+        return _divine_variants(divine_policy, profile)
     return [PronunciationVariant(profile, _ordinary_slots(word, profile))]
 
 
@@ -316,6 +489,8 @@ def pronunciation_map(
     return [
         {
             "word": word,
+            "policy_version": PRONUNCIATION_POLICY_VERSION,
+            "written_vowels": written_vowels(word, profile),
             "variants": [
                 {"name": variant.name, "slots": [slot.to_dict() for slot in variant.slots]}
                 for variant in pronunciation_variants(word, profile, divine_policy)

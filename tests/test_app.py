@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 
 from server.app import create_app
 from server.calibration import BIRKAT_HASHANIM_TEXT, KIBBUTZ_GALUYOT_TEXT
+from server.hebrew_g2p import PRONUNCIATION_POLICY_VERSION
 from server.pronunciation import PronunciationUnavailable
 from server.transcriber import Transcript, TranscriptWord
 
@@ -102,6 +103,10 @@ class AppTests(unittest.TestCase):
         response = client.get("/health")
         self.assertEqual(response.status_code, 200)
         self.assertIn("does not yet grade nikud", response.json()["limitations"])
+        self.assertEqual(
+            response.json()["pronunciation"]["policy_version"],
+            PRONUNCIATION_POLICY_VERSION,
+        )
 
     def test_calibration_suite_exposes_all_master_readings(self):
         client = TestClient(create_app(FakeTranscriber()))
@@ -127,6 +132,13 @@ class AppTests(unittest.TestCase):
         client = TestClient(create_app(FakeTranscriber()))
         response = client.get("/calibration-suite?pronunciation_profile=unknown")
         self.assertEqual(response.status_code, 422)
+
+    def test_pronunciation_policy_endpoint_is_versioned(self):
+        client = TestClient(create_app(FakeTranscriber()))
+        response = client.get("/pronunciation-policy?pronunciation_profile=mixed")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["version"], PRONUNCIATION_POLICY_VERSION)
+        self.assertFalse(response.json()["authoritative_grade"])
 
     def test_comparison_rejects_readings_without_vowel_evidence(self):
         client = TestClient(create_app(FakeTranscriber()))

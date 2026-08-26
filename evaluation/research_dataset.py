@@ -67,6 +67,9 @@ def _measured_vowels(sample: dict) -> dict[str, dict]:
             measured[key] = {
                 "word": word.get("word"),
                 "source": slot.get("source"),
+                "sound_family": slot.get("sound_family") or "legacy_unknown",
+                "evaluation_tier": slot.get("evaluation_tier") or "legacy",
+                "counts_toward_primary": bool(slot.get("counts_toward_primary", False)),
                 "margin": float(slot.get("peak_competitor_margin") or 0),
                 "expected_probability": float(
                     slot.get("peak_expected_probability") or 0
@@ -89,24 +92,37 @@ def _distribution(values: list[float]) -> dict:
 
 def aggregate(samples: Iterable[dict]) -> dict:
     material = list(samples)
+    recording_roots = set()
     speakers = set()
     passages = set()
     passages_by_speaker: dict[str, set[str]] = defaultdict(set)
     speakers_by_passage: dict[str, set[str]] = defaultdict(set)
     complete_speakers_by_passage: dict[str, set[str]] = defaultdict(set)
     model_versions = Counter()
+    policy_versions = Counter()
+    analysis_lineage = Counter()
     reading_truth = Counter()
     passage_coverage = Counter()
     word_labels = Counter()
     vowel_labels = Counter()
     vowel_sources = Counter()
+    vowel_families = Counter()
+    evaluation_tiers = Counter()
     margins: dict[str, list[float]] = defaultdict(list)
     expected_probabilities: dict[str, list[float]] = defaultdict(list)
     measured_total = 0
+    primary_measured_total = 0
     labeled_measured = 0
     labels_without_evidence = 0
 
     for sample in material:
+        recording_roots.add(
+            str(
+                sample.get("audio", {}).get("sha256")
+                or sample.get("lineage", {}).get("reanalysis_of")
+                or sample["sample_id"]
+            )
+        )
         speaker = str(sample["speaker"]["code"])
         passage = str(sample.get("passage", {}).get("id") or "unknown")
         speakers.add(speaker)
@@ -121,6 +137,18 @@ def aggregate(samples: Iterable[dict]) -> dict:
         if coverage == "full":
             complete_speakers_by_passage[passage].add(speaker)
         signature = sample.get("model_signature") or {}
+        policy_versions[
+            str(
+                sample.get("pronunciation_policy_version")
+                or signature.get("pronunciation_policy")
+                or sample.get("analysis", {}).get("pronunciation_policy_version")
+                or sample.get("analysis", {}).get("pronunciation", {}).get("policy_version")
+                or "legacy-unversioned"
+            )
+        ] += 1
+        analysis_lineage[
+            "reanalysis" if sample.get("lineage", {}).get("reanalysis_of") else "original"
+        ] += 1
         model_versions[
             " | ".join(
                 [
@@ -132,12 +160,19 @@ def aggregate(samples: Iterable[dict]) -> dict:
         ] += 1
 
         review = sample.get("human_review") or {}
+        evidence = _measured_vowels(sample)
+        measured_total += len(evidence)
+        for slot in evidence.values():
+            vowel_families[str(slot["sound_family"])] += 1
+            evaluation_tiers[str(slot["evaluation_tier"])] += 1
+            if slot["counts_toward_primary"]:
+                primary_measured_total += 1
+        if not review.get("complete"):
+            continue
         word_labels.update(
             str(item.get("label") or "unknown")
             for item in (review.get("word_labels") or {}).values()
         )
-        evidence = _measured_vowels(sample)
-        measured_total += len(evidence)
         labels = review.get("vowel_labels") or {}
         for key, item in labels.items():
             label = str(item.get("label") or "unknown")
@@ -171,6 +206,7 @@ def aggregate(samples: Iterable[dict]) -> dict:
     return {
         "schema_version": "kriah-research-summary-v1",
         "recordings": len(material),
+        "unique_audio_recordings": len(recording_roots),
         "speakers": len(speakers),
         "brachot_represented": len(passages.intersection({str(i) for i in range(1, 20)})),
         "missing_brachot": missing_brachot,
@@ -187,10 +223,15 @@ def aggregate(samples: Iterable[dict]) -> dict:
         "word_labels": dict(word_labels),
         "vowel_labels": dict(vowel_labels),
         "measured_vowel_slots": measured_total,
+        "primary_measured_vowel_slots": primary_measured_total,
         "human_labeled_measured_vowel_slots": labeled_measured,
         "labels_without_model_evidence": labels_without_evidence,
         "labeled_vowel_sources": dict(sorted(vowel_sources.items())),
+        "measured_vowel_families": dict(sorted(vowel_families.items())),
+        "measured_evaluation_tiers": dict(sorted(evaluation_tiers.items())),
         "model_versions": dict(model_versions),
+        "pronunciation_policy_versions": dict(policy_versions),
+        "analysis_lineage": dict(analysis_lineage),
         "evidence_by_human_label": {
             label: {
                 "competitor_margin": _distribution(margins[label]),
@@ -206,6 +247,7 @@ def aggregate(samples: Iterable[dict]) -> dict:
                 shared_complete_passages
             ),
             "single_model_version": len(model_versions) == 1,
+            "single_pronunciation_policy_version": len(policy_versions) == 1,
             "can_describe_label_separation": correct_count > 0 and wrong_count > 0,
             "validated_threshold_available": False,
         },
@@ -215,6 +257,8 @@ def aggregate(samples: Iterable[dict]) -> dict:
             "Threshold selection requires a predefined calibration split and a speaker-disjoint held-out test split.",
             "Adult recordings do not establish performance on children.",
             "Partial readings support only the manually verified, measured words and do not count as complete-bracha coverage.",
+            "Unreviewed samples measure collection and model behavior but do not count as accuracy ground truth.",
+            "Legacy and current pronunciation-policy results must not be pooled for threshold analysis.",
         ],
     }
 

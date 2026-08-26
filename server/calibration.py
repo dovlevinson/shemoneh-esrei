@@ -10,7 +10,12 @@ from collections import Counter
 from dataclasses import dataclass
 from statistics import mean
 
-from .hebrew_g2p import VALID_PROFILES, pronunciation_variants
+from .hebrew_g2p import (
+    PRONUNCIATION_POLICY_VERSION,
+    VALID_PROFILES,
+    pronunciation_variants,
+    written_vowels,
+)
 
 
 @dataclass(frozen=True)
@@ -250,9 +255,10 @@ def _reading_coverage(reading: CalibrationReading, profile: str) -> dict:
     vowel_sounds: Counter[str] = Counter()
     consonant_sounds: Counter[str] = Counter()
     for word in reading.words:
+        for written in written_vowels(word, profile):
+            vowel_sources[written["source"]] += 1
         for slot in pronunciation_variants(word, profile=profile)[0].slots:
             if slot.kind == "vowel":
-                vowel_sources[slot.source] += 1
                 for sound in slot.allowed:
                     vowel_sounds[sound] += 1
             elif slot.kind == "consonant":
@@ -291,7 +297,8 @@ def calibration_suite(profile: str = "mixed") -> dict:
 
     missing_sources = sorted(REQUIRED_VOWEL_SOURCES.difference(combined_vowels))
     return {
-        "version": 2,
+        "version": 3,
+        "pronunciation_policy_version": PRONUNCIATION_POLICY_VERSION,
         "pronunciation_profile": profile,
         "readings": readings,
         "coverage": {
@@ -316,6 +323,8 @@ def calibration_suite(profile: str = "mixed") -> dict:
         "limitations": [
             "A master suite checks sound coverage but cannot replace references for actual brachot.",
             "Silent sheva has no expected audible vowel slot and cannot be directly scored as a vowel.",
+            "All sheva classifications are research-only and excluded from primary acoustic metrics.",
+            "Reduced and multi-realization families retain separate tiers inside the primary vowel summary.",
             "Results are uncalibrated and cannot determine student pass or fail.",
         ],
     }
@@ -347,6 +356,9 @@ def _vowel_slots(result: dict) -> dict[str, dict]:
                 "heard": word.get("heard"),
                 "source": slot.get("source"),
                 "allowed": slot.get("allowed", []),
+                "sound_family": slot.get("sound_family") or "legacy_unknown",
+                "evaluation_tier": slot.get("evaluation_tier") or "legacy",
+                "counts_toward_primary": bool(slot.get("counts_toward_primary", False)),
                 "peak_expected_probability": slot.get("peak_expected_probability"),
                 "peak_competitor_margin": slot.get("peak_competitor_margin"),
                 "strongest_competing_phone": slot.get("strongest_competing_phone"),
@@ -499,6 +511,18 @@ def compare_vowel_evidence(
         raise ValueError("readings must use the same pronunciation profile")
     if reference_result.get("bracha") != candidate_result.get("bracha"):
         raise ValueError("readings must use the same passage")
+    reference_policy = (
+        reference_result.get("pronunciation", {}).get("policy_version")
+        or reference_result.get("pronunciation_policy_version")
+        or "legacy-unversioned"
+    )
+    candidate_policy = (
+        candidate_result.get("pronunciation", {}).get("policy_version")
+        or candidate_result.get("pronunciation_policy_version")
+        or "legacy-unversioned"
+    )
+    if reference_policy != candidate_policy:
+        raise ValueError("readings must use the same pronunciation policy version")
 
     reference_slots = _vowel_slots(reference_result)
     candidate_slots = _vowel_slots(candidate_result)
@@ -517,6 +541,12 @@ def compare_vowel_evidence(
                 "word": reference["word"],
                 "source": reference["source"],
                 "allowed": reference["allowed"],
+                "sound_family": reference["sound_family"],
+                "evaluation_tier": reference["evaluation_tier"],
+                "counts_toward_primary": (
+                    reference["counts_toward_primary"]
+                    and candidate["counts_toward_primary"]
+                ),
                 "reference": reference,
                 "candidate": candidate,
                 "margin_delta": delta,
@@ -532,8 +562,10 @@ def compare_vowel_evidence(
         float(item["candidate"]["peak_expected_probability"]) for item in comparisons
     ]
     tiers = Counter(item["tier"] for item in comparisons)
+    primary_comparisons = [item for item in comparisons if item["counts_toward_primary"]]
     report = {
-        "version": 2,
+        "version": 3,
+        "pronunciation_policy_version": reference_policy,
         "authoritative": False,
         "calibration_state": "uncalibrated",
         "pronunciation_profile": reference_profile,
@@ -547,9 +579,33 @@ def compare_vowel_evidence(
             "candidate_vowel_mean": (
                 round(mean(candidate_probabilities), 6) if candidate_probabilities else None
             ),
+            "reference_primary_vowel_mean": (
+                round(
+                    mean(
+                        float(item["reference"]["peak_expected_probability"])
+                        for item in primary_comparisons
+                    ),
+                    6,
+                )
+                if primary_comparisons
+                else None
+            ),
+            "candidate_primary_vowel_mean": (
+                round(
+                    mean(
+                        float(item["candidate"]["peak_expected_probability"])
+                        for item in primary_comparisons
+                    ),
+                    6,
+                )
+                if primary_comparisons
+                else None
+            ),
             "strong_candidates": tiers["strong_candidate"],
             "possible_candidates": tiers["possible_candidate"],
             "context_sensitive_slots": tiers["context_sensitive"],
+            "primary_shared_vowel_slots": len(primary_comparisons),
+            "nonprimary_shared_vowel_slots": len(comparisons) - len(primary_comparisons),
         },
         "rule": {
             "strong_margin_drop": STRONG_MARGIN_DROP,

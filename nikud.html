@@ -133,7 +133,7 @@
       <div id="transcript" class="reading" style="font-size:1.2rem;margin-top:8px"></div>
     </details>
     <div id="nikudScope" class="status" style="margin-top:12px"></div>
-    <p class="muted small">“Expected stronger” means the acoustic model favored the expected sound at that aligned moment. It does not yet mean the pronunciation was definitely correct.</p>
+    <p class="muted small">“Expected family stronger” means the acoustic model favored an accepted base sound at that aligned moment. It does not mean the pronunciation was definitely correct. Sheva is shown only as written policy metadata and is not independently graded.</p>
     <div id="vowelEvidence"></div>
     <div class="row" style="margin-top:12px">
       <button id="downloadA" class="primary">Download labeled Reading A</button>
@@ -258,7 +258,7 @@ async function checkHealth(){
     const health=await response.json();
     analysisReady=Boolean(health.nikud_lab_ready);
     const prep=health.model_preparation||{};
-    if(analysisReady){$("serverStatus").className="status ok";$("serverStatus").textContent="Ready. Speech and nikud evidence models are loaded.";}
+    if(analysisReady){$("serverStatus").className="status ok";$("serverStatus").textContent=`Ready. Speech and nikud evidence models are loaded under policy ${health.pronunciation?.policy_version||"unknown"}.`;}
     else if(health.pronunciation?.mode!=="shadow"){$("serverStatus").className="status bad";$("serverStatus").textContent="Nikud evidence is not enabled in this Codespace. Rebuild it from the latest branch.";}
     else if(prep.speech==="failed"||prep.pronunciation==="failed"){$("serverStatus").className="status bad";$("serverStatus").textContent="A model failed to prepare. Open the Codespace log before testing.";}
     else{$("serverStatus").className="status";$("serverStatus").textContent=`Preparing models in cloud storage. Speech: ${prep.speech||"waiting"}. Nikud: ${prep.pronunciation||"waiting"}.`;setTimeout(checkHealth,3000);}
@@ -340,22 +340,22 @@ async function compareAnalyzedReadings(){
 }
 
 function evidenceClass(margin){return margin>0?"favored":margin<0?"competing":"neutral";}
-function evidenceLabel(margin){return margin>0?"Expected stronger":margin<0?"Another sound stronger":"Evidence tied";}
+function evidenceLabel(margin){return margin>0?"Expected family stronger":margin<0?"Another vowel stronger":"Evidence tied";}
 function pct(value){return value==null?"n/a":`${(Number(value)*100).toFixed(1)}%`;}
 function margin(value){const number=Number(value);return Number.isFinite(number)?`${number>=0?"+":""}${number.toFixed(2)}`:"n/a";}
 function renderA(result){
   $("resultsA").classList.remove("hidden");$("transcript").textContent=result.transcript||"No transcript returned";
   const pronunciation=result.pronunciation||{},summary=pronunciation.summary||{},vowels=[...flattenVowels(result).values()];
   const vowelMean=vowels.length?vowels.reduce((total,slot)=>total+Number(slot.peak_expected_probability||0),0)/vowels.length:null;
-  $("wordSummary").innerHTML=[[`${Number(result.estimated_accuracy)||0}%`,"Word and order match"],[summary.words_measured??0,"Words with sound evidence"],[vowels.length,"Measured vowel positions"],[pct(vowelMean),"Average vowel evidence, not a grade"]].map(([value,label])=>`<div class="metric"><b>${escapeHtml(value)}</b><span>${escapeHtml(label)}</span></div>`).join("");
+  $("wordSummary").innerHTML=[[`${Number(result.estimated_accuracy)||0}%`,"Word and order match"],[summary.words_measured??0,"Words with sound evidence"],[summary.primary_vowel_slots_measured??vowels.filter(slot=>slot.counts_toward_primary).length,"Primary vowel positions"],[pronunciation.policy_version||result.pronunciation_policy_version||"unknown","Pronunciation policy"]].map(([value,label])=>`<div class="metric"><b>${escapeHtml(value)}</b><span>${escapeHtml(label)}</span></div>`).join("");
   if(pronunciation.status!=="evidence_available"){$("nikudScope").className="status bad";$("nikudScope").textContent=`Nikud evidence was not available (${pronunciation.status||"unknown"}).`;$("vowelEvidence").innerHTML="";return;}
-  $("nikudScope").className="status";$("nikudScope").textContent=`Experimental vowel evidence collected using the ${pronunciation.pronunciation_profile||"mixed"} profile. It did not change the word result.`;
+  $("nikudScope").className="status";$("nikudScope").textContent=`Experimental vowel-family evidence collected using the ${pronunciation.pronunciation_profile||"mixed"} profile. Chataf maps to its A, E, or O family; kubutz and shuruk both map to U; sheva is excluded from primary scoring. Nothing here changed the word result.`;
   $("vowelEvidence").innerHTML=(pronunciation.words||[]).map(word=>{
     if(word.status!=="measured_uncalibrated")return `<div class="word-card"><div class="word-head"><span class="heb">${escapeHtml(word.word)}</span><span class="muted small">Not measured: ${escapeHtml(word.status)}</span></div></div>`;
     const slots=(word.slots||[]).map((slot,index)=>({...slot,index})).filter(slot=>slot.kind==="vowel");
     const rows=slots.length?slots.map(slot=>{
       const key=`${word.expected_index}:${slot.index}`,m=Number(slot.peak_competitor_margin||0),chosen=slotLabelsA[key]?.label;
-      return `<div class="slot"><div class="slot-title"><b>${escapeHtml(slot.source)}</b><span class="heb">${escapeHtml(slot.symbol)}</span> expected sound ${escapeHtml((slot.allowed||[]).join(" / "))}</div><div class="evidence"><b>${pct(slot.peak_expected_probability)}</b><div class="small muted">peak model evidence</div></div><div><span class="${evidenceClass(m)}">${evidenceLabel(m)}</span><div class="small">margin ${margin(m)}; competitor ${escapeHtml(slot.strongest_competing_phone||"n/a")}</div></div><div class="slot-labels" data-key="${key}" data-word="${escapeHtml(word.word)}" data-source="${escapeHtml(slot.source)}"><button data-label="human_correct" class="${chosen==="human_correct"?"chosen":""}">Known correct</button><button data-label="human_wrong_vowel" class="${chosen==="human_wrong_vowel"?"chosen":""}">Wrong vowel</button><button data-label="human_uncertain" class="${chosen==="human_uncertain"?"chosen":""}">Unsure</button></div></div>`;
+      return `<div class="slot"><div class="slot-title"><b>${escapeHtml(slot.source)}</b><span class="heb">${escapeHtml(slot.symbol)}</span> family ${escapeHtml(slot.sound_family||"legacy")}; accepted ${escapeHtml((slot.accepted_realizations||slot.allowed||[]).join(" / "))}<div class="small muted">Evidence tier: ${escapeHtml(slot.evaluation_tier||"legacy")}${slot.counts_toward_primary?"; included in primary summary":"; reported separately"}</div></div><div class="evidence"><b>${pct(slot.peak_expected_probability)}</b><div class="small muted">peak family evidence</div></div><div><span class="${evidenceClass(m)}">${evidenceLabel(m)}</span><div class="small">margin ${margin(m)}; competitor ${escapeHtml(slot.strongest_competing_phone||"n/a")}</div></div><div class="slot-labels" data-key="${key}" data-word="${escapeHtml(word.word)}" data-source="${escapeHtml(slot.source)}"><button data-label="human_correct" class="${chosen==="human_correct"?"chosen":""}">Reader used accepted sound</button><button data-label="human_wrong_vowel" class="${chosen==="human_wrong_vowel"?"chosen":""}">Reader used different vowel</button><button data-label="human_uncertain" class="${chosen==="human_uncertain"?"chosen":""}">Cannot judge</button></div></div>`;
     }).join(""):`<div class="slot"><div>No mapped vowel slots for this word.</div></div>`;
     return `<div class="word-card"><div class="word-head"><span class="heb">${escapeHtml(word.word)}</span><span class="small">heard: <span class="heb">${escapeHtml(word.heard||"-")}</span> <span class="pill">${escapeHtml(word.word_alignment)}</span></span></div>${rows}</div>`;
   }).join("");
@@ -403,7 +403,7 @@ function renderComparison(){
 
 function blobBase64(blob){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(",")[1]);reader.onerror=()=>reject(reader.error);reader.readAsDataURL(blob);});}
 function downloadBlob(blob,filename){const url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-async function sample(which){const isA=which==="A",blob=isA?blobA:blobB;return {schema_version:"kriah-nikud-lab-v2",created_at:new Date().toISOString(),speaker_id:$("speakerId").value.trim(),pronunciation_tradition:$("tradition").value,passage:{id:passage().id,name:passage().name,text:currentText(),expected_words:words()},reading_label:isA?$("truthA").value:$("truthB").value,guided_scenario:isA?null:guidedScenario(),slot_labels:{...(isA?slotLabelsA:slotLabelsB)},analysis:isA?resultA:resultB,audio:{filename:isA?nameA:nameB,mime_type:blob.type||"application/octet-stream",size_bytes:blob.size,base64:await blobBase64(blob)}};}
+async function sample(which){const isA=which==="A",blob=isA?blobA:blobB,result=isA?resultA:resultB;return {schema_version:"kriah-nikud-lab-v3",created_at:new Date().toISOString(),pronunciation_policy_version:result?.pronunciation?.policy_version||result?.pronunciation_policy_version||"legacy-unversioned",speaker_id:$("speakerId").value.trim(),pronunciation_tradition:$("tradition").value,passage:{id:passage().id,name:passage().name,text:currentText(),expected_words:words()},reading_label:isA?$("truthA").value:$("truthB").value,guided_scenario:isA?null:guidedScenario(),slot_labels:{...(isA?slotLabelsA:slotLabelsB)},analysis:result,audio:{filename:isA?nameA:nameB,mime_type:blob.type||"application/octet-stream",size_bytes:blob.size,base64:await blobBase64(blob)}};}
 async function downloadA(){if(!resultA||!blobA)return;downloadBlob(new Blob([JSON.stringify(await sample("A"),null,2)],{type:"application/json"}),`kriah-nikud-${attemptA}.json`);}
 async function downloadPair(){if(!resultA||!resultB||!blobA||!blobB)return;const payload={schema_version:"kriah-nikud-pair-v3",created_at:new Date().toISOString(),reading_a:await sample("A"),reading_b:await sample("B"),comparison:comparisonReport,guided_evaluation:comparisonReport?.target_evaluation||null,label_evaluation:evaluateLabels()};downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}),`kriah-nikud-pair-${attemptA}.json`);}
 function sampleBlob(sample){const bytes=Uint8Array.from(atob(sample.audio.base64),char=>char.charCodeAt(0));return new Blob([bytes],{type:sample.audio.mime_type||"audio/webm"});}

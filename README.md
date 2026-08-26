@@ -81,6 +81,12 @@ evidence from one pinned model version separates manually verified correct and
 wrong vowels. Model or rule changes must be made explicitly and re-evaluated on
 a speaker-disjoint held-out set.
 
+Each sample records its pronunciation-policy version separately from the
+acoustic-model revision. A saved full sample can be loaded from the collection
+table and reanalyzed with the current server while preserving a `reanalysis_of`
+link. Evaluation reports separate policy versions instead of pooling
+incompatible outputs.
+
 Partial recordings remain usable for their manually verified, acoustically
 measured words. Mark whether the reader started late, ended early, or skipped
 words, and edit the final expected text to the portion actually spoken before
@@ -94,7 +100,7 @@ both the Hebrew speech model and the optional pronunciation model. The page
 waits until both are loaded before enabling analysis, then submits background
 jobs so a long CPU analysis is not tied to one forwarded HTTP request.
 
-For each mapped vowel slot, the lab displays:
+For each mapped vowel-family slot, the lab displays:
 
 - the expected nekudah and accepted sound;
 - peak acoustic evidence for the expected sound;
@@ -102,14 +108,20 @@ For each mapped vowel slot, the lab displays:
 - the strongest competing modeled phone;
 - a human label for whether the vowel was actually correct, wrong, or uncertain.
 
+Policy v2 preserves the exact written nekudah while mapping chataf patach,
+chataf segol, and chataf kamatz to A, E, and O respectively; kubutz and shuruk
+both map to U. Sheva remains visible as written metadata but is not forced into
+the acoustic sequence or counted as primary evidence. See [`NIKUD.md`](NIKUD.md)
+for the full policy table and evidence tiers.
+
 The passage menu starts with three short, pointed master readings:
 
 1. Everyday vowel sounds in familiar words.
 2. Reduced vowels, kamatz katan, sounded and silent sheva, and special cases.
 3. Hebrew consonants and commonly confused sound contrasts.
 
-Together they exercise every vowel category currently supported by the
-pointed-Hebrew mapper. Record Reading A correctly, then choose a guided Reading B
+Together they exercise the vowel categories targeted by the controlled suite.
+Record Reading A correctly, then choose a guided Reading B
 test. First repeat every word correctly to measure natural variation. Next select
 the guided mistakes and read the highlighted substitutions shown on screen. The
 server already knows their exact word and vowel positions, so it reports catches,
@@ -123,7 +135,7 @@ spelling, but their windows are explicitly marked lower confidence. Vowels are
 aligned without assuming that their expected sound was actually spoken, and
 vowel competitors are restricted to other vowel sounds.
 Large reference-to-candidate drops are shown as research candidates, not grades.
-Sounded sheva is explicitly context-sensitive. One master reading does not
+Sheva is recorded as research-only written metadata. One master reading does not
 replace clean references for each real bracha or validation on different
 speakers and children.
 

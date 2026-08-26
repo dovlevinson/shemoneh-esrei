@@ -12,9 +12,15 @@ import math
 import os
 import threading
 import time
+from collections import Counter
 from collections.abc import Sequence
 
-from .hebrew_g2p import collapse_model_phone, pronunciation_variants
+from .hebrew_g2p import (
+    PRONUNCIATION_POLICY_VERSION,
+    collapse_model_phone,
+    pronunciation_variants,
+    written_vowels,
+)
 
 DEFAULT_MODEL = "facebook/wav2vec2-lv-60-espeak-cv-ft"
 DEFAULT_MODEL_REVISION = "c43348bbaa5a77692c8e7bf3409d683474fdf2a4"
@@ -341,6 +347,8 @@ class CtcPronunciationAssessor:
         requested_profile = profile or self.profile
         results = []
         all_probabilities: list[float] = []
+        primary_vowel_probabilities: list[float] = []
+        measured_tiers: Counter[str] = Counter()
         for row in alignment_rows:
             expected_index = row.get("expected_index")
             if expected_index is None:
@@ -350,6 +358,9 @@ class CtcPronunciationAssessor:
                 "word": expected_words[expected_index],
                 "heard": row.get("heard"),
                 "word_alignment": row.get("operation"),
+                "written_vowels": written_vowels(
+                    expected_words[expected_index], requested_profile
+                ),
             }
             heard_index = row.get("heard_index")
             if heard_index is None or row.get("operation") not in {"ok", "almost", "wrong"}:
@@ -412,6 +423,15 @@ class CtcPronunciationAssessor:
             all_probabilities.extend(
                 slot["peak_expected_probability"] for slot in chosen["slots"]
             )
+            for slot in chosen["slots"]:
+                if slot.get("kind") != "vowel":
+                    continue
+                tier = str(slot.get("evaluation_tier") or "legacy")
+                measured_tiers[tier] += 1
+                if slot.get("counts_toward_primary"):
+                    primary_vowel_probabilities.append(
+                        slot["peak_expected_probability"]
+                    )
             results.append(item)
 
         measured = [item for item in results if item["status"] == "measured_uncalibrated"]
@@ -420,6 +440,7 @@ class CtcPronunciationAssessor:
             "status": "evidence_available" if measured else "no_measurable_words",
             "affects_routing": False,
             "calibration_state": "uncalibrated",
+            "policy_version": PRONUNCIATION_POLICY_VERSION,
             "method": "word-windowed-vowel-neutral-ctc-viterbi-posterior",
             "model": self.model_id,
             "model_revision": self.revision,
@@ -433,6 +454,13 @@ class CtcPronunciationAssessor:
                     for item in measured
                 ),
                 "expected_words": len(expected_words),
+                "measured_vowel_slots_by_tier": dict(sorted(measured_tiers.items())),
+                "primary_vowel_slots_measured": len(primary_vowel_probabilities),
+                "mean_primary_vowel_probability": (
+                    round(float(np.mean(primary_vowel_probabilities)), 6)
+                    if primary_vowel_probabilities
+                    else None
+                ),
                 "mean_peak_expected_probability": (
                     round(float(np.mean(all_probabilities)), 6)
                     if all_probabilities
@@ -444,6 +472,8 @@ class CtcPronunciationAssessor:
                 "uncalibrated research evidence only",
                 "uses ASR word windows rather than validated Hebrew forced alignment",
                 "mismatched transcript windows are retained but explicitly lower confidence",
+                "sheva is stored as written policy metadata but excluded from primary acoustic scoring",
+                "reduced and multi-realization vowels retain separate evidence tiers",
                 "does not determine pass, retry, or teacher review",
             ],
         }
@@ -464,4 +494,5 @@ def disabled_pronunciation_result() -> dict:
         "status": "disabled",
         "affects_routing": False,
         "calibration_state": "not_started",
+        "policy_version": PRONUNCIATION_POLICY_VERSION,
     }

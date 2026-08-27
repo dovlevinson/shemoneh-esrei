@@ -541,7 +541,23 @@ function b64ToBlob(b64,type){const bin=atob(b64);const u=new Uint8Array(bin.leng
    Speech guess. Endpoint is overridable so the same code points at localhost
    now and a cloud host later, without a rebuild:
        localStorage.setItem('se-grader-url','https://your-host/transcribe')  */
-function graderURL(){return localStorage.getItem('se-grader-url')||'https://dlevinson--kriah-grader-grader-web.modal.run/transcribe';}
+// The deployed grader. Production ALWAYS uses this.
+const PROD_GRADER='https://dlevinson--kriah-grader-grader-web.modal.run/transcribe';
+// Developer escape hatch, off unless explicitly switched on. Before 2026-08-27 any
+// saved value won silently, so a browser that had once been pointed at
+// http://127.0.0.1:8000 during testing kept sending student recordings to a server
+// that is not running -- grading simply stopped, with no clue why.
+function devMode(){return localStorage.getItem('se-dev')==='1';}
+function graderURL(){
+  const saved=localStorage.getItem('se-grader-url');
+  // One-time cleanup: a stored localhost URL is never right on a student device,
+  // and it was never right on Dov's either once the grader moved to Modal.
+  if(saved&&/^https?:\/\/(127\.0\.0\.1|localhost)/i.test(saved)&&!devMode()){
+    localStorage.removeItem('se-grader-url');
+    return PROD_GRADER;
+  }
+  return (devMode()&&saved)?saved:PROD_GRADER;
+}
 /* Deployed 2026-08-26 (server/modal_app.py). This is the default so a Chromebook
    works with nothing typed in; developing against the Mac means putting
    http://127.0.0.1:8000/transcribe in Settings -> Grading server URL. */
@@ -664,7 +680,7 @@ function loadStore(){
   try{return JSON.parse(localStorage.getItem(LSK))||{};}catch(_){return{};}
 }
 function saveStore(){localStorage.setItem(LSK,JSON.stringify(S));}
-const DEFAULTS={winter:false,ayt:false,rc:false,chanukah:false,purim:false,ashk:false,masteryPct:90,tsize:2.0,showTrans:false,showTrouble:false,unlockAll:false,tts:false,voiceURI:'',serverGrade:false,vowelGrade:false};
+const DEFAULTS={winter:false,ayt:false,rc:false,chanukah:false,purim:false,ashk:false,masteryPct:92,sequential:false,tsize:2.0,showTrans:false,showTrouble:false,unlockAll:false,tts:false,voiceURI:'',serverGrade:true,vowelGrade:true};
 const S=Object.assign({
   profile:null,
   progress:{},
@@ -674,7 +690,12 @@ const S=Object.assign({
 },loadStore());
 S.settings=Object.assign({...DEFAULTS},S.settings);
 
+// V1 DEFAULT: every weekday bracha is open. Dov, 2026-08-27 -- there is no good
+// reason a child who wants to practise bracha 12 should be barred because the
+// computer has not yet declared bracha 11 mastered. Progress is still tracked; it
+// just does not gate access. Sequential mode is an optional teacher setting.
 function isUnlocked(i){
+  if(!S.settings.sequential)return true;
   if(S.settings.unlockAll)return true;
   if(i===0)return true;
   const p=S.progress[i-1];
@@ -1075,7 +1096,17 @@ async function endSession(){
     w.state=a?a.state:ST.BAD;w.score=a?a.score:0;w.heard=a?a.heard:null;
     if(w.state!==ST.OK)S.wordErr[session.bIdx+':'+w.norm]=(S.wordErr[session.bIdx+':'+w.norm]||0)+1;
   }
-  const score=finalScore();
+  // `finalScore()` is the WORD-ALIGNMENT accuracy: did the expected words appear,
+  // in order. It is a diagnostic, not the grade. The grade is the kriah score the
+  // server computes per word from the vowel verdicts -- because a word read with
+  // the wrong nikud was not read correctly. Falls back to the word figure only when
+  // the vowel layer could not run, and the UI says so rather than pretending.
+  const wordAlignmentAccuracy=finalScore();
+  const K=session.vowels||{};
+  const kriah=(typeof K.kriah_score==='number')?Math.round(K.kriah_score):null;
+  const scoreIsKriah=kriah!==null;
+  const score=scoreIsKriah?kriah:wordAlignmentAccuracy;
+  const coverage=(K.scoring&&typeof K.scoring.grading_coverage==='number')?K.scoring.grading_coverage:null;
   const stats=sessionStats();
   const wpm=durMs>=5000?Math.round(stats.ok/(durMs/60000)):0;
   // Confidence flag: the computer can't hear every letter distinction, so surface the reads it's unsure
@@ -1110,9 +1141,21 @@ async function endSession(){
     // VOWEL flags specifically and not on `flagged`, because the word-level reasons
     // were never meant to block mastery and quietly making them do so would be a
     // different change smuggled in with this one.
-    const vowelHold=vowelFlags.length>0;
-    if(score>=S.settings.masteryPct&&!p.mastered&&!vowelHold){p.mastered=true;newlyMastered=true;}
-    session.vowelHold=vowelHold&&score>=S.settings.masteryPct&&!p.mastered;
+    // MASTERY NOW COMES FROM THE ONE SCORE. A flagged vowel no longer creates a
+    // teacher hold just for existing -- it already cost the word its credit, and
+    // therefore cost the kriah score. Holding as well would charge for it twice and
+    // put routine reads in front of a teacher, which is the burden this product
+    // exists to remove.
+    //
+    // What DOES withhold the star is the server saying the read could not be
+    // trusted: no vowel evidence, or coverage too low for the number to mean
+    // anything. `mastered` is the server's own verdict where it gave one.
+    const trustworthy=!scoreIsKriah?false:(K.kriah_status==='scored');
+    const serverSaysMastered=(typeof K.mastered==='boolean')?K.mastered:null;
+    const earned=serverSaysMastered!==null?serverSaysMastered
+                 :(score>=S.settings.masteryPct&&trustworthy);
+    if(earned&&!p.mastered){p.mastered=true;newlyMastered=true;}
+    session.provisional=scoreIsKriah&&!trustworthy;
     S.progress[session.bIdx]=p;
     const missed=session.words.map((w,i)=>w.state===ST.BAD?i:-1).filter(i=>i>=0);
     const partial=session.words.map((w,i)=>w.state===ST.WARN?i:-1).filter(i=>i>=0);
@@ -1209,10 +1252,10 @@ function vResults(){
     <div class="row"><button class="primary" id="copyCode">📋 Copy code</button><span id="copied" class="muted"></span></div>`:'';
   return `<div class="card center">
     ${newlyMastered?`<div style="font-size:2.4rem">⭐</div><h1>Bracha mastered!</h1><p class="muted"><span class="heb">${esc(b.he)}</span> — the next bracha is now unlocked 🎉</p>`
-      :vowelHold?`<div style="font-size:2.4rem">⏳</div><h1>Nearly — your rabbi has the last word</h1><p class="muted"><span class="heb">${esc(b.he)}</span> — your words were good enough to pass, but the נִקּוּד check flagged something below. Nikud is part of mastery, so the star waits until your rabbi listens.</p>`
+      :session.provisional?`<div style="font-size:2.4rem">⏳</div><h1>Sent to your rabbi</h1><p class="muted"><span class="heb">${esc(b.he)}</span> — the computer couldn't check enough of this reading to be sure, so your rabbi will listen before the star.</p>`
       :`<h1 class="heb">${esc(b.he)}</h1>`}
     <div class="scorewrap" style="justify-content:center">
-      <div class="bigscore ${passed?'pass':'fail'}">${score}%</div>
+      <div class="bigscore ${passed?'pass':'fail'}">${score}%<div style="font-size:.8rem;font-weight:400;opacity:.75;margin-top:2px">${scoreIsKriah?'Kriah score':'words only — vowels not checked'}</div></div>
       <div class="statgrid" style="flex:1;min-width:260px">
         <div class="stat"><b>${stats.ok}</b><span>correct</span></div>
         <div class="stat"><b>${stats.warn}</b><span>almost</span></div>
@@ -1264,10 +1307,11 @@ function vTeacher(){
     <p class="muted" style="font-size:.8rem">Turn this on to walk through every bracha's practice and test screens yourself. Leave it off on student devices.</p>
   </div>
   <div class="card">
-    <h3>🎯 Accurate grading (beta)</h3>
-    <label style="display:flex;gap:8px"><input type="checkbox" id="serverGrade" ${S.settings.serverGrade?'checked':''}> <b>Use the accurate Hebrew model for Mastery Tests</b> — sends the recording to a Whisper grading server instead of the browser's guess.</label>
-    <label style="display:flex;gap:8px;margin-top:8px"><input type="checkbox" id="vowelGrade" ${S.settings.vowelGrade?'checked':''}> <b>Also check the nikud</b> — reports which vowel was misread. Does not change the percentage, but a flagged vowel <b>holds mastery for your review</b>.</label>
-    <p class="muted" style="font-size:.78rem;margin-top:4px">Whisper writes Hebrew without nikud, so it cannot tell בָּרוּךְ from בָּרַךְ. This runs a second, phoneme-level model that can. Every vowel is measured twice and flagged only when both methods agree. A flagged read still gets its score — it just cannot award itself a star, it comes to you. Expect roughly one in four clean reads to reach you on a false flag; loosen or tighten that in <code>server/merged_policy.py</code>. Validated on three adults and <b>no children</b>.</p>
+    <h3>🎯 Accurate grading</h3>
+    <p class="muted" style="font-size:.8rem;margin:0 0 8px">Mastery Tests use the accurate grader automatically. These switches are here for testing and should normally stay on.</p>
+    <label style="display:flex;gap:8px"><input type="checkbox" id="serverGrade" ${S.settings.serverGrade?'checked':''}> <b>Accurate Hebrew word model</b> — which words were read, in what order.</label>
+    <label style="display:flex;gap:8px;margin-top:8px"><input type="checkbox" id="vowelGrade" ${S.settings.vowelGrade?'checked':''}> <b>Nikud pronunciation</b> — <b>part of the Kriah score.</b> A word read with the wrong nikud does not get full credit.</label>
+    <p class="muted" style="font-size:.78rem;margin-top:4px">Whisper writes Hebrew without nikud, so it cannot tell בָּרוּךְ from בָּרַךְ. A second phoneme-level model can. Every vowel is measured twice, by two different alignment methods, and is only counted wrong when both agree — a sound the computer cannot measure is left out of the score rather than guessed either way. Validated on three adults and <b>no children</b>: treat early results as provisional.</p>
     <div class="row" style="margin-top:8px"><label style="flex:1">Grading server URL: <input type="text" id="graderUrl" value="${esc(graderURL())}" style="width:100%;font-size:.8rem" placeholder="https://…modal.run/transcribe"></label></div>
     <div class="row" style="margin-top:6px"><label style="flex:1">Grading server key: <input type="password" id="graderKey" value="${esc(graderToken())}" style="width:100%;font-size:.8rem" placeholder="paste the key from your rabbi"></label></div>
     <p class="muted" style="font-size:.8rem">The default is the cloud grader, which needs the key above; leave both alone unless your rabbi says otherwise. This only changes how the <b>Mastery Test</b> is graded — Practice mode still uses live browser feedback. If the server can't be reached, the test falls back to browser grading automatically.</p>

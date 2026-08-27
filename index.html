@@ -414,21 +414,18 @@ function classifyMistake(expN,heardN){
 }
 
 /* ================= word list builder ================= */
-function activeSegs(bracha,settings){
-  return bracha.segs.filter(s=>{
-    switch(s.c){
-      case 'always':return true;
-      case 'winter':return settings.winter;
-      case 'notwinter':return !settings.winter;
-      case 'ayt':return settings.ayt;
-      case 'notayt':return !settings.ayt;
-      case 'rc':return settings.rc;
-      case 'nissim':return settings.chanukah||settings.purim;
-      case 'chanukah':return settings.chanukah;
-      case 'purim':return settings.purim;
-      default:return true;
-    }
-  });
+// Dov's decision, 2026-08-26: STANDARD WEEKDAY SHEMONEH ESREI ONLY.
+// No winter, no Aseres Yemei Teshuva, no Rosh Chodesh, no Al HaNissim.
+//
+// This MUST stay byte-identical in meaning to load_bracha() in
+// server/phoneme_score.py. When the two disagreed, the server expected Al
+// HaNissim in bracha 18 that this app never displayed, so a perfect read came
+// back with 16 missing words and the vowel check refused to run. Turning on
+// Aseres Yemei Teshuva would have broken six brachot the same way.
+// server/check_text_parity.py compares all 19 brachot and fails if they drift.
+const WEEKDAY_SEGS = ['always', 'notwinter', 'notayt'];
+function activeSegs(bracha,_settings){
+  return bracha.segs.filter(s=>WEEKDAY_SEGS.includes(s.c));
 }
 function buildWords(bIdx,settings){
   const b=DATA.brachot[bIdx];
@@ -544,7 +541,27 @@ function b64ToBlob(b64,type){const bin=atob(b64);const u=new Uint8Array(bin.leng
    Speech guess. Endpoint is overridable so the same code points at localhost
    now and a cloud host later, without a rebuild:
        localStorage.setItem('se-grader-url','https://your-host/transcribe')  */
-function graderURL(){return localStorage.getItem('se-grader-url')||'http://127.0.0.1:8000/transcribe';}
+function graderURL(){return localStorage.getItem('se-grader-url')||'https://dlevinson--kriah-grader-grader-web.modal.run/transcribe';}
+/* Deployed 2026-08-26 (server/modal_app.py). This is the default so a Chromebook
+   works with nothing typed in; developing against the Mac means putting
+   http://127.0.0.1:8000/transcribe in Settings -> Grading server URL. */
+/* The grading server is on the public internet now, so every POST carries a shared
+   bearer token. This is NOT per-student identity -- that arrives with the Google
+   sign-in the dashboard already specifies -- it is what keeps a public HTTPS
+   endpoint from being a free GPU for anyone who finds it.
+   Deliberately no default: a token compiled into this file would be published the
+   moment this file is. */
+function graderToken(){return localStorage.getItem('se-grader-token')||'';}
+function graderHeaders(){const t=graderToken();return t?{'Authorization':'Bearer '+t}:{};}
+/* One-time provisioning for a Chromebook. The quest-board link may carry
+   ?graderKey=... ; we store it and strip it from the address bar in the same tick,
+   so the token never lingers in a URL that gets bookmarked, shared or logged. */
+(function(){try{
+  const u=new URL(location.href), k=u.searchParams.get('graderKey');
+  if(k){localStorage.setItem('se-grader-token',k);
+        u.searchParams.delete('graderKey');
+        history.replaceState(null,'',u.pathname+(u.search||'')+u.hash);}
+}catch(_){}})();
 // Same server, different endpoint. /transcribe returns Whisper's text, which is
 // UNVOCALIZED — barukh/barakh/berekh are identical to it. /grade runs the phoneme
 // layer too and reports which specific nikud was misread.
@@ -556,7 +573,7 @@ async function gradeVowels(blob,brachaNo){
   const ctrl=new AbortController();
   const to=setTimeout(()=>ctrl.abort(),180000);   // two models on CPU is slow
   let r;
-  try{r=await fetch(vowelURL(),{method:'POST',body:fd,signal:ctrl.signal});}
+  try{r=await fetch(vowelURL(),{method:'POST',body:fd,signal:ctrl.signal,headers:graderHeaders()});}
   catch(e){throw new Error(e.name==='AbortError'?'the vowel grader timed out':'could not reach the vowel grader');}
   finally{clearTimeout(to);}
   let j=null;try{j=await r.json();}catch(_){}
@@ -576,7 +593,7 @@ async function gradeWithServer(blob,words){
   const ctrl=new AbortController();
   const to=setTimeout(()=>ctrl.abort(),120000);
   let r;
-  try{r=await fetch(graderURL(),{method:'POST',body:fd,signal:ctrl.signal});}
+  try{r=await fetch(graderURL(),{method:'POST',body:fd,signal:ctrl.signal,headers:graderHeaders()});}
   catch(e){throw new Error(e.name==='AbortError'?'the grading server timed out':'could not reach the grading server');}
   finally{clearTimeout(to);}
   let j=null;try{j=await r.json();}catch(_){}
@@ -1085,14 +1102,35 @@ function vResults(){
   if(isTest&&S.settings.vowelGrade){
     if(session.vowelErr){
       vowelHtml=`<div class="notice" style="border-left-color:var(--warn);background:var(--warn-bg);text-align:left">⚠️ Vowel check unavailable (${esc(session.vowelErr)}).</div>`;
-    }else if(session.vowels&&session.vowels.words){
-      const flagged=session.vowels.words.filter(w=>w.message);
+    }else if(session.vowels){
+      // Response shape (server/grade_service.py): {vowels_graded, vowels:[{word,vowel_en}],
+      // vowels_info:[...], vowels_reason}. Every vowel is measured by TWO independent
+      // aligners; `vowels` are the slots BOTH called wrong. `vowels_info` are slots only
+      // one of the two could measure at all — reported, never counted — see
+      // server/merged_policy.py for why agreement is required.
+      // `vowels_unconfirmed` is deliberately NOT read here. Those are slots one
+      // checker could not measure, or whose nikud class is too thinly calibrated to
+      // grade on. They are evidence for the rabbi, not for the reader: telling a
+      // child the computer was unsure about their tzeirei is an accusation the
+      // system has explicitly declined to make.
+      const V=session.vowels, bad=V.vowels||[];
+      let body;
+      if(V.vowels_graded===false){
+        body=`<p class="muted" style="margin:6px 0 0">${esc(V.vowels_reason||'Vowels were not checked for this read.')}</p>`;
+      }else if(bad.length){
+        body=`<ul style="margin:6px 0 0;padding-inline-start:18px">${
+          bad.map(v=>`<li style="margin:4px 0"><span class="hebtxt" dir="rtl" style="font-size:1.15rem">${esc(v.word||'')}</span> — check the <b>${esc(v.vowel_en||v.vowel||'')}</b></li>`).join('')
+        }</ul>`;
+      }else{
+        // NOT "every vowel was correct". Nothing flagged means nothing flagged --
+        // the checker can miss things, and 4 of 12 planted errors got past it.
+        body=`<p class="muted" style="margin:6px 0 0">Nothing was flagged here. Your rabbi gives the final nikud check. ✅</p>`;
+      }
+      const infoHtml='';   // see the note above — unconfirmed slots are teacher-facing
       vowelHtml=`<div class="card" style="text-align:left">
-        <h3>נִקּוּד — vowel check <span class="muted" style="font-weight:400;font-size:.75rem">(beta — does not affect your score)</span></h3>
-        ${flagged.length?`<ul style="margin:6px 0 0;padding-inline-start:18px">${
-          flagged.map(w=>`<li style="margin:4px 0"><span class="hebtxt" dir="rtl" style="font-size:1.15rem">${esc(w.word||'')}</span> — ${esc(w.message)}</li>`).join('')
-        }</ul>`:`<p class="muted" style="margin:6px 0 0">Every vowel came through clearly. 🎯</p>`}
-        <p class="muted" style="font-size:.72rem;margin-top:10px">${esc(session.vowels.caveat||'')}</p>
+        <h3>נִקּוּד — vowel check <span class="muted" style="font-weight:400;font-size:.75rem">(nikud is part of mastery — your rabbi gives the final check)</span></h3>
+        ${body}${infoHtml}
+        <p class="muted" style="font-size:.72rem;margin-top:10px">${esc(V.caveat||'')}</p>
       </div>`;
     }
   }
@@ -1180,8 +1218,9 @@ function vTeacher(){
     <label style="display:flex;gap:8px"><input type="checkbox" id="serverGrade" ${S.settings.serverGrade?'checked':''}> <b>Use the accurate Hebrew model for Mastery Tests</b> — sends the recording to a Whisper grading server instead of the browser's guess.</label>
     <label style="display:flex;gap:8px;margin-top:8px"><input type="checkbox" id="vowelGrade" ${S.settings.vowelGrade?'checked':''}> <b>Also check the nikud (very beta)</b> — reports which vowel was misread. Does NOT affect the score.</label>
     <p class="muted" style="font-size:.78rem;margin-top:4px">Whisper writes Hebrew without nikud, so it cannot tell בָּרוּךְ from בָּרַךְ. This runs a second, phoneme-level model that can. It is slow (up to a minute), needs the same server running, and is calibrated on one adult voice — so treat it as diagnostic, not as a grade.</p>
-    <div class="row" style="margin-top:8px"><label style="flex:1">Grading server URL: <input type="text" id="graderUrl" value="${esc(graderURL())}" style="width:100%;font-size:.8rem" placeholder="http://127.0.0.1:8000/transcribe"></label></div>
-    <p class="muted" style="font-size:.8rem">While testing on this computer, keep the default and make sure the local grading server is running. This only changes how the <b>Mastery Test</b> is graded — Practice mode still uses live browser feedback. If the server can't be reached, the test falls back to browser grading automatically.</p>
+    <div class="row" style="margin-top:8px"><label style="flex:1">Grading server URL: <input type="text" id="graderUrl" value="${esc(graderURL())}" style="width:100%;font-size:.8rem" placeholder="https://…modal.run/transcribe"></label></div>
+    <div class="row" style="margin-top:6px"><label style="flex:1">Grading server key: <input type="password" id="graderKey" value="${esc(graderToken())}" style="width:100%;font-size:.8rem" placeholder="paste the key from your rabbi"></label></div>
+    <p class="muted" style="font-size:.8rem">The default is the cloud grader, which needs the key above; leave both alone unless your rabbi says otherwise. This only changes how the <b>Mastery Test</b> is graded — Practice mode still uses live browser feedback. If the server can't be reached, the test falls back to browser grading automatically.</p>
     <div class="row"><button class="ghost" id="testGrader">Test connection</button><span class="muted" id="graderStatus" style="font-size:.8rem"></span></div>
   </div>
   <div class="card">
@@ -1226,13 +1265,15 @@ function bindTeacher(){
   if(vg)vg.addEventListener('change',e=>{S.settings.vowelGrade=e.target.checked;saveStore();});
   const gu=document.getElementById('graderUrl');
   if(gu)gu.addEventListener('change',e=>{const v=e.target.value.trim();if(v)localStorage.setItem('se-grader-url',v);else localStorage.removeItem('se-grader-url');});
+  const gk=document.getElementById('graderKey');
+  if(gk)gk.addEventListener('change',e=>{const v=e.target.value.trim();if(v)localStorage.setItem('se-grader-token',v);else localStorage.removeItem('se-grader-token');});
   const tg=document.getElementById('testGrader');
   if(tg)tg.addEventListener('click',async()=>{
     const st=document.getElementById('graderStatus');st.textContent='Checking…';
     try{
       const base=graderURL().replace(/\/transcribe\/?$/,'/');
       const r=await fetch(base,{method:'GET'});const j=await r.json();
-      st.textContent=r.ok?('✅ Connected — model ready ('+(j.model||'')+')'):('⚠️ Server responded '+r.status);
+      st.textContent=r.ok?('✅ Connected — model ready ('+(j.model||'')+')'+(graderToken()?'':' — but NO KEY is set, so grading will be refused')):('⚠️ Server responded '+r.status);
     }catch(e){st.textContent='⚠️ Could not reach the server. Is it running?';}
   });
 
@@ -1354,12 +1395,8 @@ function vSettings(){
   const chk=(k,l,hint)=>`<label><input type="checkbox" data-set="${k}" ${s[k]?'checked':''}> ${l} ${hint?`<span class="muted" style="font-size:.78rem">${hint}</span>`:''}</label>`;
   return `<h1>Settings</h1>
   <div class="card toggles">
-    <h3>Seasonal additions (nusach)</h3>
-    ${chk('winter','Winter — מַשִּׁיב הָרוּחַ + וְתֵן טַל וּמָטָר')}
-    ${chk('ayt','Aseres Yemei Teshuva — זָכְרֵנוּ, מִי כָמוֹךָ, הַמֶּלֶךְ הַקָּדוֹשׁ…')}
-    ${chk('rc','Rosh Chodesh / Chol Hamoed — יַעֲלֶה וְיָבֹא')}
-    ${chk('chanukah','Chanukah — עַל הַנִּסִּים')}
-    ${chk('purim','Purim — עַל הַנִּסִּים')}
+    <h3>Nusach</h3>
+    <p class="muted" style="font-size:.85rem;margin:4px 0 0">This trainer uses the <b>standard weekday Shemoneh Esrei</b>. Seasonal additions — מַשִּׁיב הָרֽוּחַ, וְתֵן טַל וּמָטָר, the Aseres Yemei Teshuva changes, יַעֲלֶה וְיָבֹא and עַל הַנִּסִּים — are not included, so every student reads the same text all year.</p>
   </div>
   <div class="card toggles">
     <h3>Reading &amp; matching</h3>

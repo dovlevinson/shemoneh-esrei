@@ -1026,25 +1026,42 @@ async function endSession(){
   // In test mode with server grading on, send the recording to the ivrit.ai
   // Whisper endpoint and grade its (far more accurate) transcript instead.
   session.gradedBy='browser';session.serverErr=null;session.serverTranscript=null;
-  if(isTest&&S.settings.serverGrade&&session.audioBlob){
+  session.vowels=null;session.vowelErr=null;session.vowelHold=false;
+  const mb0=document.getElementById('micBtn');if(mb0&&isTest&&session.audioBlob)mb0.disabled=true;
+
+  // ONE call, not two. /grade already runs the word layer -- same recording, same
+  // Whisper, same process -- and returns `transcript` alongside the vowel findings.
+  // Asking /transcribe as well made the student wait for a THIRD Whisper pass over
+  // audio that had already been transcribed twice: measured 2026-08-27 in the
+  // browser, /transcribe 29.8 s THEN /grade 18.6 s, 48.4 s total, for a 20-word
+  // bracha. That is the wait Dov saw.
+  //
+  // It also fixes a policy break. DECISIONS.md fixes the Whisper config
+  // everywhere at vad_filter=True, condition_on_previous_text=False; /transcribe
+  // uses vad_filter=False and does not set condition_on_previous_text at all, so
+  // the WORD SCORE a student saw came from a decode config that was never the
+  // validated one. /grade's word layer (combined_score.transcribe_words) is.
+  let wordLayerDone=false;
+  if(isTest&&S.settings.vowelGrade&&session.audioBlob){
+    const gv=document.getElementById('interim');
+    if(gv)gv.innerHTML='⏳ Checking your reading and your vowels…';
+    try{
+      session.vowels=await gradeVowels(session.audioBlob,session.bIdx+1);
+      if(S.settings.serverGrade&&typeof session.vowels.transcript==='string'&&session.vowels.transcript){
+        session.serverTranscript=session.vowels.transcript;
+        session.gradedBy='server';
+        wordLayerDone=true;
+      }
+    }catch(e){session.vowelErr=e.message||String(e);}
+  }
+  // Only when the vowel layer is off, or it failed and we still owe a word score.
+  if(isTest&&S.settings.serverGrade&&session.audioBlob&&!wordLayerDone){
     const gv=document.getElementById('interim');
     if(gv)gv.innerHTML='⏳ Grading your reading with the accurate model… (a few seconds)';
-    const mb=document.getElementById('micBtn');if(mb)mb.disabled=true;
     try{
       session.serverTranscript=await gradeWithServer(session.audioBlob,session.words);
       session.gradedBy='server';
     }catch(e){session.serverErr=e.message||String(e);/* graceful fall back to browser grading */}
-  }
-  // Vowel layer. Independent of the word score above: it does not change the
-  // percentage, it adds per-sound feedback ("Check the tzeirei"). Kept separate
-  // and non-scoring on purpose — it is validated on ONE adult voice and has not
-  // been shown to transfer to a child's, so it must not fail anybody yet.
-  session.vowels=null;session.vowelErr=null;
-  if(isTest&&S.settings.vowelGrade&&session.audioBlob){
-    const gv=document.getElementById('interim');
-    if(gv)gv.innerHTML='⏳ Checking your vowels… (this one takes a while)';
-    try{session.vowels=await gradeVowels(session.audioBlob,session.bIdx+1);}
-    catch(e){session.vowelErr=e.message||String(e);}
   }
   // final scoring: server transcript → boundary-agnostic scorer; browser → live-token aligner
   // Grade the SAME token set the live view showed. Chrome often has not finalized the last
@@ -1068,27 +1085,48 @@ async function endSession(){
   if(score>=55&&score<S.settings.masteryPct)flagReasons.push('score near the pass line');
   if(stats.warn>=3&&warnRatio>=0.15)flagReasons.push(stats.warn+' "almost" words');
   if((skips||0)>=2)flagReasons.push('several words skipped');
+  // NIKUD COUNTS TOWARD MASTERY. Dov ruled this 2026-08-25 and the code never did
+  // it: flagReasons held three word-level conditions and nothing about vowels, and
+  // mastery below was awarded on the word score alone. So a student could misread
+  // every vowel, score 100% on words, and be handed a star while the נִקּוּד panel on
+  // the same screen listed their mistakes -- which is exactly the thing the ruling
+  // forbids ("Nothing may signal to a student that nekudot do not matter").
+  //
+  // A flagged vowel does NOT lower the percentage and does NOT fail anybody. It
+  // holds the star and sends the read to a teacher, which is the other half of the
+  // same ruling: "a human owns the judgement". Slots the checker could not measure
+  // (`vowels_unconfirmed`) are deliberately NOT counted here -- being unsure is not
+  // evidence against a child.
+  const vowelFlags=(session.vowels&&session.vowels.vowels_graded!==false)
+                   ?(session.vowels.vowels||[]):[];
+  if(vowelFlags.length)flagReasons.push(vowelFlags.length+(vowelFlags.length===1?' vowel to check':' vowels to check'));
   const flagged=isTest&&flagReasons.length>0;
   let newlyMastered=false;
   if(isTest){
     const p=S.progress[session.bIdx]||{mastered:false,best:0,attempts:0};
     p.attempts++;p.lastDate=new Date().toISOString().slice(0,10);
     if(score>p.best)p.best=score;
-    if(score>=S.settings.masteryPct&&!p.mastered){p.mastered=true;newlyMastered=true;}
+    // Held, not failed. The score stands; the star waits for the rabbi. Gated on the
+    // VOWEL flags specifically and not on `flagged`, because the word-level reasons
+    // were never meant to block mastery and quietly making them do so would be a
+    // different change smuggled in with this one.
+    const vowelHold=vowelFlags.length>0;
+    if(score>=S.settings.masteryPct&&!p.mastered&&!vowelHold){p.mastered=true;newlyMastered=true;}
+    session.vowelHold=vowelHold&&score>=S.settings.masteryPct&&!p.mastered;
     S.progress[session.bIdx]=p;
     const missed=session.words.map((w,i)=>w.state===ST.BAD?i:-1).filter(i=>i>=0);
     const partial=session.words.map((w,i)=>w.state===ST.WARN?i:-1).filter(i=>i>=0);
-    session.resultCode=encodeResult({v:1,n:S.profile.name,c:S.profile.cls,b:session.bIdx+1,bn:DATA.brachot[session.bIdx].he,d:p.lastDate,a:score,w:wpm,dur:Math.round(durMs/1000),m:missed,p:partial,tw:session.words.length,fl:flagged?1:0,fr:flagReasons,g:session.gradedBy==='server'?1:0,tr:(session.serverTranscript||'').slice(0,400)});
+    session.resultCode=encodeResult({v:1,n:S.profile.name,c:S.profile.cls,b:session.bIdx+1,bn:DATA.brachot[session.bIdx].he,d:p.lastDate,a:score,w:wpm,dur:Math.round(durMs/1000),m:missed,p:partial,tw:session.words.length,fl:flagged?1:0,fr:flagReasons,nv:vowelFlags.map(v=>[v.word,v.vowel_en]),g:session.gradedBy==='server'?1:0,tr:(session.serverTranscript||'').slice(0,400)});
     S.history.unshift({b:session.bIdx,a:score,d:p.lastDate,f:flagged?1:0});S.history=S.history.slice(0,50);
   }
   saveStore();
-  session.final={score,wpm,durMs,newlyMastered,flagged,flagReasons};
+  session.final={score,wpm,durMs,newlyMastered,flagged,flagReasons,vowelHold:!!session.vowelHold};
   view={name:'results'};
   render();
   if(newlyMastered)confetti();
 }
 function vResults(){
-  const {score,wpm,durMs,newlyMastered,flagged,flagReasons}=session.final;
+  const {score,wpm,durMs,newlyMastered,flagged,flagReasons,vowelHold}=session.final;
   const stats=sessionStats();
   const isTest=session.mode==='test';
   const passed=score>=S.settings.masteryPct;
@@ -1117,6 +1155,10 @@ function vResults(){
       let body;
       if(V.vowels_graded===false){
         body=`<p class="muted" style="margin:6px 0 0">${esc(V.vowels_reason||'Vowels were not checked for this read.')}</p>`;
+        // This is the commonest reason a reader sees no vowel feedback and thinks
+        // the feature is broken: one skipped or inserted word turns the whole vowel
+        // layer off for that read, by design (grade_service.py). Make the fix obvious.
+        body+=`<p class="muted" style="margin:6px 0 0;font-size:.8rem">Read every word, with no extras, and the vowel check will run.</p>`;
       }else if(bad.length){
         body=`<ul style="margin:6px 0 0;padding-inline-start:18px">${
           bad.map(v=>`<li style="margin:4px 0"><span class="hebtxt" dir="rtl" style="font-size:1.15rem">${esc(v.word||'')}</span> — check the <b>${esc(v.vowel_en||v.vowel||'')}</b></li>`).join('')
@@ -1124,7 +1166,13 @@ function vResults(){
       }else{
         // NOT "every vowel was correct". Nothing flagged means nothing flagged --
         // the checker can miss things, and 4 of 12 planted errors got past it.
-        body=`<p class="muted" style="margin:6px 0 0">Nothing was flagged here. Your rabbi gives the final nikud check. ✅</p>`;
+        // But SAY HOW MANY WERE CHECKED. Without it a clean read reads as "the
+        // computer did nothing", which is what it looked like to Dov on 2026-08-27
+        // -- he concluded the nikud was not being graded at all when in fact 40
+        // vowels had just been measured twice each. Stating the count is not
+        // telling a child their vowels are fine; it is saying what was done.
+        const n=V.vowels_checked;
+        body=`<p class="muted" style="margin:6px 0 0">${n?('<b>'+n+' vowels checked.</b> '):''}Nothing was flagged here. Your rabbi gives the final nikud check. ✅</p>`;
       }
       const infoHtml='';   // see the note above — unconfirmed slots are teacher-facing
       vowelHtml=`<div class="card" style="text-align:left">
@@ -1160,7 +1208,9 @@ function vResults(){
     <textarea rows="3" readonly id="rcode" style="font-size:.75rem">${session.resultCode}</textarea>
     <div class="row"><button class="primary" id="copyCode">📋 Copy code</button><span id="copied" class="muted"></span></div>`:'';
   return `<div class="card center">
-    ${newlyMastered?`<div style="font-size:2.4rem">⭐</div><h1>Bracha mastered!</h1><p class="muted"><span class="heb">${esc(b.he)}</span> — the next bracha is now unlocked 🎉</p>`:`<h1 class="heb">${esc(b.he)}</h1>`}
+    ${newlyMastered?`<div style="font-size:2.4rem">⭐</div><h1>Bracha mastered!</h1><p class="muted"><span class="heb">${esc(b.he)}</span> — the next bracha is now unlocked 🎉</p>`
+      :vowelHold?`<div style="font-size:2.4rem">⏳</div><h1>Nearly — your rabbi has the last word</h1><p class="muted"><span class="heb">${esc(b.he)}</span> — your words were good enough to pass, but the נִקּוּד check flagged something below. Nikud is part of mastery, so the star waits until your rabbi listens.</p>`
+      :`<h1 class="heb">${esc(b.he)}</h1>`}
     <div class="scorewrap" style="justify-content:center">
       <div class="bigscore ${passed?'pass':'fail'}">${score}%</div>
       <div class="statgrid" style="flex:1;min-width:260px">
@@ -1216,8 +1266,8 @@ function vTeacher(){
   <div class="card">
     <h3>🎯 Accurate grading (beta)</h3>
     <label style="display:flex;gap:8px"><input type="checkbox" id="serverGrade" ${S.settings.serverGrade?'checked':''}> <b>Use the accurate Hebrew model for Mastery Tests</b> — sends the recording to a Whisper grading server instead of the browser's guess.</label>
-    <label style="display:flex;gap:8px;margin-top:8px"><input type="checkbox" id="vowelGrade" ${S.settings.vowelGrade?'checked':''}> <b>Also check the nikud (very beta)</b> — reports which vowel was misread. Does NOT affect the score.</label>
-    <p class="muted" style="font-size:.78rem;margin-top:4px">Whisper writes Hebrew without nikud, so it cannot tell בָּרוּךְ from בָּרַךְ. This runs a second, phoneme-level model that can. It is slow (up to a minute), needs the same server running, and is calibrated on one adult voice — so treat it as diagnostic, not as a grade.</p>
+    <label style="display:flex;gap:8px;margin-top:8px"><input type="checkbox" id="vowelGrade" ${S.settings.vowelGrade?'checked':''}> <b>Also check the nikud</b> — reports which vowel was misread. Does not change the percentage, but a flagged vowel <b>holds mastery for your review</b>.</label>
+    <p class="muted" style="font-size:.78rem;margin-top:4px">Whisper writes Hebrew without nikud, so it cannot tell בָּרוּךְ from בָּרַךְ. This runs a second, phoneme-level model that can. Every vowel is measured twice and flagged only when both methods agree. A flagged read still gets its score — it just cannot award itself a star, it comes to you. Expect roughly one in four clean reads to reach you on a false flag; loosen or tighten that in <code>server/merged_policy.py</code>. Validated on three adults and <b>no children</b>.</p>
     <div class="row" style="margin-top:8px"><label style="flex:1">Grading server URL: <input type="text" id="graderUrl" value="${esc(graderURL())}" style="width:100%;font-size:.8rem" placeholder="https://…modal.run/transcribe"></label></div>
     <div class="row" style="margin-top:6px"><label style="flex:1">Grading server key: <input type="password" id="graderKey" value="${esc(graderToken())}" style="width:100%;font-size:.8rem" placeholder="paste the key from your rabbi"></label></div>
     <p class="muted" style="font-size:.8rem">The default is the cloud grader, which needs the key above; leave both alone unless your rabbi says otherwise. This only changes how the <b>Mastery Test</b> is graded — Practice mode still uses live browser feedback. If the server can't be reached, the test falls back to browser grading automatically.</p>
